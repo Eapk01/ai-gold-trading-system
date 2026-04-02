@@ -14,6 +14,7 @@ import sys
 # 添加源代码路径
 sys.path.append('src')
 
+from src.config_utils import ConfigValidationError, ensure_runtime_directories, load_config as load_validated_config
 from src.data_collector import DataCollector
 from src.feature_engineer import FeatureEngineer
 from src.ai_models import AIModelManager
@@ -41,9 +42,10 @@ def setup_environment():
 def load_config():
     """加载配置"""
     try:
-        with open('config/config.yaml', 'r', encoding='utf-8') as f:
-            config = yaml.safe_load(f)
-        return config
+        return load_validated_config('config/config.yaml')
+    except ConfigValidationError as e:
+        logger.error(f"配置验证失败: {e}")
+        return None
     except Exception as e:
         logger.error(f"加载配置失败: {e}")
         return None
@@ -62,6 +64,7 @@ def demonstrate_ai_model_development():
     if not config:
         print("❌ 配置加载失败")
         return
+    ensure_runtime_directories(config)
     print("✅ 环境设置完成")
     
     # 2. 初始化模块

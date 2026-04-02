@@ -15,6 +15,11 @@ import time
 # 添加源代码路径
 sys.path.append('src')
 
+from src.config_utils import (
+    ConfigValidationError,
+    ensure_runtime_directories,
+    load_config as load_validated_config,
+)
 from src.data_collector import DataCollector
 from src.feature_engineer import FeatureEngineer
 from src.ai_models import AIModelManager
@@ -26,16 +31,21 @@ from src.trader import TradingEngine
 def load_config():
     """加载配置文件"""
     try:
-        with open('config/config.yaml', 'r', encoding='utf-8') as f:
-            config = yaml.safe_load(f)
-        return config
+        return load_validated_config('config/config.yaml')
+    except ConfigValidationError as e:
+        logger.error(f"配置验证失败: {e}")
+        return None
     except Exception as e:
         logger.error(f"加载配置失败: {e}")
         return None
 
 
-def setup_directories():
+def setup_directories(config=None):
     """创建必要的目录"""
+    if config:
+        ensure_runtime_directories(config)
+        return
+
     directories = ['data', 'logs', 'models', 'reports']
     for dir_name in directories:
         os.makedirs(dir_name, exist_ok=True)
@@ -57,12 +67,12 @@ class TradingSystem:
     
     def __init__(self):
         """初始化交易系统"""
-        logger.info("=== AI黄金交易系统启动 ===")
+        logger.info("=== AI Gold Trading System Startup ===")
         
         # 加载配置
         self.config = load_config()
         if not self.config:
-            raise Exception("配置加载失败")
+            raise Exception("Failed to load configuration")
         
         # 初始化各个模块
         self.data_collector = DataCollector(self.config)
@@ -83,11 +93,11 @@ class TradingSystem:
         self.feature_data = None
         self.selected_features = []
         
-        logger.info("交易系统初始化完成")
+        logger.info("Trading system initialization complete")
     
     def collect_and_prepare_data(self):
         """采集和准备数据"""
-        logger.info("开始数据采集和准备...")
+        logger.info("Starting data collection and preparation...")
         
         # 获取历史数据
         historical_data = self.data_collector.get_historical_data(
@@ -96,13 +106,13 @@ class TradingSystem:
         )
         
         if historical_data.empty:
-            logger.error("历史数据获取失败")
+            logger.error("Failed to fetch historical data")
             return False
         
         # 数据质量验证
         is_valid, issues = self.data_collector.validate_data_quality(historical_data)
         if not is_valid:
-            logger.warning(f"数据质量问题: {issues}")
+            logger.warning(f"Data quality issues: {issues}")
         
         # 保存原始数据
         self.data_collector.save_data_to_db(historical_data, 'raw_data')
@@ -113,7 +123,7 @@ class TradingSystem:
         )
         
         if self.feature_data.empty:
-            logger.error("特征创建失败")
+            logger.error("Failed to create features")
             return False
         
         # 特征选择
@@ -125,19 +135,19 @@ class TradingSystem:
         )
         
         if not self.selected_features:
-            logger.error("特征选择失败")
+            logger.error("Feature selection failed")
             return False
         
-        logger.info(f"数据准备完成 - 选择了 {len(self.selected_features)} 个特征")
+        logger.info(f"Data preparation complete - selected {len(self.selected_features)} features")
         return True
     
     def train_models(self):
         """训练AI模型"""
         if self.feature_data is None or not self.selected_features:
-            logger.error("请先准备数据")
+            logger.error("Please prepare the data first")
             return False
         
-        logger.info("开始训练AI模型...")
+        logger.info("Starting AI model training...")
         
         # 训练集成模型
         training_results = self.ai_model_manager.train_ensemble_models(
@@ -147,7 +157,7 @@ class TradingSystem:
         )
         
         if not training_results:
-            logger.error("模型训练失败")
+            logger.error("Model training failed")
             return False
         
         # 保存模型
@@ -155,23 +165,23 @@ class TradingSystem:
         self.ai_model_manager.save_models(model_path)
         
         # 显示训练结果
-        logger.info("=== 模型训练结果 ===")
+        logger.info("=== Model Training Results ===")
         for model_name, performance in training_results.items():
             accuracy = performance.get('test_accuracy', 0)
-            logger.info(f"{model_name}: 测试准确率 = {accuracy:.4f}")
+            logger.info(f"{model_name}: test accuracy = {accuracy:.4f}")
         
         return True
     
     def run_backtest(self):
         """运行回测"""
-        logger.info("开始专业回测...")
+        logger.info("Starting professional backtest...")
         
         if not self.ai_model_manager.models:
-            logger.error("请先训练模型")
+            logger.error("Please train the models first")
             return False
         
         if self.feature_data is None or not self.selected_features:
-            logger.error("请先准备数据")
+            logger.error("Please prepare the data first")
             return False
         
         try:
@@ -184,15 +194,15 @@ class TradingSystem:
             )
             
             # 显示回测结果
-            logger.info("=== 回测结果汇总 ===")
-            logger.info(f"总交易次数: {result.total_trades}")
-            logger.info(f"盈利交易: {result.winning_trades}")
-            logger.info(f"亏损交易: {result.losing_trades}")
-            logger.info(f"胜率: {result.win_rate:.1%}")
-            logger.info(f"总盈亏: ${result.total_pnl:.2f}")
-            logger.info(f"最大回撤: {result.max_drawdown:.2%}")
-            logger.info(f"夏普比率: {result.sharpe_ratio:.2f}")
-            logger.info(f"盈利因子: {result.profit_factor:.2f}")
+            logger.info("=== Backtest Result Summary ===")
+            logger.info(f"Total trades: {result.total_trades}")
+            logger.info(f"Winning trades: {result.winning_trades}")
+            logger.info(f"Losing trades: {result.losing_trades}")
+            logger.info(f"Win rate: {result.win_rate:.1%}")
+            logger.info(f"Total PnL: ${result.total_pnl:.2f}")
+            logger.info(f"Max drawdown: {result.max_drawdown:.2%}")
+            logger.info(f"Sharpe ratio: {result.sharpe_ratio:.2f}")
+            logger.info(f"Profit factor: {result.profit_factor:.2f}")
             
             # 保存回测结果
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -208,85 +218,85 @@ class TradingSystem:
             if not trade_summary.empty:
                 summary_file = f"reports/trade_summary_{timestamp}.csv"
                 trade_summary.to_csv(summary_file, index=False, encoding='utf-8-sig')
-                logger.info(f"交易明细已保存: {summary_file}")
+                logger.info(f"Trade summary saved: {summary_file}")
             
             return True
             
         except Exception as e:
-            logger.error(f"专业回测失败: {e}")
+            logger.error(f"Professional backtest failed: {e}")
             return False
     
     def show_menu(self):
         """显示主菜单"""
         print("\n" + "="*60)
-        print("🏆 AI黄金交易系统 - 完整功能菜单")
+        print("🏆 AI Gold Trading System - Full Menu")
         print("="*60)
-        print("📊 数据和模型管理:")
-        print("  1. 📈 数据采集和预处理")
-        print("  2. 🤖 训练AI模型")
-        print("  3. 📊 模型性能评估")
-        print("  4. 🔄 数据更新")
+        print("📊 Data and Model Management:")
+        print("  1. 📈 Data collection and preprocessing")
+        print("  2. 🤖 Train AI models")
+        print("  3. 📊 Model performance evaluation")
+        print("  4. 🔄 Update data")
         
-        print("\n💼 回测和分析:")
-        print("  5. 🎯 运行回测")
-        print("  6. 📋 查看回测报告")
-        print("  7. 📈 模型性能分析")
+        print("\n💼 Backtesting and Analysis:")
+        print("  5. 🎯 Run backtest")
+        print("  6. 📋 View backtest reports")
+        print("  7. 📈 Analyze model performance")
         
-        print("\n🔄 实时交易:")
-        print("  8. 🚀 启动模拟交易")
-        print("  9. 📱 交易引擎状态")
-        print(" 10. ⏹️  停止交易引擎")
-        print(" 11. 🧪 手动交易测试")
+        print("\n🔄 Real-Time Trading:")
+        print("  8. 🚀 Start simulation trading")
+        print("  9. 📱 Trading engine status")
+        print(" 10. ⏹️  Stop trading engine")
+        print(" 11. 🧪 Manual trade test")
         
-        print("\n🆕 第三阶段功能:")
-        print(" 12. 📊 纸上交易演示")
-        print(" 13. 🏦 券商接口管理")
-        print(" 14. 📱 监控系统控制")
-        print(" 15. 🔍 系统状态查看")
-        print(" 16. 🚨 告警管理")
-        print(" 17. 📋 日志导出")
-        print(" 18. 🎯 第三阶段完整演示")
+        print("\n🆕 Phase 3 Features:")
+        print(" 12. 📊 Paper trading demo")
+        print(" 13. 🏦 Broker interface management")
+        print(" 14. 📱 Monitoring system control")
+        print(" 15. 🔍 View system status")
+        print(" 16. 🚨 Alert management")
+        print(" 17. 📋 Export logs")
+        print(" 18. 🎯 Full Phase 3 demo")
         
-        print("\n🛠️  系统管理:")
-        print(" 19. ⚙️  系统配置")
-        print(" 20. 📄 生成报告")
-        print("  0. 🚪 退出系统")
+        print("\n🛠️  System Management:")
+        print(" 19. ⚙️  System configuration")
+        print(" 20. 📄 Generate report")
+        print("  0. 🚪 Exit system")
         print("="*60)
     
     def show_system_status(self):
         """显示系统状态"""
-        print("\n=== 系统状态 ===")
+        print("\n=== System Status ===")
         
         # 数据状态
         if self.feature_data is not None:
-            print(f"✓ 特征数据: {len(self.feature_data)} 条记录")
-            print(f"✓ 选择特征: {len(self.selected_features)} 个")
+            print(f"✓ Feature data: {len(self.feature_data)} records")
+            print(f"✓ Selected features: {len(self.selected_features)}")
         else:
-            print("✗ 特征数据: 未准备")
+            print("✗ Feature data: not prepared")
         
         # 模型状态
         if self.ai_model_manager.models:
-            print(f"✓ 训练模型: {len(self.ai_model_manager.models)} 个")
+            print(f"✓ Trained models: {len(self.ai_model_manager.models)}")
             
             # 显示模型性能
             summary = self.ai_model_manager.get_models_summary()
             if not summary.empty:
-                print("\n模型性能:")
+                print("\nModel performance:")
                 for _, row in summary.iterrows():
-                    print(f"  {row['model_name']}: 准确率 {row.get('test_accuracy', 0):.4f}")
+                    print(f"  {row['model_name']}: accuracy {row.get('test_accuracy', 0):.4f}")
         else:
-            print("✗ AI模型: 未训练")
+            print("✗ AI models: not trained")
         
         # 风险管理状态
         risk_summary = self.risk_manager.get_risk_summary()
-        print(f"\n风险管理:")
-        print(f"  日盈亏: ${risk_summary['daily_pnl']:.2f}")
-        print(f"  持仓数: {risk_summary['current_positions']}/{risk_summary['max_positions']}")
-        print(f"  可交易: {'是' if risk_summary['can_trade'] else '否'}")
+        print(f"\nRisk management:")
+        print(f"  Daily PnL: ${risk_summary['daily_pnl']:.2f}")
+        print(f"  Open positions: {risk_summary['current_positions']}/{risk_summary['max_positions']}")
+        print(f"  Tradable: {'Yes' if risk_summary['can_trade'] else 'No'}")
     
     def test_risk_management(self):
         """测试风险管理功能"""
-        print("\n=== 风险管理测试 ===")
+        print("\n=== Risk Management Test ===")
         
         # 模拟交易测试
         test_position = {
@@ -307,57 +317,57 @@ class TradingSystem:
             test_position['size']
         )
         
-        print(f"风险检查结果: {risk_msg}")
-        print(f"建议仓位: {adjusted_size:.4f}")
+        print(f"Risk check result: {risk_msg}")
+        print(f"Suggested position size: {adjusted_size:.4f}")
         
         if can_trade:
             # 添加测试持仓
             position_id = "test_001"
             self.risk_manager.add_position(position_id, test_position)
-            print(f"添加测试持仓: {position_id}")
+            print(f"Added test position: {position_id}")
             
             # 模拟价格变动
             self.risk_manager.update_position_pnl(position_id, 2010.0)
-            print("模拟价格上涨至 2010.0")
+            print("Simulated price increased to 2010.0")
             
             # 平仓
             pnl = self.risk_manager.close_position(position_id, 2015.0)
-            print(f"平仓盈亏: ${pnl:.2f}")
+            print(f"Closed position PnL: ${pnl:.2f}")
     
     def demo_realtime_monitoring(self):
         """演示实时数据监控"""
-        print("\n=== 实时数据监控演示 ===")
-        print("获取最新黄金价格...")
+        print("\n=== Real-Time Data Monitoring Demo ===")
+        print("Fetching the latest gold price...")
         
         try:
             # 获取实时数据
             realtime_data = self.data_collector.get_realtime_data()
             
             if realtime_data:
-                print(f"交易品种: {realtime_data['symbol']}")
-                print(f"当前价格: ${realtime_data['close']:.2f}")
-                print(f"买价: ${realtime_data['bid']:.2f}")
-                print(f"卖价: ${realtime_data['ask']:.2f}")
-                print(f"点差: ${realtime_data['spread']:.2f}")
-                print(f"更新时间: {realtime_data['timestamp']}")
+                print(f"Symbol: {realtime_data['symbol']}")
+                print(f"Current price: ${realtime_data['close']:.2f}")
+                print(f"Bid: ${realtime_data['bid']:.2f}")
+                print(f"Ask: ${realtime_data['ask']:.2f}")
+                print(f"Spread: ${realtime_data['spread']:.2f}")
+                print(f"Updated at: {realtime_data['timestamp']}")
                 
                 # 获取市场情绪数据
                 sentiment_data = self.data_collector.get_market_sentiment_data()
                 if sentiment_data:
-                    print(f"\n市场情绪指标:")
+                    print(f"\nMarket sentiment indicators:")
                     if 'vix' in sentiment_data:
-                        print(f"  VIX恐慌指数: {sentiment_data['vix']:.2f}")
+                        print(f"  VIX fear index: {sentiment_data['vix']:.2f}")
                     if 'dxy' in sentiment_data:
-                        print(f"  美元指数: {sentiment_data['dxy']:.2f}")
+                        print(f"  US Dollar Index: {sentiment_data['dxy']:.2f}")
             else:
-                print("实时数据获取失败")
+                print("Failed to fetch real-time data")
                 
         except Exception as e:
-            logger.error(f"实时监控演示失败: {e}")
+            logger.error(f"Real-time monitoring demo failed: {e}")
     
     def show_backtest_reports(self):
         """查看回测报告"""
-        print("\n=== 回测报告查看 ===")
+        print("\n=== Backtest Reports ===")
         
         try:
             import os
@@ -367,19 +377,19 @@ class TradingSystem:
             report_files = glob.glob("reports/backtest_result_*.json")
             
             if not report_files:
-                print("未找到回测报告文件")
+                print("No backtest report files found")
                 return
             
             # 按时间排序，显示最新的几个
             report_files.sort(reverse=True)
             
-            print("可用的回测报告:")
+            print("Available backtest reports:")
             for i, file in enumerate(report_files[:5]):  # 显示最新5个
                 timestamp = file.split('_')[-1].replace('.json', '')
                 date_str = f"{timestamp[:4]}-{timestamp[4:6]}-{timestamp[6:8]} {timestamp[9:11]}:{timestamp[11:13]}"
                 print(f"{i+1}. {date_str}")
             
-            choice = input("\n选择报告编号 (1-5): ").strip()
+            choice = input("\nSelect a report number (1-5): ").strip()
             
             if choice.isdigit() and 1 <= int(choice) <= min(5, len(report_files)):
                 selected_file = report_files[int(choice)-1]
@@ -390,153 +400,153 @@ class TradingSystem:
                     report = json.load(f)
                 
                 summary = report['backtest_summary']
-                print(f"\n=== 回测报告详情 ===")
-                print(f"总交易次数: {summary['total_trades']}")
-                print(f"盈利交易: {summary['winning_trades']}")
-                print(f"亏损交易: {summary['losing_trades']}")
-                print(f"胜率: {summary['win_rate']:.1%}")
-                print(f"总盈亏: ${summary['total_pnl']:.2f}")
-                print(f"最大回撤: {summary['max_drawdown']:.2%}")
-                print(f"夏普比率: {summary['sharpe_ratio']:.2f}")
-                print(f"盈利因子: {summary['profit_factor']:.2f}")
+                print(f"\n=== Backtest Report Details ===")
+                print(f"Total trades: {summary['total_trades']}")
+                print(f"Winning trades: {summary['winning_trades']}")
+                print(f"Losing trades: {summary['losing_trades']}")
+                print(f"Win rate: {summary['win_rate']:.1%}")
+                print(f"Total PnL: ${summary['total_pnl']:.2f}")
+                print(f"Max drawdown: {summary['max_drawdown']:.2%}")
+                print(f"Sharpe ratio: {summary['sharpe_ratio']:.2f}")
+                print(f"Profit factor: {summary['profit_factor']:.2f}")
                 
         except Exception as e:
-            logger.error(f"查看回测报告失败: {e}")
+            logger.error(f"Failed to view backtest reports: {e}")
     
     def analyze_model_performance(self):
         """分析模型性能"""
-        print("\n=== 模型性能分析 ===")
+        print("\n=== Model Performance Analysis ===")
         
         if not self.ai_model_manager.models:
-            print("请先训练模型")
+            print("Please train the models first")
             return
         
         try:
             # 显示模型汇总
             summary = self.ai_model_manager.get_models_summary()
             if not summary.empty:
-                print("\n模型性能对比:")
+                print("\nModel performance comparison:")
                 print(summary[['model_name', 'test_accuracy', 'test_precision', 'test_recall', 'test_f1']])
             
             # 显示特征重要性
-            print("\n=== 特征重要性分析 ===")
+            print("\n=== Feature Importance Analysis ===")
             for model_name in self.ai_model_manager.models:
                 importance = self.ai_model_manager.get_feature_importance(model_name)
                 if importance:
-                    print(f"\n{model_name} 最重要的特征:")
+                    print(f"\n{model_name} most important features:")
                     for i, (feature, score) in enumerate(list(importance.items())[:10]):
                         print(f"{i+1:2d}. {feature}: {score:.4f}")
             
             # 模型预测一致性分析
             if len(self.ai_model_manager.models) > 1:
-                print("\n=== 模型预测一致性 ===")
-                print("正在分析模型之间的预测一致性...")
+                print("\n=== Model Prediction Consistency ===")
+                print("Analyzing prediction consistency across models...")
                 # 这里可以添加更复杂的一致性分析
                 
         except Exception as e:
-            logger.error(f"模型性能分析失败: {e}")
+            logger.error(f"Model performance analysis failed: {e}")
     
     def start_simulation_trading(self):
         """启动模拟交易"""
-        print("\n=== 启动模拟交易 ===")
+        print("\n=== Start Simulation Trading ===")
         
         if not self.ai_model_manager.models:
-            print("请先训练模型")
+            print("Please train the models first")
             return
         
         try:
             status = self.trading_engine.get_trading_status()
             
             if status.get('engine_running', False):
-                print("交易引擎已在运行")
+                print("Trading engine is already running")
                 return
             
-            print("正在启动模拟交易引擎...")
+            print("Starting simulation trading engine...")
             self.trading_engine.start_trading()
             
-            print("✓ 模拟交易引擎已启动")
-            print("⚠️  这是模拟交易，不会产生真实资金损益")
-            print("💡 交易引擎将持续运行，可以通过菜单选项查看状态")
+            print("✓ Simulation trading engine started")
+            print("⚠️  This is simulated trading and does not affect real funds")
+            print("💡 The trading engine will keep running; use the menu to view status")
             
         except Exception as e:
-            logger.error(f"启动模拟交易失败: {e}")
+            logger.error(f"Failed to start simulation trading: {e}")
     
     def show_trading_engine_status(self):
         """显示交易引擎状态"""
-        print("\n=== 交易引擎状态 ===")
+        print("\n=== Trading Engine Status ===")
         
         try:
             status = self.trading_engine.get_trading_status()
             
-            print(f"引擎运行状态: {'运行中' if status.get('engine_running') else '已停止'}")
-            print(f"交易启用状态: {'启用' if status.get('trading_enabled') else '禁用'}")
-            print(f"当前价格: ${status.get('current_price', 0):.2f}")
-            print(f"当前持仓: {status.get('current_positions', 0)}")
-            print(f"日盈亏: ${status.get('daily_pnl', 0):.2f}")
-            print(f"总盈亏: ${status.get('total_pnl', 0):.2f}")
-            print(f"可交易: {'是' if status.get('can_trade') else '否'}")
-            print(f"信号数量: {status.get('signal_count', 0)}")
+            print(f"Engine status: {'running' if status.get('engine_running') else 'stopped'}")
+            print(f"Trading enabled: {'yes' if status.get('trading_enabled') else 'no'}")
+            print(f"Current price: ${status.get('current_price', 0):.2f}")
+            print(f"Open positions: {status.get('current_positions', 0)}")
+            print(f"Daily PnL: ${status.get('daily_pnl', 0):.2f}")
+            print(f"Total PnL: ${status.get('total_pnl', 0):.2f}")
+            print(f"Tradable: {'Yes' if status.get('can_trade') else 'No'}")
+            print(f"Signal count: {status.get('signal_count', 0)}")
             
             # 显示最近信号
             recent_signals = self.trading_engine.get_recent_signals(5)
             if recent_signals:
-                print("\n最近的交易信号:")
+                print("\nRecent trading signals:")
                 for signal in recent_signals:
                     print(f"  {signal['timestamp'][:19]} | {signal['signal_type']} | "
-                          f"置信度: {signal['confidence']:.3f} | 价格: ${signal['price']:.2f}")
+                          f"confidence: {signal['confidence']:.3f} | price: ${signal['price']:.2f}")
             
             # 控制选项
             if status.get('engine_running'):
                 choice = input("\n操作选项 (stop/disable/enable/emergency): ").strip().lower()
                 if choice == 'stop':
                     self.trading_engine.stop_trading()
-                    print("交易引擎已停止")
+                    print("Trading engine stopped")
                 elif choice == 'disable':
                     self.trading_engine.disable_trading()
-                    print("交易已禁用")
+                    print("Trading disabled")
                 elif choice == 'enable':
                     self.trading_engine.enable_trading()
-                    print("交易已启用")
+                    print("Trading enabled")
                 elif choice == 'emergency':
                     self.trading_engine.emergency_stop()
-                    print("紧急停止执行完毕")
+                    print("Emergency stop completed")
             
         except Exception as e:
-            logger.error(f"显示交易引擎状态失败: {e}")
+            logger.error(f"Failed to show trading engine status: {e}")
     
     def manual_trading_test(self):
         """手动交易测试"""
-        print("\n=== 手动交易测试 ===")
+        print("\n=== Manual Trade Test ===")
         
         try:
             status = self.trading_engine.get_trading_status()
             
             if not status.get('trading_enabled'):
-                print("交易已禁用，无法进行手动交易")
+                print("Trading is disabled; manual trading is unavailable")
                 return
             
-            print(f"当前价格: ${status.get('current_price', 0):.2f}")
-            print(f"当前持仓: {status.get('current_positions', 0)}")
+            print(f"Current price: ${status.get('current_price', 0):.2f}")
+            print(f"Open positions: {status.get('current_positions', 0)}")
             
-            side = input("输入交易方向 (buy/sell): ").strip().lower()
+            side = input("Enter trade side (buy/sell): ").strip().lower()
             
             if side not in ['buy', 'sell']:
-                print("无效的交易方向")
+                print("Invalid trade side")
                 return
             
-            confirm = input(f"确认执行 {side} 操作? (y/n): ").strip().lower()
+            confirm = input(f"Confirm {side} action? (y/n): ").strip().lower()
             
             if confirm == 'y':
                 success = self.trading_engine.manual_trade(side)
                 if success:
-                    print("✓ 手动交易执行成功")
+                    print("✓ Manual trade executed successfully")
                 else:
-                    print("✗ 手动交易执行失败")
+                    print("✗ Manual trade execution failed")
             else:
-                print("交易已取消")
+                print("Trade canceled")
                 
         except Exception as e:
-            logger.error(f"手动交易测试失败: {e}")
+            logger.error(f"Manual trade test failed: {e}")
     
     def paper_trading_demo(self):
         """纸上交易演示"""
@@ -597,7 +607,7 @@ class TradingSystem:
     def broker_interface_management(self):
         """券商接口管理"""
         try:
-            print("\n🏦 券商接口管理")
+            print("\n🏦 Broker Interface Management")
             print("="*50)
             
             from src.broker_interface import BrokerManager, create_broker_config
@@ -606,26 +616,27 @@ class TradingSystem:
                 self.broker_manager = BrokerManager()
             
             while True:
-                print("\n券商接口管理选项:")
-                print("1. 添加券商配置")
-                print("2. 查看券商状态")
-                print("3. 连接券商")
-                print("4. 断开所有连接")
-                print("5. 模拟订单测试")
-                print("0. 返回主菜单")
+                print("\nBroker interface options:")
+                print("1. Add broker configuration")
+                print("2. View broker status")
+                print("3. Connect broker")
+                print("4. Disconnect all brokers")
+                print("5. Mock order test")
+                print("0. Return to main menu")
                 
-                choice = input("请选择操作: ").strip()
+                choice = input("Select an action: ").strip()
                 
                 if choice == '0':
                     break
                 elif choice == '1':
                     # 添加券商配置
-                    print("\n支持的券商类型:")
+                    print("\nSupported broker types:")
                     print("1. Alpaca")
                     print("2. OANDA")
+                    print("3. Exness (MetaTrader5)")
                     
-                    broker_choice = input("选择券商类型 (1-2): ").strip()
-                    name = input("输入配置名称: ").strip()
+                    broker_choice = input("Select broker type (1-3): ").strip()
+                    name = input("Enter configuration name: ").strip()
                     
                     if broker_choice == '1':
                         config = create_broker_config(
@@ -641,21 +652,30 @@ class TradingSystem:
                             account_id=input("Account ID: ").strip(),
                             sandbox=True
                         )
+                    elif broker_choice == '3':
+                        config = create_broker_config(
+                            broker_type='exness',
+                            login=input("MT5 Login: ").strip(),
+                            password=input("MT5 Password: ").strip(),
+                            server=input("MT5 Server: ").strip(),
+                            terminal_path=input("MT5 Terminal Path (optional): ").strip(),
+                            sandbox=False
+                        )
                     else:
-                        print("❌ 无效选择")
+                        print("❌ Invalid selection")
                         continue
                     
                     success = self.broker_manager.add_broker(name, config)
-                    print(f"{'✅' if success else '❌'} 券商配置{'成功' if success else '失败'}")
+                    print(f"{'✅' if success else '❌'} Broker configuration {'saved' if success else 'failed'}")
                     
                 elif choice == '2':
                     # 查看券商状态
                     status = self.broker_manager.get_broker_status()
-                    print("\n📋 券商状态:")
+                    print("\n📋 Broker Status:")
                     for name, info in status.items():
                         if name != 'active_broker':
                             print(f"{name}: {info}")
-                    print(f"活跃券商: {status.get('active_broker', 'None')}")
+                    print(f"Active broker: {status.get('active_broker', 'None')}")
                     
                 elif choice == '3':
                     # 连接券商
@@ -663,46 +683,46 @@ class TradingSystem:
                     brokers = [k for k in status.keys() if k != 'active_broker']
                     
                     if not brokers:
-                        print("❌ 没有配置的券商")
+                        print("❌ No brokers configured")
                         continue
                     
-                    print("可用券商:")
+                    print("Available brokers:")
                     for i, broker in enumerate(brokers, 1):
                         print(f"{i}. {broker}")
                     
                     try:
-                        broker_idx = int(input("选择券商 (数字): ")) - 1
+                        broker_idx = int(input("Select broker (number): ")) - 1
                         if 0 <= broker_idx < len(brokers):
                             broker_name = brokers[broker_idx]
                             success = self.broker_manager.connect_broker(broker_name)
-                            print(f"{'✅' if success else '❌'} 连接{'成功' if success else '失败'}")
+                            print(f"{'✅' if success else '❌'} Connection {'successful' if success else 'failed'}")
                         else:
-                            print("❌ 无效选择")
+                            print("❌ Invalid selection")
                     except ValueError:
-                        print("❌ 请输入有效数字")
+                        print("❌ Please enter a valid number")
                 
                 elif choice == '4':
                     # 断开所有连接
                     self.broker_manager.disconnect_all()
-                    print("✅ 已断开所有券商连接")
+                    print("✅ Disconnected all broker connections")
                     
                 elif choice == '5':
                     # 模拟订单测试
-                    print("\n🧪 模拟订单测试")
+                    print("\n🧪 Mock Order Test")
                     mock_result = {
                         'success': True,
                         'order_id': f'demo_{int(time.time())}',
                         'status': 'filled',
-                        'message': '模拟订单执行成功'
+                        'message': 'Mock order executed successfully'
                     }
-                    print(f"模拟结果: {mock_result}")
+                    print(f"Mock result: {mock_result}")
                 
                 else:
-                    print("❌ 无效选择")
+                    print("❌ Invalid selection")
                     
         except Exception as e:
-            print(f"❌ 券商接口管理失败: {e}")
-            logger.error(f"券商接口管理异常: {e}")
+            print(f"❌ Broker interface management failed: {e}")
+            logger.error(f"Broker interface management error: {e}")
 
     def monitoring_system_control(self):
         """监控系统控制"""
@@ -783,33 +803,35 @@ class TradingSystem:
             
             # 交易系统状态
             print(f"\n🤖 AI模型状态:")
-            print(f"模型已加载: {'是' if hasattr(self, 'model') and self.model else '否'}")
-            print(f"最后训练时间: {getattr(self, 'last_training_time', '未知')}")
+            model_count = len(self.ai_model_manager.models)
+            print(f"模型已加载: {'是' if model_count > 0 else '否'}")
+            print(f"已训练模型数: {model_count}")
+            if self.ai_model_manager.training_history:
+                print(f"最后训练时间: {self.ai_model_manager.training_history[-1]['timestamp']}")
+            else:
+                print("最后训练时间: 未知")
             
             print(f"\n📊 交易引擎状态:")
-            if hasattr(self, 'trader') and self.trader:
-                print(f"引擎运行中: {self.trader.is_running}")
-                print(f"总信号数: {len(getattr(self.trader, 'signals', []))}")
-            else:
-                print("引擎未启动")
+            trading_status = self.trading_engine.get_trading_status()
+            print(f"引擎运行中: {trading_status.get('engine_running', False)}")
+            print(f"交易启用: {trading_status.get('trading_enabled', False)}")
+            print(f"当前信号数: {trading_status.get('signal_count', 0)}")
+            print(f"当前持仓数: {trading_status.get('current_positions', 0)}")
             
             # 监控系统状态
             if hasattr(self, 'monitoring_system'):
                 status = self.monitoring_system.get_system_status()
                 print(f"\n📱 监控系统:")
-                print(f"监控状态: {status.get('监控系统状态', '未知')}")
-                print(f"最近告警: {status.get('最近告警', 0)}")
+                print(f"监控状态: {status.get('monitoring_active', '未知')}")
+                print(f"最近告警: {status.get('recent_alerts', 0)}")
             
             # 数据状态
-            data_file = 'data/gold_data.csv'
-            if os.path.exists(data_file):
-                import pandas as pd
-                df = pd.read_csv(data_file)
-                print(f"\n📈 数据状态:")
-                print(f"数据总量: {len(df)} 条")
-                print(f"最新数据: {df['timestamp'].iloc[-1] if len(df) > 0 else '无'}")
-            else:
-                print(f"\n📈 数据状态: 暂无数据")
+            database_path = self.config.get('database', {}).get('path', 'data/trading_system.db')
+            print(f"\n📈 数据状态:")
+            print(f"数据库路径: {database_path}")
+            print(f"特征数据已准备: {'是' if self.feature_data is not None else '否'}")
+            if self.feature_data is not None:
+                print(f"特征记录数: {len(self.feature_data)}")
             
             print(f"\n🕐 当前时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
             
@@ -1052,7 +1074,12 @@ class TradingSystem:
 def main():
     """主函数"""
     # 设置环境
-    setup_directories()
+    bootstrap_config = load_config()
+    if not bootstrap_config:
+        print("系统启动失败: 配置无效，请检查 config/config.yaml")
+        return False
+
+    setup_directories(bootstrap_config)
     setup_logging()
     
     try:

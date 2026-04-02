@@ -18,10 +18,7 @@ AI黄金交易系统
 __version__ = "1.0.0"
 __author__ = "AI Trading System"
 
-# 导入核心模块
-from .data_collector import DataCollector
-from .feature_engineer import FeatureEngineer
-from .ai_models import AIModelManager
-from .risk_manager import RiskManager
-from .backtester import Backtester
-from .trader import TradingEngine 
+__all__ = [
+    "__version__",
+    "__author__",
+]

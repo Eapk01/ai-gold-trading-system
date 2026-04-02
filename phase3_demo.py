@@ -26,11 +26,11 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from src.paper_trading import PaperTradingEngine, OrderType, OrderStatus
 from src.broker_interface import BrokerManager, create_broker_config, BrokerType
+from src.config_utils import ConfigValidationError, ensure_runtime_directories, load_config as load_validated_config
 from src.monitoring import (MonitoringSystem, AlertType, AlertLevel, 
                            SystemMetrics, TradingMetrics)
 from src.data_collector import DataCollector
-from src.ai_model import AIModel
-from src.trader import RealTimeTrader
+from src.ai_models import AIModelManager
 from loguru import logger
 
 
@@ -62,10 +62,35 @@ class Phase3Demo:
     def _load_config(self) -> Dict:
         """加载配置"""
         try:
-            import yaml
-            with open('config/config.yaml', 'r', encoding='utf-8') as f:
-                config = yaml.safe_load(f)
+            config = load_validated_config('config/config.yaml')
+            ensure_runtime_directories(config)
             return config
+        except ConfigValidationError as e:
+            logger.warning(f"配置验证失败，使用默认配置: {e}")
+            return {
+                'trading': {
+                    'symbol': 'XAUUSD',
+                    'initial_capital': 10000.0,
+                    'max_daily_loss': 30.0,
+                    'position_size': 0.01,
+                    'confidence_threshold': 0.65
+                },
+                'monitoring': {
+                    'system': {
+                        'cpu_threshold': 80.0,
+                        'memory_threshold': 85.0,
+                        'check_interval': 10
+                    },
+                    'trading': {
+                        'max_drawdown_threshold': 0.15,
+                        'max_daily_loss_threshold': 1000,
+                        'min_win_rate_threshold': 0.4
+                    },
+                    'notifications': {
+                        'enabled_channels': ['log']
+                    }
+                }
+            }
         except Exception as e:
             logger.warning(f"加载配置失败，使用默认配置: {e}")
             return {
@@ -390,7 +415,7 @@ class Phase3Demo:
         print("🤖 初始化AI模型系统...")
         
         # 创建AI模型
-        self.ai_model = AIModel(self.config)
+        self.ai_model = AIModelManager(self.config)
         
         # 模拟模型训练状态
         print("🧠 模拟AI模型状态...")

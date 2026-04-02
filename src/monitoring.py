@@ -10,14 +10,15 @@ import time
 import threading
 import psutil
 import sqlite3
+import uuid
 from typing import Dict, List, Optional, Any, Callable
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 from enum import Enum
 from loguru import logger
 import smtplib
-from email.mime.text import MimeText
-from email.mime.multipart import MimeMultipart
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 import requests
 import pandas as pd
 import numpy as np
@@ -348,7 +349,7 @@ class NotificationManager:
                 return
             
             # 创建邮件内容
-            msg = MimeMultipart()
+            msg = MIMEMultipart()
             msg['From'] = username
             msg['To'] = ', '.join(recipients)
             msg['Subject'] = f"[{alert.level.value.upper()}] {alert.title}"
@@ -366,7 +367,7 @@ class NotificationManager:
             AI黄金交易系统监控
             """
             
-            msg.attach(MimeText(body, 'plain', 'utf-8'))
+            msg.attach(MIMEText(body, 'plain', 'utf-8'))
             
             # 发送邮件
             with smtplib.SMTP(smtp_server, smtp_port) as server:

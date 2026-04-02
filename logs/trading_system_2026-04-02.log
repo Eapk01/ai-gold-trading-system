@@ -1,0 +1,18 @@
+2026-04-02 16:55:31 | INFO | __main__:__init__:70 | === AI黄金交易系统启动 ===
+2026-04-02 16:55:31 | INFO | src.data_collector:__init__:40 | 数据采集器初始化完成 - 交易品种: XAUUSD
+2026-04-02 16:55:31 | INFO | src.feature_engineer:__init__:29 | 特征工程器初始化完成
+2026-04-02 16:55:31 | INFO | src.ai_models:__init__:52 | AI模型管理器初始化 - 模型类型: ensemble
+2026-04-02 16:55:31 | INFO | src.risk_manager:__init__:45 | 风险管理器初始化完成 - 最大日损失: $30
+2026-04-02 16:55:31 | INFO | src.backtester:__init__:84 | 回测器初始化完成 - 初始资金: $10000
+2026-04-02 16:55:31 | INFO | src.trader:__init__:81 | 交易引擎初始化完成
+2026-04-02 16:55:31 | INFO | __main__:__init__:96 | 交易系统初始化完成
+2026-04-02 16:55:31 | CRITICAL | __main__:main:1091 | 系统启动失败: 'TradingSystem' object has no attribute 'welcome'
+2026-04-02 18:19:58 | INFO | __main__:__init__:70 | === AI Gold Trading System Startup ===
+2026-04-02 18:19:58 | INFO | src.data_collector:__init__:40 | 数据采集器初始化完成 - 交易品种: XAUUSD
+2026-04-02 18:19:58 | INFO | src.feature_engineer:__init__:29 | 特征工程器初始化完成
+2026-04-02 18:19:58 | INFO | src.ai_models:__init__:52 | AI模型管理器初始化 - 模型类型: ensemble
+2026-04-02 18:19:58 | INFO | src.risk_manager:__init__:45 | 风险管理器初始化完成 - 最大日损失: $30
+2026-04-02 18:19:58 | INFO | src.backtester:__init__:84 | 回测器初始化完成 - 初始资金: $10000
+2026-04-02 18:19:58 | INFO | src.trader:__init__:81 | 交易引擎初始化完成
+2026-04-02 18:19:58 | INFO | __main__:__init__:96 | Trading system initialization complete
+2026-04-02 18:19:58 | CRITICAL | __main__:main:1091 | 系统启动失败: 'TradingSystem' object has no attribute 'welcome'
