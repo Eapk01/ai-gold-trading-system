@@ -26,7 +26,7 @@ class FeatureEngineer:
         self.features_config = config.get('features', {})
         self.lookback_periods = config['ai_model']['lookback_periods']
         
-        logger.info("特征工程器初始化完成")
+        logger.info("Feature engineer initialized")
     
     def calculate_technical_indicators(self, data: pd.DataFrame) -> pd.DataFrame:
         """
@@ -40,13 +40,17 @@ class FeatureEngineer:
         """
         try:
             df = data.copy()
+
+            # TA-Lib expects double-precision numeric arrays.
+            for column in ['Open', 'High', 'Low', 'Close', 'Volume']:
+                df[column] = pd.to_numeric(df[column], errors='coerce').astype('float64')
             
             # 基础价格数据
-            high = df['High'].values
-            low = df['Low'].values
-            close = df['Close'].values
-            volume = df['Volume'].values
-            open_price = df['Open'].values
+            high = df['High'].to_numpy(dtype=np.float64)
+            low = df['Low'].to_numpy(dtype=np.float64)
+            close = df['Close'].to_numpy(dtype=np.float64)
+            volume = df['Volume'].to_numpy(dtype=np.float64)
+            open_price = df['Open'].to_numpy(dtype=np.float64)
             
             # === 移动平均线 ===
             df['SMA_5'] = talib.SMA(close, timeperiod=5)
@@ -149,6 +153,7 @@ class FeatureEngineer:
         """
         try:
             df = data.copy()
+            df['Close'] = pd.to_numeric(df['Close'], errors='coerce').astype('float64')
             close = df['Close']
             
             # 滚动统计特征
@@ -268,11 +273,13 @@ class FeatureEngineer:
         """
         try:
             df = data.copy()
+            df['Close'] = pd.to_numeric(df['Close'], errors='coerce').astype('float64')
             close = df['Close']
             
             # 未来收益率 (用于回归模型)
             for horizon in [1, 3, 5, 10]:
-                df[f'Future_Return_{horizon}'] = close.shift(-horizon).pct_change() * 100
+                shifted_close = close.shift(-horizon)
+                df[f'Future_Return_{horizon}'] = shifted_close.pct_change(fill_method=None) * 100
                 
                 # 未来价格方向 (用于分类模型)
                 df[f'Future_Direction_{horizon}'] = (df[f'Future_Return_{horizon}'] > 0).astype(int)
@@ -285,7 +292,7 @@ class FeatureEngineer:
                 ).astype(float)
             
             # 波动率目标
-            df['Future_Volatility_5'] = close.pct_change().rolling(5).std().shift(-5)
+            df['Future_Volatility_5'] = close.pct_change(fill_method=None).rolling(5).std().shift(-5)
             
             logger.info("目标变量计算完成")
             return df
@@ -373,7 +380,7 @@ class FeatureEngineer:
                 return []
             
             # 创建特征数据
-            X = data[feature_columns].fillna(method='ffill').fillna(0)
+            X = data[feature_columns].ffill().fillna(0)
             y = data[target_column].fillna(0)
             
             # 移除常数特征

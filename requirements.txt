@@ -1,55 +1,17 @@
-# 数据处理和分析
 pandas==2.1.4
 numpy==1.24.3
 scipy==1.11.4
-
-# 机器学习
 scikit-learn==1.3.2
 xgboost==2.0.3
 lightgbm==4.1.0
-
-# 深度学习 (可选)
-tensorflow==2.15.0
-torch==2.1.2
-
-# 金融数据获取
 yfinance==0.2.25
-pandas-datareader==0.10.0
 requests==2.31.0
-
-# 回测框架
-backtrader==1.9.78.123
-zipline-reloaded==3.0.4
-
-# 技术指标计算
 TA-Lib==0.4.28
 pandas-ta==0.3.14b0
-
-# 数据库
 sqlalchemy==2.0.25
-sqlite3
-
-# 可视化
 matplotlib==3.8.2
-plotly==5.17.0
 seaborn==0.13.0
-
-# 配置管理
 pyyaml==6.0.1
-python-dotenv==1.0.0
-
-# 日志和监控
 loguru==0.7.2
-
-# API接口
-flask==3.0.0
-fastapi==0.108.0
-uvicorn==0.25.0
 MetaTrader5==5.0.45
-
-# 时间处理
 pytz==2023.3
-schedule==1.2.0
-
-# 数据验证
-pydantic==2.5.2 

@@ -1,6 +1,6 @@
 """
-回测模块
-实现严格的时间序列验证，避免未来数据泄露
+Backtesting module.
+Implements strict time-series validation to avoid look-ahead leakage.
 """
 
 import pandas as pd
@@ -16,7 +16,7 @@ import json
 
 @dataclass
 class Trade:
-    """交易记录"""
+    """Backtest trade record."""
     id: str
     symbol: str
     side: str  # 'buy' or 'sell'
@@ -34,7 +34,7 @@ class Trade:
 
 @dataclass
 class BacktestResult:
-    """回测结果"""
+    """Backtest result summary."""
     total_trades: int = 0
     winning_trades: int = 0
     losing_trades: int = 0
@@ -55,14 +55,14 @@ class BacktestResult:
 
 
 class Backtester:
-    """回测器 - 严格的策略验证框架"""
+    """Backtester with a strict strategy validation workflow."""
     
     def __init__(self, config: Dict):
         """
-        初始化回测器
+        Initialize the backtester.
         
         Args:
-            config: 配置字典
+            config: Configuration dictionary.
         """
         self.config = config
         self.backtest_config = config['backtest']
@@ -70,21 +70,21 @@ class Backtester:
         self.commission = self.backtest_config['commission']
         self.slippage = self.backtest_config['slippage']
         
-        # 交易记录
+        # Trade tracking
         self.trades: List[Trade] = []
         self.current_positions: Dict[str, Trade] = {}
         self.equity_curve = []
         self.daily_returns = []
         
-        # 性能统计
+        # Performance tracking
         self.current_capital = self.initial_capital
         self.peak_capital = self.initial_capital
         self.max_drawdown = 0.0
         
-        logger.info(f"回测器初始化完成 - 初始资金: ${self.initial_capital}")
+        logger.info(f"Backtester initialized - initial capital: ${self.initial_capital}")
     
     def reset(self):
-        """重置回测状态"""
+        """Reset backtest state."""
         self.trades.clear()
         self.current_positions.clear()
         self.equity_curve.clear()
@@ -93,7 +93,7 @@ class Backtester:
         self.peak_capital = self.initial_capital
         self.max_drawdown = 0.0
         
-        logger.info("回测器状态已重置")
+        logger.info("Backtester state reset")
     
     def open_position(self, signal: Dict, current_data: Dict) -> bool:
         """
@@ -158,7 +158,7 @@ class Backtester:
             # 检查资金充足
             required_margin = entry_price * size
             if required_margin > self.current_capital * 0.95:  # 保留5%缓冲
-                logger.warning(f"资金不足，无法开仓: 需要${required_margin:.2f}, 可用${self.current_capital:.2f}")
+                logger.warning(f"Insufficient capital to open position: need ${required_margin:.2f}, available ${self.current_capital:.2f}")
                 return False
             
             # 添加交易记录
@@ -169,11 +169,11 @@ class Backtester:
             commission_cost = entry_price * size * self.commission
             self.current_capital -= commission_cost
             
-            logger.debug(f"开仓成功: {trade_id} {side} {symbol} @ {entry_price:.2f}")
+            logger.debug(f"Position opened: {trade_id} {side} {symbol} @ {entry_price:.2f}")
             return True
             
         except Exception as e:
-            logger.error(f"开仓失败: {e}")
+            logger.error(f"Failed to open position: {e}")
             return False
     
     def close_position(self, trade_id: str, current_data: Dict, reason: str = 'signal') -> bool:
@@ -224,11 +224,11 @@ class Backtester:
             # 移除持仓
             del self.current_positions[trade_id]
             
-            logger.debug(f"平仓: {trade_id} @ {exit_price:.2f}, 盈亏: ${pnl:.2f}")
+            logger.debug(f"Position closed: {trade_id} @ {exit_price:.2f}, PnL: ${pnl:.2f}")
             return True
             
         except Exception as e:
-            logger.error(f"平仓失败: {e}")
+            logger.error(f"Failed to close position: {e}")
             return False
     
     def check_stop_conditions(self, current_data: Dict):
@@ -345,7 +345,7 @@ class Backtester:
                 
                 # 获取特征向量
                 try:
-                    features = row[selected_features].values
+                    features = pd.to_numeric(row[selected_features], errors='coerce').to_numpy(dtype=np.float64)
                     
                     # 跳过包含NaN的数据
                     if np.isnan(features).any():

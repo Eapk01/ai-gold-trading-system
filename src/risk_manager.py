@@ -1,6 +1,6 @@
 """
-风险管理模块
-负责控制交易风险，确保不超过设定的最大损失限额
+Risk management module.
+Controls trading risk and enforces configured loss limits.
 """
 
 import pandas as pd
@@ -12,14 +12,14 @@ import json
 
 
 class RiskManager:
-    """风险管理器 - 控制交易风险"""
+    """Risk manager for trading controls."""
     
     def __init__(self, config: Dict):
         """
-        初始化风险管理器
+        Initialize the risk manager.
         
         Args:
-            config: 配置字典
+            config: Configuration dictionary.
         """
         self.config = config
         self.max_daily_loss = config['risk_management']['max_daily_loss']  # 30美元
@@ -27,14 +27,14 @@ class RiskManager:
         self.risk_per_trade = config['risk_management']['risk_per_trade']
         self.drawdown_limit = config['risk_management']['drawdown_limit']
         
-        # 交易记录
-        self.positions = {}  # 当前持仓
-        self.daily_pnl = 0.0  # 当日盈亏
-        self.total_pnl = 0.0  # 总盈亏
-        self.peak_equity = 0.0  # 权益峰值
-        self.current_drawdown = 0.0  # 当前回撤
+        # Trading state
+        self.positions = {}  # Current open positions
+        self.daily_pnl = 0.0  # Current day PnL
+        self.total_pnl = 0.0  # Lifetime PnL
+        self.peak_equity = 0.0  # Peak equity
+        self.current_drawdown = 0.0  # Current drawdown
         
-        # 风险状态
+        # Risk status flags
         self.risk_status = {
             'daily_loss_exceeded': False,
             'max_positions_reached': False,
@@ -42,7 +42,7 @@ class RiskManager:
             'emergency_stop': False
         }
         
-        logger.info(f"风险管理器初始化完成 - 最大日损失: ${self.max_daily_loss}")
+        logger.info(f"Risk manager initialized - max daily loss: ${self.max_daily_loss}")
     
     def check_position_risk(self, symbol: str, side: str, 
                           entry_price: float, stop_loss: float,
@@ -78,23 +78,23 @@ class RiskManager:
                 else:
                     adjusted_size = max_risk_per_trade / abs(stop_loss - entry_price)
                 
-                logger.warning(f"仓位风险过大，调整仓位: {position_size:.4f} -> {adjusted_size:.4f}")
-                return True, f"仓位已调整至风险限制内", adjusted_size
+                logger.warning(f"Position risk too high; adjusting size: {position_size:.4f} -> {adjusted_size:.4f}")
+                return True, "Position size adjusted to stay within risk limits", adjusted_size
             
             # 检查是否会导致日损失超限
             if self.daily_pnl - potential_loss < -self.max_daily_loss:
-                return False, f"交易可能导致日损失超过${self.max_daily_loss}限制", 0.0
+                return False, f"This trade could exceed the ${self.max_daily_loss} daily loss limit", 0.0
             
             # 检查最大持仓数
             if len(self.positions) >= self.max_positions:
-                return False, f"已达到最大持仓数限制: {self.max_positions}", 0.0
+                return False, f"Maximum open positions reached: {self.max_positions}", 0.0
             
-            logger.info(f"交易风险检查通过 - 潜在损失: ${potential_loss:.2f}")
-            return True, "风险检查通过", position_size
+            logger.info(f"Trade risk check passed - potential loss: ${potential_loss:.2f}")
+            return True, "Risk check passed", position_size
             
         except Exception as e:
-            logger.error(f"检查交易风险失败: {e}")
-            return False, f"风险检查出错: {e}", 0.0
+            logger.error(f"Trade risk check failed: {e}")
+            return False, f"Risk check error: {e}", 0.0
     
     def check_daily_risk_limit(self) -> bool:
         """
@@ -105,7 +105,7 @@ class RiskManager:
         """
         if self.daily_pnl <= -self.max_daily_loss:
             self.risk_status['daily_loss_exceeded'] = True
-            logger.error(f"已达到日最大损失限制: ${abs(self.daily_pnl):.2f}/${self.max_daily_loss}")
+            logger.error(f"Daily max loss limit reached: ${abs(self.daily_pnl):.2f}/${self.max_daily_loss}")
             return False
         
         return True
@@ -143,11 +143,11 @@ class RiskManager:
             
             position_size = risk_amount / price_difference
             
-            logger.info(f"计算仓位大小: ${risk_amount:.2f} 风险 -> {position_size:.4f} 仓位")
+            logger.info(f"Calculated position size: ${risk_amount:.2f} risk -> {position_size:.4f} size")
             return position_size
             
         except Exception as e:
-            logger.error(f"计算仓位大小失败: {e}")
+            logger.error(f"Failed to calculate position size: {e}")
             return 0.0
     
     def add_position(self, position_id: str, position_data: Dict):
@@ -170,10 +170,10 @@ class RiskManager:
                 'unrealized_pnl': 0.0
             }
             
-            logger.info(f"添加持仓: {position_id} - {position_data['symbol']}")
+            logger.info(f"Position added: {position_id} - {position_data['symbol']}")
             
         except Exception as e:
-            logger.error(f"添加持仓失败: {e}")
+            logger.error(f"Failed to add position: {e}")
     
     def update_position_pnl(self, position_id: str, current_price: float):
         """
@@ -201,13 +201,13 @@ class RiskManager:
             
             # 检查止损
             if self._should_trigger_stop_loss(position, current_price):
-                logger.warning(f"持仓 {position_id} 触发止损")
+                logger.warning(f"Position {position_id} hit stop loss")
                 return True  # 需要平仓
             
             return False
             
         except Exception as e:
-            logger.error(f"更新持仓盈亏失败: {e}")
+            logger.error(f"Failed to update position PnL: {e}")
             return False
     
     def close_position(self, position_id: str, exit_price: float) -> float:

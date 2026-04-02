@@ -16,3 +16,435 @@
 2026-04-02 18:19:58 | INFO | src.trader:__init__:81 | 交易引擎初始化完成
 2026-04-02 18:19:58 | INFO | __main__:__init__:96 | Trading system initialization complete
 2026-04-02 18:19:58 | CRITICAL | __main__:main:1091 | 系统启动失败: 'TradingSystem' object has no attribute 'welcome'
+2026-04-02 18:22:48 | INFO | __main__:__init__:70 | === AI Gold Trading System Startup ===
+2026-04-02 18:22:48 | INFO | src.data_collector:__init__:40 | 数据采集器初始化完成 - 交易品种: XAUUSD
+2026-04-02 18:22:48 | INFO | src.feature_engineer:__init__:29 | 特征工程器初始化完成
+2026-04-02 18:22:48 | INFO | src.ai_models:__init__:52 | AI模型管理器初始化 - 模型类型: ensemble
+2026-04-02 18:22:48 | INFO | src.risk_manager:__init__:45 | 风险管理器初始化完成 - 最大日损失: $30
+2026-04-02 18:22:48 | INFO | src.backtester:__init__:84 | 回测器初始化完成 - 初始资金: $10000
+2026-04-02 18:22:48 | INFO | src.trader:__init__:81 | 交易引擎初始化完成
+2026-04-02 18:22:48 | INFO | __main__:__init__:96 | Trading system initialization complete
+2026-04-02 18:22:48 | CRITICAL | __main__:main:1091 | 系统启动失败: 'TradingSystem' object has no attribute 'welcome'
+2026-04-02 18:25:01 | INFO | __main__:__init__:70 | === AI Gold Trading System Startup ===
+2026-04-02 18:25:01 | INFO | src.data_collector:__init__:40 | Data collector initialized - symbol: XAUUSD
+2026-04-02 18:25:01 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-02 18:25:01 | INFO | src.ai_models:__init__:52 | AI model manager initialized - model type: ensemble
+2026-04-02 18:25:01 | INFO | src.risk_manager:__init__:45 | Risk manager initialized - max daily loss: $30
+2026-04-02 18:25:01 | INFO | src.backtester:__init__:84 | Backtester initialized - initial capital: $10000
+2026-04-02 18:25:01 | INFO | src.trader:__init__:81 | Trading engine initialized
+2026-04-02 18:25:01 | INFO | __main__:__init__:96 | Trading system initialization complete
+2026-04-02 18:47:28 | INFO | __main__:__init__:70 | === AI Gold Trading System Startup ===
+2026-04-02 18:47:28 | INFO | src.data_collector:__init__:40 | Data collector initialized - symbol: XAUUSD
+2026-04-02 18:47:28 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-02 18:47:28 | INFO | src.ai_models:__init__:52 | AI model manager initialized - model type: ensemble
+2026-04-02 18:47:28 | INFO | src.risk_manager:__init__:45 | Risk manager initialized - max daily loss: $30
+2026-04-02 18:47:28 | INFO | src.backtester:__init__:84 | Backtester initialized - initial capital: $10000
+2026-04-02 18:47:28 | INFO | src.trader:__init__:81 | Trading engine initialized
+2026-04-02 18:47:28 | INFO | __main__:__init__:96 | Trading system initialization complete
+2026-04-02 18:47:50 | INFO | __main__:collect_and_prepare_data:100 | Starting data collection and preparation...
+2026-04-02 18:47:52 | WARNING | src.data_collector:get_historical_data:65 | No historical data fetched for GC=F
+2026-04-02 18:47:52 | ERROR | __main__:collect_and_prepare_data:109 | Failed to fetch historical data
+2026-04-02 18:48:12 | ERROR | __main__:train_models:147 | Please prepare the data first
+2026-04-02 18:48:29 | INFO | src.paper_trading:__init__:135 | 纸上交易引擎初始化完成 - 初始资金: $10000.00
+2026-04-02 18:48:30 | INFO | src.paper_trading:_fill_order:380 | 订单成交: d24cea43-7ac8-4cae-95d7-6e4cfb92f3ef 0.01@2001.09, 手续费: $0.00
+2026-04-02 18:48:30 | INFO | src.paper_trading:submit_order:183 | 订单已提交: d24cea43-7ac8-4cae-95d7-6e4cfb92f3ef buy 0.01 XAUUSD
+2026-04-02 18:49:01 | ERROR | __main__:broker_interface_management:813 | Broker interface management error: No module named 'websocket'
+2026-04-02 18:49:53 | INFO | __main__:__init__:70 | === AI Gold Trading System Startup ===
+2026-04-02 18:49:53 | INFO | src.data_collector:__init__:40 | Data collector initialized - symbol: XAUUSD
+2026-04-02 18:49:53 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-02 18:49:53 | INFO | src.ai_models:__init__:52 | AI model manager initialized - model type: ensemble
+2026-04-02 18:49:53 | INFO | src.risk_manager:__init__:45 | Risk manager initialized - max daily loss: $30
+2026-04-02 18:49:53 | INFO | src.backtester:__init__:84 | Backtester initialized - initial capital: $10000
+2026-04-02 18:49:53 | INFO | src.trader:__init__:81 | Trading engine initialized
+2026-04-02 18:49:53 | INFO | __main__:__init__:96 | Trading system initialization complete
+2026-04-02 18:55:04 | INFO | src.broker_interface:add_broker:807 | Broker added: Test
+2026-04-02 18:55:27 | ERROR | src.broker_interface:connect:570 | MetaTrader5 package is not installed; Exness broker is unavailable
+2026-04-02 18:55:49 | INFO | src.broker_interface:disconnect_all:841 | 所有券商连接已断开
+2026-04-02 18:58:01 | INFO | __main__:__init__:70 | === AI Gold Trading System Startup ===
+2026-04-02 18:58:01 | INFO | src.data_collector:__init__:40 | Data collector initialized - symbol: XAUUSD
+2026-04-02 18:58:01 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-02 18:58:01 | INFO | src.ai_models:__init__:52 | AI model manager initialized - model type: ensemble
+2026-04-02 18:58:01 | INFO | src.risk_manager:__init__:45 | Risk manager initialized - max daily loss: $30
+2026-04-02 18:58:01 | INFO | src.backtester:__init__:84 | Backtester initialized - initial capital: $10000
+2026-04-02 18:58:01 | INFO | src.trader:__init__:81 | Trading engine initialized
+2026-04-02 18:58:01 | INFO | __main__:__init__:96 | Trading system initialization complete
+2026-04-02 18:58:22 | INFO | src.broker_interface:add_broker:807 | Broker added: Test
+2026-04-02 18:58:27 | INFO | src.broker_interface:connect:595 | Exness connection established through MetaTrader5
+2026-04-02 18:58:27 | INFO | src.broker_interface:connect_broker:824 | 已切换到券商: Test
+2026-04-02 18:59:48 | INFO | __main__:collect_and_prepare_data:100 | Starting data collection and preparation...
+2026-04-02 18:59:49 | WARNING | src.data_collector:get_historical_data:65 | No historical data fetched for GC=F
+2026-04-02 18:59:49 | ERROR | __main__:collect_and_prepare_data:109 | Failed to fetch historical data
+2026-04-02 19:17:30 | INFO | src.broker_interface:disconnect:608 | Exness connection closed
+2026-04-02 19:17:30 | INFO | src.broker_interface:disconnect_all:841 | 所有券商连接已断开
+2026-04-02 19:17:33 | INFO | __main__:__init__:75 | === AI Gold Trading System Startup ===
+2026-04-02 19:17:33 | INFO | src.data_collector:__init__:50 | Data collector initialized - symbol: XAUUSD
+2026-04-02 19:17:33 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-02 19:17:33 | INFO | src.ai_models:__init__:52 | AI model manager initialized - model type: ensemble
+2026-04-02 19:17:33 | INFO | src.risk_manager:__init__:45 | Risk manager initialized - max daily loss: $30
+2026-04-02 19:17:33 | INFO | src.backtester:__init__:84 | Backtester initialized - initial capital: $10000
+2026-04-02 19:17:33 | INFO | src.trader:__init__:81 | Trading engine initialized
+2026-04-02 19:17:33 | INFO | __main__:__init__:103 | Trading system initialization complete
+2026-04-02 19:17:39 | INFO | __main__:collect_and_prepare_data:177 | Starting local dataset import and preparation...
+2026-04-02 19:20:04 | INFO | src.data_collector:load_csv_preview:59 | Loaded CSV preview: C:\Users\Bruh\Desktop\Data\XAUUSDm_M5_202501012305_202512312155.csv
+2026-04-02 19:23:16 | INFO | src.broker_interface:disconnect_all:847 | 所有券商连接已断开
+2026-04-02 19:25:53 | INFO | __main__:__init__:75 | === AI Gold Trading System Startup ===
+2026-04-02 19:25:53 | INFO | src.data_collector:__init__:51 | Data collector initialized - symbol: XAUUSD
+2026-04-02 19:25:53 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-02 19:25:53 | INFO | src.ai_models:__init__:52 | AI model manager initialized - model type: ensemble
+2026-04-02 19:25:53 | INFO | src.risk_manager:__init__:45 | Risk manager initialized - max daily loss: $30
+2026-04-02 19:25:53 | INFO | src.backtester:__init__:84 | Backtester initialized - initial capital: $10000
+2026-04-02 19:25:53 | INFO | src.trader:__init__:81 | Trading engine initialized
+2026-04-02 19:25:53 | INFO | __main__:__init__:103 | Trading system initialization complete
+2026-04-02 19:25:55 | INFO | __main__:collect_and_prepare_data:177 | Starting local dataset import and preparation...
+2026-04-02 19:26:01 | INFO | src.data_collector:load_csv_preview:62 | Loaded CSV preview: C:\Users\Bruh\Desktop\Data\XAUUSDm_M5_202501012305_202512312155.csv
+2026-04-02 19:27:01 | INFO | src.broker_interface:disconnect_all:847 | 所有券商连接已断开
+2026-04-02 19:29:54 | INFO | __main__:__init__:75 | === AI Gold Trading System Startup ===
+2026-04-02 19:29:54 | INFO | src.data_collector:__init__:51 | Data collector initialized - symbol: XAUUSD
+2026-04-02 19:29:54 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-02 19:29:54 | INFO | src.ai_models:__init__:52 | AI model manager initialized - model type: ensemble
+2026-04-02 19:29:54 | INFO | src.risk_manager:__init__:45 | Risk manager initialized - max daily loss: $30
+2026-04-02 19:29:54 | INFO | src.backtester:__init__:84 | Backtester initialized - initial capital: $10000
+2026-04-02 19:29:54 | INFO | src.trader:__init__:81 | Trading engine initialized
+2026-04-02 19:29:54 | INFO | __main__:__init__:103 | Trading system initialization complete
+2026-04-02 19:29:56 | INFO | __main__:collect_and_prepare_data:186 | Starting local dataset import and preparation...
+2026-04-02 19:30:00 | INFO | src.data_collector:load_csv_preview:62 | Loaded CSV preview: C:\Users\Bruh\Desktop\Data\XAUUSDm_M5_202501012305_202512312155.csv
+2026-04-02 19:30:15 | INFO | src.broker_interface:disconnect_all:847 | 所有券商连接已断开
+2026-04-02 19:31:03 | INFO | __main__:__init__:75 | === AI Gold Trading System Startup ===
+2026-04-02 19:31:03 | INFO | src.data_collector:__init__:51 | Data collector initialized - symbol: XAUUSD
+2026-04-02 19:31:03 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-02 19:31:03 | INFO | src.ai_models:__init__:52 | AI model manager initialized - model type: ensemble
+2026-04-02 19:31:03 | INFO | src.risk_manager:__init__:45 | Risk manager initialized - max daily loss: $30
+2026-04-02 19:31:03 | INFO | src.backtester:__init__:84 | Backtester initialized - initial capital: $10000
+2026-04-02 19:31:03 | INFO | src.trader:__init__:81 | Trading engine initialized
+2026-04-02 19:31:03 | INFO | __main__:__init__:103 | Trading system initialization complete
+2026-04-02 19:31:04 | INFO | __main__:collect_and_prepare_data:186 | Starting local dataset import and preparation...
+2026-04-02 19:31:11 | INFO | src.data_collector:load_csv_preview:62 | Loaded CSV preview: C:\Users\Bruh\Desktop\Data\XAUUSDm_M5_202501012305_202512312155.csv
+2026-04-02 19:31:42 | INFO | src.data_collector:import_local_csv:81 | Imported local CSV dataset: C:\Users\Bruh\Desktop\Data\XAUUSDm_M5_202501012305_202512312155.csv (70406 rows)
+2026-04-02 19:31:42 | INFO | src.data_collector:validate_data_quality:385 | 数据质量验证通过
+2026-04-02 19:31:43 | INFO | src.data_collector:save_data_to_db:276 | 数据已保存到数据库表: raw_data
+2026-04-02 19:31:43 | INFO | src.feature_engineer:create_feature_matrix:309 | 开始创建特征矩阵...
+2026-04-02 19:31:43 | ERROR | src.feature_engineer:calculate_technical_indicators:137 | 计算技术指标失败: input array type is not double
+2026-04-02 19:31:43 | INFO | src.feature_engineer:calculate_statistical_features:176 | 统计特征计算完成
+2026-04-02 19:31:43 | INFO | src.feature_engineer:calculate_time_features:217 | 时间特征计算完成
+2026-04-02 19:31:43 | INFO | src.feature_engineer:calculate_lag_features:252 | 计算了滞后特征: 5 列 × 5 期
+2026-04-02 19:31:43 | INFO | src.feature_engineer:calculate_target_variables:290 | 目标变量计算完成
+2026-04-02 19:31:43 | INFO | src.feature_engineer:create_feature_matrix:338 | 特征矩阵创建完成 - 总特征数: 61
+2026-04-02 19:31:43 | INFO | src.feature_engineer:select_features:383 | 移除常数特征: 6 个
+2026-04-02 19:31:43 | INFO | src.feature_engineer:select_features:400 | 特征选择完成 - 选择了 30 个特征
+2026-04-02 19:31:43 | INFO | __main__:collect_and_prepare_data:242 | Local dataset preparation complete - 70406 raw rows, 30 selected features
+2026-04-02 19:32:19 | INFO | __main__:train_models:255 | Starting AI model training...
+2026-04-02 19:32:19 | INFO | src.ai_models:train_ensemble_models:303 | 开始训练集成模型...
+2026-04-02 19:32:19 | INFO | src.ai_models:prepare_training_data:186 | 训练数据准备完成 - 训练集: 56124, 测试集: 14031
+2026-04-02 19:32:19 | INFO | src.ai_models:train_single_model:217 | 开始训练模型: random_forest
+2026-04-02 19:32:29 | INFO | src.ai_models:train_single_model:281 | 模型 random_forest 训练完成 - 测试准确率: 0.5089444800798233
+2026-04-02 19:32:29 | INFO | src.ai_models:train_single_model:217 | 开始训练模型: xgboost
+2026-04-02 19:32:29 | INFO | src.ai_models:train_single_model:281 | 模型 xgboost 训练完成 - 测试准确率: 0.5088732093222151
+2026-04-02 19:32:29 | INFO | src.ai_models:train_single_model:217 | 开始训练模型: logistic_regression
+2026-04-02 19:32:29 | INFO | src.ai_models:train_single_model:281 | 模型 logistic_regression 训练完成 - 测试准确率: 0.512080393414582
+2026-04-02 19:32:29 | INFO | src.ai_models:train_ensemble_models:341 | 集成模型训练完成 - 成功训练 3 个模型
+2026-04-02 19:32:29 | INFO | src.ai_models:save_models:500 | 模型已保存至: models/ai_models_20260402_193229.joblib
+2026-04-02 19:32:29 | INFO | __main__:train_models:273 | === Model Training Results ===
+2026-04-02 19:32:29 | INFO | __main__:train_models:276 | random_forest: test accuracy = 0.5089
+2026-04-02 19:32:29 | INFO | __main__:train_models:276 | xgboost: test accuracy = 0.5089
+2026-04-02 19:32:29 | INFO | __main__:train_models:276 | logistic_regression: test accuracy = 0.5121
+2026-04-02 19:34:04 | INFO | src.trader:start_trading:93 | Starting real-time trading engine...
+2026-04-02 19:34:04 | INFO | src.trader:_data_collection_loop:130 | Market data collection loop started
+2026-04-02 19:34:04 | INFO | src.trader:_trading_decision_loop:158 | Trading decision loop started
+2026-04-02 19:34:04 | INFO | src.trader:start_trading:106 | Trading engine started
+2026-04-02 19:35:45 | INFO | src.trader:stop_trading:110 | Stopping trading engine...
+2026-04-02 19:35:45 | INFO | src.trader:stop_trading:116 | Trading engine stopped
+2026-04-02 19:35:52 | INFO | src.broker_interface:disconnect_all:847 | 所有券商连接已断开
+2026-04-02 19:35:55 | INFO | __main__:__init__:75 | === AI Gold Trading System Startup ===
+2026-04-02 19:35:55 | INFO | src.data_collector:__init__:51 | Data collector initialized - symbol: XAUUSD
+2026-04-02 19:35:55 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-02 19:35:55 | INFO | src.ai_models:__init__:52 | AI model manager initialized - model type: ensemble
+2026-04-02 19:35:55 | INFO | src.risk_manager:__init__:45 | Risk manager initialized - max daily loss: $30
+2026-04-02 19:35:55 | INFO | src.backtester:__init__:84 | Backtester initialized - initial capital: $10000
+2026-04-02 19:35:55 | INFO | src.trader:__init__:81 | Trading engine initialized
+2026-04-02 19:35:55 | INFO | __main__:__init__:103 | Trading system initialization complete
+2026-04-02 19:38:54 | INFO | src.broker_interface:disconnect_all:847 | 所有券商连接已断开
+2026-04-02 19:38:57 | INFO | __main__:__init__:75 | === AI Gold Trading System Startup ===
+2026-04-02 19:38:57 | INFO | src.data_collector:__init__:51 | Data collector initialized - symbol: XAUUSD
+2026-04-02 19:38:57 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-02 19:38:57 | INFO | src.ai_models:__init__:52 | AI model manager initialized - model type: ensemble
+2026-04-02 19:38:57 | INFO | src.risk_manager:__init__:45 | Risk manager initialized - max daily loss: $30
+2026-04-02 19:38:57 | INFO | src.backtester:__init__:84 | Backtester initialized - initial capital: $10000
+2026-04-02 19:38:57 | INFO | src.trader:__init__:81 | Trading engine initialized
+2026-04-02 19:38:57 | INFO | __main__:__init__:103 | Trading system initialization complete
+2026-04-02 19:38:58 | INFO | __main__:collect_and_prepare_data:186 | Starting local dataset import and preparation...
+2026-04-02 19:39:02 | INFO | src.data_collector:load_csv_preview:62 | Loaded CSV preview: C:\Users\Bruh\Desktop\Data\XAUUSDm_M5_202501012305_202512312155.csv
+2026-04-02 19:39:18 | INFO | src.data_collector:import_local_csv:81 | Imported local CSV dataset: C:\Users\Bruh\Desktop\Data\XAUUSDm_M5_202501012305_202512312155.csv (70406 rows)
+2026-04-02 19:39:18 | INFO | src.data_collector:validate_data_quality:385 | 数据质量验证通过
+2026-04-02 19:39:19 | INFO | src.data_collector:save_data_to_db:276 | 数据已保存到数据库表: raw_data
+2026-04-02 19:39:19 | INFO | src.feature_engineer:create_feature_matrix:316 | 开始创建特征矩阵...
+2026-04-02 19:39:19 | INFO | src.feature_engineer:calculate_technical_indicators:136 | 计算了 34 个技术指标
+2026-04-02 19:39:19 | INFO | src.feature_engineer:calculate_statistical_features:181 | 统计特征计算完成
+2026-04-02 19:39:19 | INFO | src.feature_engineer:calculate_time_features:222 | 时间特征计算完成
+2026-04-02 19:39:19 | INFO | src.feature_engineer:calculate_lag_features:257 | 计算了滞后特征: 5 列 × 5 期
+2026-04-02 19:39:19 | INFO | src.feature_engineer:calculate_target_variables:297 | 目标变量计算完成
+2026-04-02 19:39:19 | INFO | src.feature_engineer:create_feature_matrix:345 | 特征矩阵创建完成 - 总特征数: 110
+2026-04-02 19:39:19 | INFO | src.feature_engineer:select_features:390 | 移除常数特征: 8 个
+2026-04-02 19:39:19 | INFO | src.feature_engineer:select_features:407 | 特征选择完成 - 选择了 30 个特征
+2026-04-02 19:39:19 | INFO | __main__:collect_and_prepare_data:242 | Local dataset preparation complete - 70406 raw rows, 30 selected features
+2026-04-02 19:39:42 | INFO | __main__:run_backtest:282 | Starting professional backtest...
+2026-04-02 19:39:42 | ERROR | __main__:run_backtest:285 | Please train the models first
+2026-04-02 19:39:53 | INFO | __main__:train_models:255 | Starting AI model training...
+2026-04-02 19:39:53 | INFO | src.ai_models:train_ensemble_models:303 | 开始训练集成模型...
+2026-04-02 19:39:53 | INFO | src.ai_models:prepare_training_data:186 | 训练数据准备完成 - 训练集: 56275, 测试集: 14069
+2026-04-02 19:39:53 | INFO | src.ai_models:train_single_model:217 | 开始训练模型: random_forest
+2026-04-02 19:40:03 | INFO | src.ai_models:train_single_model:281 | 模型 random_forest 训练完成 - 测试准确率: 0.5074987561304997
+2026-04-02 19:40:03 | INFO | src.ai_models:train_single_model:217 | 开始训练模型: xgboost
+2026-04-02 19:40:04 | INFO | src.ai_models:train_single_model:281 | 模型 xgboost 训练完成 - 测试准确率: 0.5069301300732106
+2026-04-02 19:40:04 | INFO | src.ai_models:train_single_model:217 | 开始训练模型: logistic_regression
+2026-04-02 19:40:04 | INFO | src.ai_models:train_single_model:281 | 模型 logistic_regression 训练完成 - 测试准确率: 0.5169521643329306
+2026-04-02 19:40:04 | INFO | src.ai_models:train_ensemble_models:341 | 集成模型训练完成 - 成功训练 3 个模型
+2026-04-02 19:40:04 | INFO | src.ai_models:save_models:500 | 模型已保存至: models/ai_models_20260402_194004.joblib
+2026-04-02 19:40:04 | INFO | __main__:train_models:273 | === Model Training Results ===
+2026-04-02 19:40:04 | INFO | __main__:train_models:276 | random_forest: test accuracy = 0.5075
+2026-04-02 19:40:04 | INFO | __main__:train_models:276 | xgboost: test accuracy = 0.5069
+2026-04-02 19:40:04 | INFO | __main__:train_models:276 | logistic_regression: test accuracy = 0.5170
+2026-04-02 19:41:40 | INFO | __main__:run_backtest:282 | Starting professional backtest...
+2026-04-02 19:41:40 | INFO | src.backtester:run_backtest:315 | 开始运行回测...
+2026-04-02 19:41:40 | INFO | src.backtester:reset:96 | Backtester state reset
+2026-04-02 19:41:40 | INFO | src.feature_engineer:create_feature_matrix:316 | 开始创建特征矩阵...
+2026-04-02 19:41:40 | INFO | src.feature_engineer:calculate_technical_indicators:136 | 计算了 0 个技术指标
+2026-04-02 19:41:40 | INFO | src.feature_engineer:calculate_statistical_features:181 | 统计特征计算完成
+2026-04-02 19:41:40 | INFO | src.feature_engineer:calculate_time_features:222 | 时间特征计算完成
+2026-04-02 19:41:40 | INFO | src.feature_engineer:calculate_lag_features:257 | 计算了滞后特征: 5 列 × 5 期
+2026-04-02 19:41:40 | INFO | src.feature_engineer:create_feature_matrix:345 | 特征矩阵创建完成 - 总特征数: 0
+2026-04-02 19:41:50 | INFO | src.backtester:run_backtest:400 | 回测完成
+2026-04-02 19:41:50 | INFO | __main__:run_backtest:302 | === Backtest Result Summary ===
+2026-04-02 19:41:50 | INFO | __main__:run_backtest:303 | Total trades: 0
+2026-04-02 19:41:50 | INFO | __main__:run_backtest:304 | Winning trades: 0
+2026-04-02 19:41:50 | INFO | __main__:run_backtest:305 | Losing trades: 0
+2026-04-02 19:41:50 | INFO | __main__:run_backtest:306 | Win rate: 0.0%
+2026-04-02 19:41:50 | INFO | __main__:run_backtest:307 | Total PnL: $0.00
+2026-04-02 19:41:50 | INFO | __main__:run_backtest:308 | Max drawdown: 0.00%
+2026-04-02 19:41:50 | INFO | __main__:run_backtest:309 | Sharpe ratio: 0.00
+2026-04-02 19:41:50 | INFO | __main__:run_backtest:310 | Profit factor: 0.00
+2026-04-02 19:41:50 | INFO | src.backtester:save_results:703 | 回测结果已保存: reports/backtest_result_20260402_194150.json
+2026-04-02 19:41:50 | ERROR | src.backtester:plot_results:649 | 绘制回测结果失败: cannot convert float NaN to integer
+2026-04-02 19:44:46 | INFO | src.broker_interface:disconnect_all:847 | 所有券商连接已断开
+2026-04-02 19:44:49 | INFO | __main__:__init__:75 | === AI Gold Trading System Startup ===
+2026-04-02 19:44:49 | INFO | src.data_collector:__init__:51 | Data collector initialized - symbol: XAUUSD
+2026-04-02 19:44:49 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-02 19:44:49 | INFO | src.ai_models:__init__:52 | AI model manager initialized - model type: ensemble
+2026-04-02 19:44:49 | INFO | src.risk_manager:__init__:45 | Risk manager initialized - max daily loss: $30
+2026-04-02 19:44:49 | INFO | src.backtester:__init__:84 | Backtester initialized - initial capital: $10000
+2026-04-02 19:44:49 | INFO | src.trader:__init__:81 | Trading engine initialized
+2026-04-02 19:44:49 | INFO | __main__:__init__:103 | Trading system initialization complete
+2026-04-02 19:44:51 | INFO | __main__:collect_and_prepare_data:186 | Starting local dataset import and preparation...
+2026-04-02 19:44:57 | INFO | src.data_collector:load_csv_preview:62 | Loaded CSV preview: C:\Users\Bruh\Desktop\Data\XAUUSDm_M5_202501012305_202512312155.csv
+2026-04-02 19:45:08 | INFO | src.data_collector:import_local_csv:81 | Imported local CSV dataset: C:\Users\Bruh\Desktop\Data\XAUUSDm_M5_202501012305_202512312155.csv (70406 rows)
+2026-04-02 19:45:08 | INFO | src.data_collector:validate_data_quality:385 | 数据质量验证通过
+2026-04-02 19:45:09 | INFO | src.data_collector:save_data_to_db:276 | 数据已保存到数据库表: raw_data
+2026-04-02 19:45:09 | INFO | src.feature_engineer:create_feature_matrix:316 | 开始创建特征矩阵...
+2026-04-02 19:45:09 | INFO | src.feature_engineer:calculate_technical_indicators:136 | 计算了 34 个技术指标
+2026-04-02 19:45:09 | INFO | src.feature_engineer:calculate_statistical_features:181 | 统计特征计算完成
+2026-04-02 19:45:09 | INFO | src.feature_engineer:calculate_time_features:222 | 时间特征计算完成
+2026-04-02 19:45:09 | INFO | src.feature_engineer:calculate_lag_features:257 | 计算了滞后特征: 5 列 × 5 期
+2026-04-02 19:45:09 | INFO | src.feature_engineer:calculate_target_variables:297 | 目标变量计算完成
+2026-04-02 19:45:09 | INFO | src.feature_engineer:create_feature_matrix:345 | 特征矩阵创建完成 - 总特征数: 110
+2026-04-02 19:45:09 | INFO | src.feature_engineer:select_features:390 | 移除常数特征: 8 个
+2026-04-02 19:45:09 | INFO | src.feature_engineer:select_features:407 | 特征选择完成 - 选择了 30 个特征
+2026-04-02 19:45:09 | INFO | __main__:collect_and_prepare_data:242 | Local dataset preparation complete - 70406 raw rows, 30 selected features
+2026-04-02 19:45:12 | INFO | __main__:train_models:255 | Starting AI model training...
+2026-04-02 19:45:12 | INFO | src.ai_models:train_ensemble_models:303 | 开始训练集成模型...
+2026-04-02 19:45:12 | INFO | src.ai_models:prepare_training_data:186 | 训练数据准备完成 - 训练集: 56275, 测试集: 14069
+2026-04-02 19:45:12 | INFO | src.ai_models:train_single_model:217 | 开始训练模型: random_forest
+2026-04-02 19:45:23 | INFO | src.ai_models:train_single_model:281 | 模型 random_forest 训练完成 - 测试准确率: 0.5074987561304997
+2026-04-02 19:45:23 | INFO | src.ai_models:train_single_model:217 | 开始训练模型: xgboost
+2026-04-02 19:45:23 | INFO | src.ai_models:train_single_model:281 | 模型 xgboost 训练完成 - 测试准确率: 0.5069301300732106
+2026-04-02 19:45:23 | INFO | src.ai_models:train_single_model:217 | 开始训练模型: logistic_regression
+2026-04-02 19:45:23 | INFO | src.ai_models:train_single_model:281 | 模型 logistic_regression 训练完成 - 测试准确率: 0.5169521643329306
+2026-04-02 19:45:23 | INFO | src.ai_models:train_ensemble_models:341 | 集成模型训练完成 - 成功训练 3 个模型
+2026-04-02 19:45:23 | INFO | src.ai_models:save_models:501 | 模型已保存至: models/ai_models_20260402_194523.joblib
+2026-04-02 19:45:23 | INFO | __main__:train_models:273 | === Model Training Results ===
+2026-04-02 19:45:23 | INFO | __main__:train_models:276 | random_forest: test accuracy = 0.5075
+2026-04-02 19:45:23 | INFO | __main__:train_models:276 | xgboost: test accuracy = 0.5069
+2026-04-02 19:45:23 | INFO | __main__:train_models:276 | logistic_regression: test accuracy = 0.5170
+2026-04-02 19:46:00 | INFO | __main__:run_backtest:282 | Starting professional backtest...
+2026-04-02 19:46:00 | INFO | src.backtester:run_backtest:315 | 开始运行回测...
+2026-04-02 19:46:00 | INFO | src.backtester:reset:96 | Backtester state reset
+2026-04-02 19:46:00 | INFO | src.feature_engineer:create_feature_matrix:316 | 开始创建特征矩阵...
+2026-04-02 19:46:00 | INFO | src.feature_engineer:calculate_technical_indicators:136 | 计算了 0 个技术指标
+2026-04-02 19:46:00 | INFO | src.feature_engineer:calculate_statistical_features:181 | 统计特征计算完成
+2026-04-02 19:46:00 | INFO | src.feature_engineer:calculate_time_features:222 | 时间特征计算完成
+2026-04-02 19:46:01 | INFO | src.feature_engineer:calculate_lag_features:257 | 计算了滞后特征: 5 列 × 5 期
+2026-04-02 19:46:01 | INFO | src.feature_engineer:create_feature_matrix:345 | 特征矩阵创建完成 - 总特征数: 0
+2026-04-02 19:46:09 | INFO | src.backtester:run_backtest:382 | 回测进度: 1.4% (1000/70406)
+2026-04-02 19:46:17 | INFO | src.backtester:run_backtest:382 | 回测进度: 2.8% (2000/70406)
+2026-04-02 19:46:26 | INFO | src.backtester:run_backtest:382 | 回测进度: 4.3% (3000/70406)
+2026-04-02 19:46:35 | INFO | src.backtester:run_backtest:382 | 回测进度: 5.7% (4000/70406)
+2026-04-02 19:46:44 | INFO | src.backtester:run_backtest:382 | 回测进度: 7.1% (5000/70406)
+2026-04-02 19:46:53 | INFO | src.backtester:run_backtest:382 | 回测进度: 8.5% (6000/70406)
+2026-04-02 19:47:01 | INFO | src.backtester:run_backtest:382 | 回测进度: 9.9% (7000/70406)
+2026-04-02 19:47:11 | INFO | src.broker_interface:disconnect_all:847 | 所有券商连接已断开
+2026-04-02 19:55:03 | INFO | __main__:__init__:68 | === AI Gold Research System Startup ===
+2026-04-02 19:55:03 | INFO | src.data_collector:__init__:51 | Data collector initialized - symbol: XAUUSD
+2026-04-02 19:55:03 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-02 19:55:03 | INFO | src.ai_models:__init__:52 | AI model manager initialized - model type: ensemble
+2026-04-02 19:55:03 | INFO | src.backtester:__init__:84 | Backtester initialized - initial capital: $10000
+2026-04-02 19:55:03 | INFO | __main__:__init__:85 | Research system initialization complete
+2026-04-02 19:55:09 | INFO | __main__:collect_and_prepare_data:166 | Starting local dataset import and preparation...
+2026-04-02 19:55:15 | INFO | src.data_collector:load_csv_preview:62 | Loaded CSV preview: C:\Users\Bruh\Desktop\Data\XAUUSDm_M5_202501012305_202512312155.csv
+2026-04-02 19:55:48 | INFO | src.broker_interface:disconnect_all:854 | 所有券商连接已断开
+2026-04-02 20:05:14 | INFO | __main__:__init__:68 | === AI Gold Research System Startup ===
+2026-04-02 20:05:14 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-02 20:05:14 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-02 20:05:14 | INFO | src.ai_models:__init__:52 | AI model manager initialized - model type: ensemble
+2026-04-02 20:05:14 | INFO | src.backtester:__init__:84 | Backtester initialized - initial capital: $10000
+2026-04-02 20:05:14 | INFO | __main__:__init__:85 | Research system initialization complete
+2026-04-02 20:05:18 | INFO | __main__:collect_and_prepare_data:122 | Starting local dataset import and preparation...
+2026-04-02 20:05:18 | INFO | src.data_collector:find_first_dataset_file:48 | Selected dataset file: data\imports\XAUUSDm_M5_202501012305_202512312155.csv
+2026-04-02 20:05:18 | INFO | src.data_collector:import_mt_csv:71 | Imported local CSV dataset: data\imports\XAUUSDm_M5_202501012305_202512312155.csv (70406 rows)
+2026-04-02 20:05:18 | INFO | src.data_collector:validate_data_quality:172 | Data quality validation passed
+2026-04-02 20:05:18 | INFO | src.data_collector:save_data_to_db:120 | Data saved to database table: raw_data
+2026-04-02 20:05:18 | INFO | src.feature_engineer:create_feature_matrix:316 | 开始创建特征矩阵...
+2026-04-02 20:05:18 | INFO | src.feature_engineer:calculate_technical_indicators:136 | 计算了 34 个技术指标
+2026-04-02 20:05:18 | INFO | src.feature_engineer:calculate_statistical_features:181 | 统计特征计算完成
+2026-04-02 20:05:18 | INFO | src.feature_engineer:calculate_time_features:222 | 时间特征计算完成
+2026-04-02 20:05:18 | INFO | src.feature_engineer:calculate_lag_features:257 | 计算了滞后特征: 5 列 × 5 期
+2026-04-02 20:05:19 | INFO | src.feature_engineer:calculate_target_variables:297 | 目标变量计算完成
+2026-04-02 20:05:19 | INFO | src.feature_engineer:create_feature_matrix:345 | 特征矩阵创建完成 - 总特征数: 110
+2026-04-02 20:05:19 | INFO | src.feature_engineer:select_features:390 | 移除常数特征: 1 个
+2026-04-02 20:05:19 | INFO | src.feature_engineer:select_features:407 | 特征选择完成 - 选择了 30 个特征
+2026-04-02 20:05:19 | INFO | __main__:collect_and_prepare_data:172 | Local dataset preparation complete - 70406 raw rows, 30 selected features
+2026-04-02 20:05:23 | INFO | __main__:train_models:185 | Starting AI model training...
+2026-04-02 20:05:23 | INFO | src.ai_models:train_ensemble_models:303 | 开始训练集成模型...
+2026-04-02 20:05:23 | INFO | src.ai_models:prepare_training_data:186 | 训练数据准备完成 - 训练集: 56275, 测试集: 14069
+2026-04-02 20:05:23 | INFO | src.ai_models:train_single_model:217 | 开始训练模型: random_forest
+2026-04-02 20:05:33 | INFO | src.ai_models:train_single_model:281 | 模型 random_forest 训练完成 - 测试准确率: 0.5033051389579928
+2026-04-02 20:05:33 | INFO | src.ai_models:train_single_model:217 | 开始训练模型: xgboost
+2026-04-02 20:05:33 | INFO | src.ai_models:train_single_model:281 | 模型 xgboost 训练完成 - 测试准确率: 0.507711990901983
+2026-04-02 20:05:33 | INFO | src.ai_models:train_single_model:217 | 开始训练模型: logistic_regression
+2026-04-02 20:05:34 | INFO | src.ai_models:train_single_model:281 | 模型 logistic_regression 训练完成 - 测试准确率: 0.5144644253322909
+2026-04-02 20:05:34 | INFO | src.ai_models:train_ensemble_models:341 | 集成模型训练完成 - 成功训练 3 个模型
+2026-04-02 20:05:34 | INFO | src.ai_models:save_models:501 | 模型已保存至: models/ai_models_20260402_200534.joblib
+2026-04-02 20:05:44 | INFO | __main__:run_backtest:208 | Starting professional backtest...
+2026-04-02 20:05:44 | INFO | src.backtester:run_backtest:315 | 开始运行回测...
+2026-04-02 20:05:44 | INFO | src.backtester:reset:96 | Backtester state reset
+2026-04-02 20:05:44 | INFO | src.feature_engineer:create_feature_matrix:316 | 开始创建特征矩阵...
+2026-04-02 20:05:44 | INFO | src.feature_engineer:calculate_technical_indicators:136 | 计算了 0 个技术指标
+2026-04-02 20:05:44 | INFO | src.feature_engineer:calculate_statistical_features:181 | 统计特征计算完成
+2026-04-02 20:05:44 | INFO | src.feature_engineer:calculate_time_features:222 | 时间特征计算完成
+2026-04-02 20:05:44 | INFO | src.feature_engineer:calculate_lag_features:257 | 计算了滞后特征: 5 列 × 5 期
+2026-04-02 20:05:44 | INFO | src.feature_engineer:create_feature_matrix:345 | 特征矩阵创建完成 - 总特征数: 0
+2026-04-02 20:05:46 | INFO | src.broker_interface:disconnect_all:346 | All broker connections closed
+2026-04-02 20:07:40 | INFO | __main__:__init__:68 | === AI Gold Research System Startup ===
+2026-04-02 20:07:40 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-02 20:07:40 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-02 20:07:40 | INFO | src.ai_models:__init__:52 | AI model manager initialized - model type: ensemble
+2026-04-02 20:07:40 | INFO | src.backtester:__init__:84 | Backtester initialized - initial capital: $10000
+2026-04-02 20:07:40 | INFO | __main__:__init__:85 | Research system initialization complete
+2026-04-02 20:07:45 | INFO | __main__:run_backtest:208 | Starting professional backtest...
+2026-04-02 20:07:45 | ERROR | __main__:run_backtest:211 | Please train the models first
+2026-04-02 20:07:52 | INFO | __main__:collect_and_prepare_data:122 | Starting local dataset import and preparation...
+2026-04-02 20:07:52 | INFO | src.data_collector:find_first_dataset_file:48 | Selected dataset file: data\imports\XAUUSDm_M5_202501012305_202512312155.csv
+2026-04-02 20:07:52 | INFO | src.data_collector:import_mt_csv:71 | Imported local CSV dataset: data\imports\XAUUSDm_M5_202501012305_202512312155.csv (70406 rows)
+2026-04-02 20:07:52 | INFO | src.data_collector:validate_data_quality:172 | Data quality validation passed
+2026-04-02 20:07:52 | INFO | src.data_collector:save_data_to_db:120 | Data saved to database table: raw_data
+2026-04-02 20:07:52 | INFO | src.feature_engineer:create_feature_matrix:316 | 开始创建特征矩阵...
+2026-04-02 20:07:52 | INFO | src.feature_engineer:calculate_technical_indicators:136 | 计算了 34 个技术指标
+2026-04-02 20:07:52 | INFO | src.feature_engineer:calculate_statistical_features:181 | 统计特征计算完成
+2026-04-02 20:07:52 | INFO | src.feature_engineer:calculate_time_features:222 | 时间特征计算完成
+2026-04-02 20:07:52 | INFO | src.feature_engineer:calculate_lag_features:257 | 计算了滞后特征: 5 列 × 5 期
+2026-04-02 20:07:52 | INFO | src.feature_engineer:calculate_target_variables:297 | 目标变量计算完成
+2026-04-02 20:07:52 | INFO | src.feature_engineer:create_feature_matrix:345 | 特征矩阵创建完成 - 总特征数: 110
+2026-04-02 20:07:53 | INFO | src.feature_engineer:select_features:390 | 移除常数特征: 1 个
+2026-04-02 20:07:53 | INFO | src.feature_engineer:select_features:407 | 特征选择完成 - 选择了 30 个特征
+2026-04-02 20:07:53 | INFO | __main__:collect_and_prepare_data:172 | Local dataset preparation complete - 70406 raw rows, 30 selected features
+2026-04-02 20:07:57 | INFO | __main__:train_models:185 | Starting AI model training...
+2026-04-02 20:07:57 | INFO | src.ai_models:train_ensemble_models:303 | 开始训练集成模型...
+2026-04-02 20:07:57 | INFO | src.ai_models:prepare_training_data:186 | 训练数据准备完成 - 训练集: 56275, 测试集: 14069
+2026-04-02 20:07:57 | INFO | src.ai_models:train_single_model:217 | 开始训练模型: random_forest
+2026-04-02 20:08:08 | INFO | src.ai_models:train_single_model:281 | 模型 random_forest 训练完成 - 测试准确率: 0.5033051389579928
+2026-04-02 20:08:08 | INFO | src.ai_models:train_single_model:217 | 开始训练模型: xgboost
+2026-04-02 20:08:08 | INFO | src.ai_models:train_single_model:281 | 模型 xgboost 训练完成 - 测试准确率: 0.507711990901983
+2026-04-02 20:08:08 | INFO | src.ai_models:train_single_model:217 | 开始训练模型: logistic_regression
+2026-04-02 20:08:08 | INFO | src.ai_models:train_single_model:281 | 模型 logistic_regression 训练完成 - 测试准确率: 0.5144644253322909
+2026-04-02 20:08:08 | INFO | src.ai_models:train_ensemble_models:341 | 集成模型训练完成 - 成功训练 3 个模型
+2026-04-02 20:08:08 | INFO | src.ai_models:save_models:502 | 模型已保存至: models/ai_models_20260402_200808.joblib
+2026-04-02 20:08:12 | INFO | __main__:run_backtest:208 | Starting professional backtest...
+2026-04-02 20:08:12 | INFO | src.backtester:run_backtest:315 | 开始运行回测...
+2026-04-02 20:08:12 | INFO | src.backtester:reset:96 | Backtester state reset
+2026-04-02 20:08:12 | INFO | src.feature_engineer:create_feature_matrix:316 | 开始创建特征矩阵...
+2026-04-02 20:08:12 | INFO | src.feature_engineer:calculate_technical_indicators:136 | 计算了 0 个技术指标
+2026-04-02 20:08:12 | INFO | src.feature_engineer:calculate_statistical_features:181 | 统计特征计算完成
+2026-04-02 20:08:12 | INFO | src.feature_engineer:calculate_time_features:222 | 时间特征计算完成
+2026-04-02 20:08:12 | INFO | src.feature_engineer:calculate_lag_features:257 | 计算了滞后特征: 5 列 × 5 期
+2026-04-02 20:08:12 | INFO | src.feature_engineer:create_feature_matrix:345 | 特征矩阵创建完成 - 总特征数: 0
+2026-04-02 20:08:21 | INFO | src.backtester:run_backtest:382 | 回测进度: 1.4% (1000/70406)
+2026-04-02 20:08:30 | INFO | src.backtester:run_backtest:382 | 回测进度: 2.8% (2000/70406)
+2026-04-02 20:08:39 | INFO | src.backtester:run_backtest:382 | 回测进度: 4.3% (3000/70406)
+2026-04-02 20:08:49 | INFO | src.backtester:run_backtest:382 | 回测进度: 5.7% (4000/70406)
+2026-04-02 20:08:58 | INFO | src.backtester:run_backtest:382 | 回测进度: 7.1% (5000/70406)
+2026-04-02 20:09:07 | INFO | src.backtester:run_backtest:382 | 回测进度: 8.5% (6000/70406)
+2026-04-02 20:09:17 | INFO | src.backtester:run_backtest:382 | 回测进度: 9.9% (7000/70406)
+2026-04-02 20:09:26 | INFO | src.backtester:run_backtest:382 | 回测进度: 11.4% (8000/70406)
+2026-04-02 20:09:35 | INFO | src.backtester:run_backtest:382 | 回测进度: 12.8% (9000/70406)
+2026-04-02 20:09:45 | INFO | src.backtester:run_backtest:382 | 回测进度: 14.2% (10000/70406)
+2026-04-02 20:09:55 | INFO | src.backtester:run_backtest:382 | 回测进度: 15.6% (11000/70406)
+2026-04-02 20:10:05 | INFO | src.backtester:run_backtest:382 | 回测进度: 17.0% (12000/70406)
+2026-04-02 20:10:14 | INFO | src.backtester:run_backtest:382 | 回测进度: 18.5% (13000/70406)
+2026-04-02 20:10:24 | INFO | src.backtester:run_backtest:382 | 回测进度: 19.9% (14000/70406)
+2026-04-02 20:10:33 | INFO | src.backtester:run_backtest:382 | 回测进度: 21.3% (15000/70406)
+2026-04-02 20:10:42 | INFO | src.backtester:run_backtest:382 | 回测进度: 22.7% (16000/70406)
+2026-04-02 20:10:52 | INFO | src.backtester:run_backtest:382 | 回测进度: 24.1% (17000/70406)
+2026-04-02 20:11:01 | INFO | src.backtester:run_backtest:382 | 回测进度: 25.6% (18000/70406)
+2026-04-02 20:11:11 | INFO | src.backtester:run_backtest:382 | 回测进度: 27.0% (19000/70406)
+2026-04-02 20:11:20 | INFO | src.backtester:run_backtest:382 | 回测进度: 28.4% (20000/70406)
+2026-04-02 20:11:30 | INFO | src.backtester:run_backtest:382 | 回测进度: 29.8% (21000/70406)
+2026-04-02 20:11:40 | INFO | src.backtester:run_backtest:382 | 回测进度: 31.2% (22000/70406)
+2026-04-02 20:11:50 | INFO | src.backtester:run_backtest:382 | 回测进度: 32.7% (23000/70406)
+2026-04-02 20:11:59 | INFO | src.backtester:run_backtest:382 | 回测进度: 34.1% (24000/70406)
+2026-04-02 20:12:09 | INFO | src.backtester:run_backtest:382 | 回测进度: 35.5% (25000/70406)
+2026-04-02 20:12:18 | INFO | src.backtester:run_backtest:382 | 回测进度: 36.9% (26000/70406)
+2026-04-02 20:12:28 | INFO | src.backtester:run_backtest:382 | 回测进度: 38.3% (27000/70406)
+2026-04-02 20:12:37 | INFO | src.backtester:run_backtest:382 | 回测进度: 39.8% (28000/70406)
+2026-04-02 20:12:46 | INFO | src.backtester:run_backtest:382 | 回测进度: 41.2% (29000/70406)
+2026-04-02 20:12:56 | INFO | src.backtester:run_backtest:382 | 回测进度: 42.6% (30000/70406)
+2026-04-02 20:13:05 | INFO | src.backtester:run_backtest:382 | 回测进度: 44.0% (31000/70406)
+2026-04-02 20:13:15 | INFO | src.backtester:run_backtest:382 | 回测进度: 45.5% (32000/70406)
+2026-04-02 20:13:24 | INFO | src.backtester:run_backtest:382 | 回测进度: 46.9% (33000/70406)
+2026-04-02 20:13:34 | INFO | src.backtester:run_backtest:382 | 回测进度: 48.3% (34000/70406)
+2026-04-02 20:13:44 | INFO | src.backtester:run_backtest:382 | 回测进度: 49.7% (35000/70406)
+2026-04-02 20:13:53 | INFO | src.backtester:run_backtest:382 | 回测进度: 51.1% (36000/70406)
+2026-04-02 20:14:03 | INFO | src.backtester:run_backtest:382 | 回测进度: 52.6% (37000/70406)
+2026-04-02 20:14:12 | INFO | src.backtester:run_backtest:382 | 回测进度: 54.0% (38000/70406)
+2026-04-02 20:14:21 | INFO | src.backtester:run_backtest:382 | 回测进度: 55.4% (39000/70406)
+2026-04-02 20:14:31 | INFO | src.backtester:run_backtest:382 | 回测进度: 56.8% (40000/70406)
+2026-04-02 20:14:41 | INFO | src.backtester:run_backtest:382 | 回测进度: 58.2% (41000/70406)
+2026-04-02 20:14:50 | INFO | src.backtester:run_backtest:382 | 回测进度: 59.7% (42000/70406)
+2026-04-02 20:15:00 | INFO | src.backtester:run_backtest:382 | 回测进度: 61.1% (43000/70406)
+2026-04-02 20:15:09 | INFO | src.backtester:run_backtest:382 | 回测进度: 62.5% (44000/70406)
+2026-04-02 20:15:19 | INFO | src.backtester:run_backtest:382 | 回测进度: 63.9% (45000/70406)
+2026-04-02 20:15:28 | INFO | src.backtester:run_backtest:382 | 回测进度: 65.3% (46000/70406)
+2026-04-02 20:15:38 | INFO | src.backtester:run_backtest:382 | 回测进度: 66.8% (47000/70406)
+2026-04-02 20:15:47 | INFO | src.backtester:run_backtest:382 | 回测进度: 68.2% (48000/70406)
+2026-04-02 20:15:57 | INFO | src.backtester:run_backtest:382 | 回测进度: 69.6% (49000/70406)
+2026-04-02 20:16:06 | INFO | src.backtester:run_backtest:382 | 回测进度: 71.0% (50000/70406)
+2026-04-02 20:16:16 | INFO | src.backtester:run_backtest:382 | 回测进度: 72.4% (51000/70406)
+2026-04-02 20:16:26 | INFO | src.backtester:run_backtest:382 | 回测进度: 73.9% (52000/70406)
+2026-04-02 20:16:35 | INFO | src.backtester:run_backtest:382 | 回测进度: 75.3% (53000/70406)
+2026-04-02 20:16:45 | INFO | src.backtester:run_backtest:382 | 回测进度: 76.7% (54000/70406)
+2026-04-02 20:16:54 | INFO | src.backtester:run_backtest:382 | 回测进度: 78.1% (55000/70406)
+2026-04-02 20:17:03 | INFO | src.backtester:run_backtest:382 | 回测进度: 79.5% (56000/70406)
+2026-04-02 20:17:13 | INFO | src.backtester:run_backtest:382 | 回测进度: 81.0% (57000/70406)
+2026-04-02 20:17:22 | INFO | src.backtester:run_backtest:382 | 回测进度: 82.4% (58000/70406)
+2026-04-02 20:17:32 | INFO | src.backtester:run_backtest:382 | 回测进度: 83.8% (59000/70406)
+2026-04-02 20:17:41 | INFO | src.backtester:run_backtest:382 | 回测进度: 85.2% (60000/70406)
+2026-04-02 20:17:51 | INFO | src.backtester:run_backtest:382 | 回测进度: 86.6% (61000/70406)
+2026-04-02 20:18:00 | INFO | src.backtester:run_backtest:382 | 回测进度: 88.1% (62000/70406)
+2026-04-02 20:18:10 | INFO | src.backtester:run_backtest:382 | 回测进度: 89.5% (63000/70406)
+2026-04-02 20:18:20 | INFO | src.backtester:run_backtest:382 | 回测进度: 90.9% (64000/70406)
+2026-04-02 20:18:29 | INFO | src.backtester:run_backtest:382 | 回测进度: 92.3% (65000/70406)
+2026-04-02 20:18:39 | INFO | src.backtester:run_backtest:382 | 回测进度: 93.7% (66000/70406)
+2026-04-02 20:18:49 | INFO | src.backtester:run_backtest:382 | 回测进度: 95.2% (67000/70406)
+2026-04-02 20:18:59 | INFO | src.backtester:run_backtest:382 | 回测进度: 96.6% (68000/70406)
+2026-04-02 20:19:08 | INFO | src.backtester:run_backtest:382 | 回测进度: 98.0% (69000/70406)
+2026-04-02 20:19:18 | INFO | src.backtester:run_backtest:382 | 回测进度: 99.4% (70000/70406)
+2026-04-02 20:19:22 | INFO | src.backtester:run_backtest:400 | 回测完成
+2026-04-02 20:19:22 | INFO | src.backtester:save_results:703 | 回测结果已保存: reports/backtest_result_20260402_201922.json
+2026-04-02 20:19:23 | INFO | src.backtester:plot_results:644 | 回测图表已保存: reports/backtest_chart_20260402_201922.png
+2026-04-02 20:19:23 | INFO | __main__:run_backtest:246 | Trade summary saved: reports/trade_summary_20260402_201922.csv

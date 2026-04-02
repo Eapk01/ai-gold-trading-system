@@ -1,272 +1,183 @@
 """
-数据采集模块
-负责从多个数据源获取黄金价格和相关市场数据
+Local dataset collector for the focused v1 workflow.
+Imports MetaTrader-style OHLCV exports from the project dataset directory.
 """
 
-import pandas as pd
-import numpy as np
-import yfinance as yf
-import requests
-from datetime import datetime, timedelta
-import time
-from typing import Dict, List, Optional, Tuple
-from loguru import logger
+from __future__ import annotations
+
+import csv
 import sqlite3
-from sqlalchemy import create_engine
-import pytz
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+import pandas as pd
+from loguru import logger
+
+try:
+    from sqlalchemy import create_engine
+except ImportError:  # pragma: no cover - exercised only in minimal environments
+    create_engine = None
 
 
 class DataCollector:
-    """数据采集器 - 获取实时和历史市场数据"""
-    
+    """Load, normalize, validate, and persist local market datasets."""
+
+    MT_REQUIRED_COLUMNS = ["<DATE>", "<TIME>", "<OPEN>", "<HIGH>", "<LOW>", "<CLOSE>"]
+    MT_OPTIONAL_VOLUME_COLUMNS = ["<TICKVOL>", "<VOL>"]
+
     def __init__(self, config: Dict):
-        """
-        初始化数据采集器
-        
-        Args:
-            config: 配置字典
-        """
         self.config = config
-        self.symbol = config['trading']['symbol']
-        self.timeframe = config['trading']['timeframe']
-        self.update_interval = config['data_sources']['update_interval']
-        
-        # 初始化数据库连接
-        self.db_engine = create_engine(f"sqlite:///{config['database']['path']}")
-        
-        # 时区设置
-        self.timezone = pytz.timezone('UTC')
-        
-        logger.info(f"数据采集器初始化完成 - 交易品种: {self.symbol}")
-    
-    def get_historical_data(self, 
-                          period: str = "1y", 
-                          interval: str = "1m") -> pd.DataFrame:
-        """
-        获取历史数据
-        
-        Args:
-            period: 数据周期 (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max)
-            interval: 数据间隔 (1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo)
-            
-        Returns:
-            包含OHLCV数据的DataFrame
-        """
-        try:
-            # 将XAUUSD转换为Yahoo Finance格式
-            yahoo_symbol = "GC=F"  # 黄金期货
-            if self.symbol == "XAUUSD":
-                yahoo_symbol = "GC=F"
-            
-            ticker = yf.Ticker(yahoo_symbol)
-            data = ticker.history(period=period, interval=interval)
-            
-            if data.empty:
-                logger.warning(f"未获取到 {yahoo_symbol} 的历史数据")
-                return pd.DataFrame()
-            
-            # 重命名列以保持一致性
-            data.columns = ['Open', 'High', 'Low', 'Close', 'Volume']
-            data.index.name = 'DateTime'
-            
-            # 添加时间戳
-            data['Timestamp'] = data.index
-            
-            logger.info(f"成功获取历史数据: {len(data)} 条记录")
-            return data
-            
-        except Exception as e:
-            logger.error(f"获取历史数据失败: {e}")
-            return pd.DataFrame()
-    
-    def get_realtime_data(self) -> Optional[Dict]:
-        """
-        获取实时数据
-        
-        Returns:
-            包含当前价格信息的字典
-        """
-        try:
-            yahoo_symbol = "GC=F"
-            ticker = yf.Ticker(yahoo_symbol)
-            
-            # 获取实时报价
-            info = ticker.fast_info
-            history = ticker.history(period="1d", interval="1m")
-            
-            if history.empty:
-                return None
-            
-            latest = history.iloc[-1]
-            
-            realtime_data = {
-                'symbol': self.symbol,
-                'timestamp': datetime.now(self.timezone),
-                'open': float(latest['Open']),
-                'high': float(latest['High']),
-                'low': float(latest['Low']),
-                'close': float(latest['Close']),
-                'volume': float(latest['Volume']),
-                'bid': float(info.get('bid', latest['Close'])),
-                'ask': float(info.get('ask', latest['Close'])),
-                'spread': abs(float(info.get('ask', latest['Close'])) - 
-                             float(info.get('bid', latest['Close'])))
-            }
-            
-            return realtime_data
-            
-        except Exception as e:
-            logger.error(f"获取实时数据失败: {e}")
-            return None
-    
-    def get_market_sentiment_data(self) -> Dict:
-        """
-        获取市场情绪相关数据
-        
-        Returns:
-            包含VIX、DXY等指标的字典
-        """
-        sentiment_data = {}
-        
-        try:
-            # VIX恐慌指数
-            vix_ticker = yf.Ticker("^VIX")
-            vix_data = vix_ticker.history(period="1d", interval="1m")
-            if not vix_data.empty:
-                sentiment_data['vix'] = float(vix_data['Close'].iloc[-1])
-            
-            # 美元指数 (DXY)
-            dxy_ticker = yf.Ticker("DX-Y.NYB")
-            dxy_data = dxy_ticker.history(period="1d", interval="1m")
-            if not dxy_data.empty:
-                sentiment_data['dxy'] = float(dxy_data['Close'].iloc[-1])
-            
-            # 添加时间戳
-            sentiment_data['timestamp'] = datetime.now(self.timezone)
-            
-            logger.debug(f"获取市场情绪数据: {sentiment_data}")
-            
-        except Exception as e:
-            logger.error(f"获取市场情绪数据失败: {e}")
-        
-        return sentiment_data
-    
+        self.symbol = config["trading"]["symbol"]
+        self.timeframe = config["trading"]["timeframe"]
+        self.dataset_directory = Path(config["data_sources"].get("dataset_directory", "data/imports"))
+        self.min_rows = int(config["data_sources"].get("min_rows", 100))
+        self.database_path = config["database"]["path"]
+        self.db_engine = create_engine(f"sqlite:///{self.database_path}") if create_engine else None
+
+        logger.info(f"Data collector initialized - symbol: {self.symbol}")
+
+    def find_first_dataset_file(self) -> Path:
+        """Return the first CSV file in the configured dataset directory."""
+        self.dataset_directory.mkdir(parents=True, exist_ok=True)
+        candidates = sorted(self.dataset_directory.glob("*.csv"))
+        if not candidates:
+            raise FileNotFoundError(
+                f"No CSV files were found in dataset directory: {self.dataset_directory}"
+            )
+        selected = candidates[0]
+        logger.info(f"Selected dataset file: {selected}")
+        return selected
+
+    def import_default_dataset(self) -> Tuple[Path, pd.DataFrame]:
+        """Load the first CSV dataset from the configured directory."""
+        file_path = self.find_first_dataset_file()
+        return file_path, self.import_mt_csv(file_path)
+
+    def import_mt_csv(self, file_path: Path | str) -> pd.DataFrame:
+        """Import a MetaTrader-style OHLCV export and normalize it."""
+        path = Path(file_path)
+        if path.suffix.lower() != ".csv":
+            raise ValueError("Only CSV files are supported")
+
+        delimiter = self._detect_delimiter(path)
+        raw_data = pd.read_csv(path, encoding="utf-8", sep=delimiter)
+        normalized = self._normalize_mt_export(raw_data)
+
+        if len(normalized) < self.min_rows:
+            raise ValueError(
+                f"Imported dataset is too small: {len(normalized)} rows found, at least {self.min_rows} required"
+            )
+
+        logger.info(f"Imported local CSV dataset: {path} ({len(normalized)} rows)")
+        return normalized
+
+    def _normalize_mt_export(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Normalize MetaTrader export columns into the internal OHLCV schema."""
+        missing_columns = [column for column in self.MT_REQUIRED_COLUMNS if column not in data.columns]
+        if missing_columns:
+            raise ValueError(f"Dataset is missing required columns: {missing_columns}")
+
+        timestamp_series = (
+            data["<DATE>"].astype(str).str.strip() + " " + data["<TIME>"].astype(str).str.strip()
+        )
+
+        normalized = pd.DataFrame()
+        normalized["Timestamp"] = pd.to_datetime(timestamp_series, errors="coerce")
+        normalized["Open"] = pd.to_numeric(data["<OPEN>"], errors="coerce")
+        normalized["High"] = pd.to_numeric(data["<HIGH>"], errors="coerce")
+        normalized["Low"] = pd.to_numeric(data["<LOW>"], errors="coerce")
+        normalized["Close"] = pd.to_numeric(data["<CLOSE>"], errors="coerce")
+
+        volume_column = next(
+            (column for column in self.MT_OPTIONAL_VOLUME_COLUMNS if column in data.columns),
+            None,
+        )
+        if volume_column:
+            normalized["Volume"] = pd.to_numeric(data[volume_column], errors="coerce").fillna(0.0)
+        else:
+            normalized["Volume"] = 0.0
+
+        invalid_timestamp_count = int(normalized["Timestamp"].isna().sum())
+        if invalid_timestamp_count:
+            logger.warning(f"Dropping rows with invalid timestamps: {invalid_timestamp_count}")
+
+        normalized = normalized.dropna(subset=["Timestamp", "Open", "High", "Low", "Close"])
+        normalized = normalized.sort_values("Timestamp")
+        normalized = normalized.drop_duplicates(subset=["Timestamp"], keep="last")
+        normalized = normalized.set_index("Timestamp")
+        normalized.index.name = "DateTime"
+        normalized["Timestamp"] = normalized.index
+        return normalized
+
     def save_data_to_db(self, data: pd.DataFrame, table_name: str):
-        """
-        保存数据到数据库
-        
-        Args:
-            data: 要保存的数据
-            table_name: 表名
-        """
+        """Persist a dataframe to SQLite."""
         try:
-            data.to_sql(table_name, self.db_engine, 
-                       if_exists='replace', index=True)
-            logger.info(f"数据已保存到数据库表: {table_name}")
-        except Exception as e:
-            logger.error(f"保存数据到数据库失败: {e}")
-    
-    def load_data_from_db(self, table_name: str, 
-                         start_date: Optional[str] = None,
-                         end_date: Optional[str] = None) -> pd.DataFrame:
-        """
-        从数据库加载数据
-        
-        Args:
-            table_name: 表名
-            start_date: 开始日期
-            end_date: 结束日期
-            
-        Returns:
-            DataFrame
-        """
+            if self.db_engine is not None:
+                data.to_sql(table_name, self.db_engine, if_exists="replace", index=True)
+            else:
+                with sqlite3.connect(self.database_path) as connection:
+                    data.to_sql(table_name, connection, if_exists="replace", index=True)
+            logger.info(f"Data saved to database table: {table_name}")
+        except Exception as exc:
+            logger.error(f"Failed to save data to database: {exc}")
+
+    def load_data_from_db(
+        self,
+        table_name: str,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+    ) -> pd.DataFrame:
+        """Load data from SQLite."""
         try:
             query = f"SELECT * FROM {table_name}"
-            
             if start_date and end_date:
                 query += f" WHERE DateTime BETWEEN '{start_date}' AND '{end_date}'"
-            
-            data = pd.read_sql(query, self.db_engine, index_col='DateTime')
-            logger.info(f"从数据库加载数据: {len(data)} 条记录")
+
+            if self.db_engine is not None:
+                data = pd.read_sql(query, self.db_engine, index_col="DateTime")
+            else:
+                with sqlite3.connect(self.database_path) as connection:
+                    data = pd.read_sql(query, connection, index_col="DateTime")
+
+            logger.info(f"Loaded data from database: {len(data)} rows")
             return data
-            
-        except Exception as e:
-            logger.error(f"从数据库加载数据失败: {e}")
+        except Exception as exc:
+            logger.error(f"Failed to load data from database: {exc}")
             return pd.DataFrame()
-    
-    def start_realtime_collection(self, callback_func=None):
-        """
-        启动实时数据采集
-        
-        Args:
-            callback_func: 数据更新时的回调函数
-        """
-        logger.info("开始实时数据采集...")
-        
-        while True:
-            try:
-                # 获取实时数据
-                realtime_data = self.get_realtime_data()
-                
-                if realtime_data:
-                    # 获取市场情绪数据
-                    sentiment_data = self.get_market_sentiment_data()
-                    realtime_data.update(sentiment_data)
-                    
-                    # 调用回调函数
-                    if callback_func:
-                        callback_func(realtime_data)
-                    
-                    logger.debug(f"实时数据更新: {realtime_data['close']}")
-                
-                # 等待下次更新
-                time.sleep(self.update_interval)
-                
-            except KeyboardInterrupt:
-                logger.info("实时数据采集已停止")
-                break
-            except Exception as e:
-                logger.error(f"实时数据采集出错: {e}")
-                time.sleep(self.update_interval)
-    
+
     def validate_data_quality(self, data: pd.DataFrame) -> Tuple[bool, List[str]]:
-        """
-        验证数据质量
-        
-        Args:
-            data: 要验证的数据
-            
-        Returns:
-            (是否通过验证, 问题列表)
-        """
-        issues = []
-        
-        # 检查必要的列
-        required_columns = ['Open', 'High', 'Low', 'Close', 'Volume']
-        missing_columns = [col for col in required_columns if col not in data.columns]
+        """Validate imported OHLCV data quality."""
+        issues: List[str] = []
+
+        required_columns = ["Open", "High", "Low", "Close", "Volume"]
+        missing_columns = [column for column in required_columns if column not in data.columns]
         if missing_columns:
-            issues.append(f"缺失必要的列: {missing_columns}")
-        
-        # 检查空值
+            issues.append(f"Missing required columns: {missing_columns}")
+
         null_counts = data.isnull().sum()
         if null_counts.any():
-            issues.append(f"存在空值: {null_counts[null_counts > 0].to_dict()}")
-        
-        # 检查价格逻辑
-        if 'High' in data.columns and 'Low' in data.columns:
-            invalid_price_logic = (data['High'] < data['Low']).sum()
+            issues.append(f"Null values detected: {null_counts[null_counts > 0].to_dict()}")
+
+        if "High" in data.columns and "Low" in data.columns:
+            invalid_price_logic = int((data["High"] < data["Low"]).sum())
             if invalid_price_logic > 0:
-                issues.append(f"价格逻辑错误: {invalid_price_logic} 条记录")
-        
-        # 检查重复时间戳
-        if data.index.duplicated().sum() > 0:
-            issues.append(f"重复时间戳: {data.index.duplicated().sum()} 条")
-        
+                issues.append(f"Invalid high/low relationships: {invalid_price_logic} rows")
+
+        duplicate_count = int(data.index.duplicated().sum())
+        if duplicate_count > 0:
+            issues.append(f"Duplicate timestamps: {duplicate_count}")
+
         is_valid = len(issues) == 0
-        
-        if not is_valid:
-            logger.warning(f"数据质量问题: {issues}")
+        if is_valid:
+            logger.info("Data quality validation passed")
         else:
-            logger.info("数据质量验证通过")
-        
-        return is_valid, issues 
+            logger.warning(f"Data quality issues detected: {issues}")
+
+        return is_valid, issues
+
+    def _detect_delimiter(self, path: Path) -> str:
+        """Detect the CSV delimiter used by the dataset file."""
+        with path.open("r", encoding="utf-8") as file_obj:
+            sample = file_obj.read(1024)
+        dialect = csv.Sniffer().sniff(sample)
+        return dialect.delimiter

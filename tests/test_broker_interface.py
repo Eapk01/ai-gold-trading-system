@@ -2,7 +2,14 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
-from src.broker_interface import BrokerManager, BrokerType, ExnessBroker, create_broker_config
+from src.broker_interface import (
+    BrokerManager,
+    BrokerType,
+    ExnessBroker,
+    broker_config_from_dict,
+    broker_config_to_dict,
+    create_broker_config,
+)
 
 
 class FakeResult:
@@ -114,6 +121,45 @@ class BrokerInterfaceTests(unittest.TestCase):
 
         self.assertIn("exness-main", status)
         self.assertEqual(status["exness-main"]["type"], "exness")
+
+    def test_broker_config_round_trip_serialization(self):
+        config = create_broker_config(
+            broker_type="exness",
+            login="123456",
+            password="secret",
+            server="Exness-MT5Real",
+            terminal_path="C:\\Terminal64.exe",
+            sandbox=False,
+        )
+
+        payload = broker_config_to_dict(config)
+        restored = broker_config_from_dict(payload)
+
+        self.assertEqual(restored.broker_type, BrokerType.EXNESS)
+        self.assertEqual(restored.login, "123456")
+        self.assertEqual(restored.terminal_path, "C:\\Terminal64.exe")
+
+    def test_broker_manager_loads_profiles(self):
+        manager = BrokerManager()
+        profiles = {
+            "saved-exness": {
+                "broker_type": "exness",
+                "login": "123456",
+                "password": "secret",
+                "server": "Exness-MT5Real",
+                "terminal_path": "",
+                "sandbox": False,
+                "api_key": "",
+                "secret_key": "",
+                "endpoint": "",
+                "account_id": "",
+                "timeout": 30,
+                "max_retries": 3,
+            }
+        }
+
+        self.assertEqual(manager.load_profiles(profiles), 1)
+        self.assertIn("saved-exness", manager.get_broker_status())
 
 
 if __name__ == "__main__":

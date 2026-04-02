@@ -34,16 +34,18 @@ def get_default_config() -> Dict[str, Any]:
     return {
         "trading": {
             "symbol": "XAUUSD",
-            "timeframe": "1m",
+            "timeframe": "5m",
             "position_size": 0.01,
             "stop_loss_pips": 50,
             "take_profit_pips": 100,
             "confidence_threshold": 0.60,
         },
         "data_sources": {
-            "primary": "yfinance",
+            "primary": "local_csv",
             "backup": "oanda",
             "update_interval": 60,
+            "dataset_directory": "data/imports",
+            "min_rows": 100,
         },
         "ai_model": {
             "type": "ensemble",
@@ -78,26 +80,6 @@ def get_default_config() -> Dict[str, Any]:
             "max_file_size": "10MB",
             "backup_count": 5,
         },
-        "api": {
-            "host": "0.0.0.0",
-            "port": 8080,
-            "debug": False,
-        },
-        "monitoring": {
-            "system": {
-                "cpu_threshold": 80.0,
-                "memory_threshold": 85.0,
-                "check_interval": 10,
-            },
-            "trading": {
-                "max_drawdown_threshold": 0.15,
-                "max_daily_loss_threshold": 1000.0,
-                "min_win_rate_threshold": 0.40,
-            },
-            "notifications": {
-                "enabled_channels": ["log"],
-            },
-        },
         "brokers": {
             "exness": {
                 "enabled": False,
@@ -107,7 +89,9 @@ def get_default_config() -> Dict[str, Any]:
                 "terminal_path": "",
                 "timeout": 30,
                 "max_retries": 3,
-            }
+            },
+            "profiles": {},
+            "default_profile": "",
         },
     }
 
@@ -126,6 +110,16 @@ def load_config(config_path: str = "config/config.yaml") -> Dict[str, Any]:
     return config
 
 
+def save_config(config: Dict[str, Any], config_path: str = "config/config.yaml") -> None:
+    """Validate and persist application configuration."""
+    validate_config(config)
+    path = Path(config_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    with path.open("w", encoding="utf-8") as file_obj:
+        yaml.safe_dump(config, file_obj, sort_keys=False, allow_unicode=False)
+
+
 def ensure_runtime_directories(config: Dict[str, Any]) -> List[str]:
     """Create directories required by the runtime and return their paths."""
     directories = {"data", "logs", "models", "reports"}
@@ -141,6 +135,10 @@ def ensure_runtime_directories(config: Dict[str, Any]) -> List[str]:
         log_parent = Path(log_path).parent
         if str(log_parent) not in ("", "."):
             directories.add(str(log_parent))
+
+    dataset_directory = config.get("data_sources", {}).get("dataset_directory", "")
+    if dataset_directory:
+        directories.add(str(dataset_directory))
 
     created = []
     for directory in sorted(directories):
@@ -172,6 +170,7 @@ def validate_config(config: Dict[str, Any]) -> None:
     _validate_numeric(config, "trading.stop_loss_pips", min_value=0, errors=errors)
     _validate_numeric(config, "trading.take_profit_pips", min_value=0, errors=errors)
     _validate_numeric(config, "data_sources.update_interval", min_value=1, errors=errors, integer=True)
+    _validate_numeric(config, "data_sources.min_rows", min_value=1, errors=errors, integer=True)
     _validate_numeric(config, "ai_model.lookback_periods", min_value=1, errors=errors, integer=True)
     _validate_numeric(config, "risk_management.max_daily_loss", min_value=0, errors=errors)
     _validate_numeric(config, "risk_management.max_positions", min_value=1, errors=errors, integer=True)
@@ -185,7 +184,7 @@ def validate_config(config: Dict[str, Any]) -> None:
     if not isinstance(models, list) or not models:
         errors.append("ai_model.models must be a non-empty list")
 
-    supported_data_sources = {"yfinance", "oanda", "alpaca", "exness"}
+    supported_data_sources = {"local_csv", "yfinance", "oanda", "alpaca", "exness"}
     primary_source = str(config.get("data_sources", {}).get("primary", "")).lower()
     if primary_source not in supported_data_sources:
         errors.append(

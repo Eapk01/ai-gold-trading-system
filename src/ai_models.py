@@ -49,7 +49,7 @@ class AIModelManager:
         self.model_performance = {}
         self.training_history = []
         
-        logger.info(f"AI模型管理器初始化 - 模型类型: {self.model_type}")
+        logger.info(f"AI model manager initialized - model type: {self.model_type}")
     
     def _get_model_instance(self, model_name: str, task_type: str = 'classification'):
         """
@@ -360,12 +360,14 @@ class AIModelManager:
             
             model = self.models[model_name]
             scaler = self.scalers.get(self.target_column)
+            features = np.asarray(features, dtype=np.float64)
+            feature_frame = pd.DataFrame([features], columns=self.feature_columns)
             
             # 特征标准化
             if scaler:
-                features_scaled = scaler.transform(features.reshape(1, -1))
+                features_scaled = scaler.transform(feature_frame)
             else:
-                features_scaled = features.reshape(1, -1)
+                features_scaled = feature_frame.to_numpy(dtype=np.float64)
             
             # 预测
             prediction = model.predict(features_scaled)[0]
