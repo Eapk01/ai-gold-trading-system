@@ -81,6 +81,7 @@ class ResearchAppService:
         self.latest_model_analysis: Dict[str, Any] = {}
 
         self._load_saved_broker_profiles()
+        self._autoconnect_saved_broker()
         self._autoload_latest_model()
         logger.info("Research system initialization complete")
 
@@ -106,6 +107,32 @@ class ResearchAppService:
         loaded_count = self.broker_manager.load_profiles(profiles)
         if loaded_count:
             logger.info(f"Loaded {loaded_count} saved broker profile(s)")
+
+    def _autoconnect_saved_broker(self) -> None:
+        profiles = self.config.get("brokers", {}).get("profiles", {})
+        if not profiles:
+            return
+
+        default_profile = str(self.config.get("brokers", {}).get("default_profile", "")).strip()
+        candidates: List[str] = []
+        if default_profile and default_profile in profiles:
+            candidates.append(default_profile)
+
+        for profile_name in profiles:
+            if profile_name not in candidates:
+                candidates.append(profile_name)
+
+        for profile_name in candidates:
+            try:
+                if self.broker_manager.connect_broker(profile_name):
+                    self.config.setdefault("brokers", {})
+                    self.config["brokers"]["default_profile"] = profile_name
+                    logger.info(f"Auto-connected broker profile: {profile_name}")
+                    return
+            except Exception as exc:
+                logger.warning(f"Auto-connect failed for broker profile '{profile_name}': {exc}")
+
+        logger.warning("Saved broker profiles were loaded, but no broker auto-connect succeeded")
 
     def _persist_config(self) -> None:
         save_config(self.config, self.config_path)
@@ -647,6 +674,9 @@ class ResearchAppService:
         success = self.broker_manager.connect_broker(name)
         if not success:
             return self._response(False, f"Connection failed for broker: {name}")
+        self.config.setdefault("brokers", {})
+        self.config["brokers"]["default_profile"] = name
+        self._persist_config()
         return self._response(True, f"Connection successful for broker: {name}")
 
     def disconnect_all_brokers(self) -> Dict[str, Any]:

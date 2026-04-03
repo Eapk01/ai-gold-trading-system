@@ -5,6 +5,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from gui.components.dividers import render_section_divider, render_subtle_divider
 from gui.components.feedback import show_response
 from gui.components.headers import render_page_header
 from src.app_service import ResearchAppService
@@ -15,6 +16,7 @@ def render(service: ResearchAppService) -> None:
         "Broker Profiles",
         "Manage saved Exness profiles and current connection status.",
     )
+    render_section_divider()
 
     with st.form("add_broker_profile"):
         st.subheader("Add or Replace Exness Profile")
@@ -46,6 +48,7 @@ def render(service: ResearchAppService) -> None:
     profiles_result = service.list_broker_profiles()
     profiles = profiles_result.get("data") or []
     if profiles:
+        render_subtle_divider()
         st.subheader("Saved Profiles")
         profiles_df = pd.DataFrame(profiles)
         if "connected" in profiles_df.columns:

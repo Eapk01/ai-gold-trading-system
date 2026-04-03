@@ -5,6 +5,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from gui.components.dividers import render_section_divider, render_subtle_divider
 from gui.components.feedback import show_response
 from gui.components.headers import render_page_header
 from gui.components.summaries import render_artifact_summary
@@ -16,6 +17,7 @@ def render(service: ResearchAppService) -> None:
         "Model Training",
         "Train the configured ensemble and save a named model artifact.",
     )
+    render_section_divider()
     model_name = st.text_input("Saved model name", value="default")
 
     if st.button("Train Models", use_container_width=True):
@@ -28,11 +30,13 @@ def render(service: ResearchAppService) -> None:
         data = result.get("data") or {}
         training_results = data.get("training_results") or {}
         if training_results:
+            render_subtle_divider()
             training_df = pd.DataFrame(training_results).T.reset_index().rename(columns={"index": "model_name"})
             st.dataframe(training_df, use_container_width=True)
 
         artifacts = result.get("artifacts") or {}
         if artifacts:
+            render_subtle_divider()
             st.subheader("Artifacts")
             render_artifact_summary(
                 artifacts,

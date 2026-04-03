@@ -8,6 +8,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
+from gui.components.dividers import render_section_divider, render_subtle_divider
 from gui.components.feedback import show_response
 from gui.components.headers import render_page_header
 from src.app_service import ResearchAppService
@@ -18,6 +19,7 @@ def render(service: ResearchAppService) -> None:
         "Auto Trader",
         "Start or stop the Exness demo auto-trader, monitor signals, and watch managed positions.",
     )
+    render_section_divider()
 
     status_result = service.get_auto_trader_status()
     status = status_result.get("data") or {}
@@ -69,9 +71,11 @@ def render(service: ResearchAppService) -> None:
     if status.get("latest_error"):
         st.warning(status["latest_error"])
 
+    render_subtle_divider()
     st.subheader("Managed Positions")
     _render_positions(snapshot.get("positions") or [], service.config["trading"]["symbol"])
 
+    render_subtle_divider()
     st.subheader("Recent Events")
     if events:
         events_df = pd.DataFrame(events)
@@ -79,6 +83,7 @@ def render(service: ResearchAppService) -> None:
     else:
         st.caption("No auto-trader events yet.")
 
+    render_subtle_divider()
     st.subheader("Chart Snapshot")
     _render_chart(snapshot.get("chart") or [])
 

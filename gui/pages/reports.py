@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import streamlit as st
 
+from gui.components.dividers import render_section_divider, render_subtle_divider
 from gui.components.feedback import show_response
 from gui.components.headers import render_page_header
 from gui.components.summaries import render_backtest_summary
@@ -15,6 +16,7 @@ def render(service: ResearchAppService) -> None:
         "Reports",
         "Open historical backtest reports and inspect their summaries.",
     )
+    render_section_divider()
     reports_result = service.list_backtest_reports(limit=20)
     reports = reports_result.get("data") or []
     if not reports:
@@ -34,5 +36,6 @@ def render(service: ResearchAppService) -> None:
         data = result.get("data") or {}
         summary = data.get("summary") or {}
         if summary:
+            render_subtle_divider()
             st.subheader("Backtest Summary")
             render_backtest_summary(summary)

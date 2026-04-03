@@ -1387,3 +1387,43 @@ streamlit.errors.StreamlitAPIException: Columns can only be placed inside other 
 2026-04-03 14:38:20 | INFO | src.feature_engineer:calculate_time_features:222 | 时间特征计算完成
 2026-04-03 14:38:20 | INFO | src.feature_engineer:calculate_lag_features:257 | 计算了滞后特征: 5 列 × 5 期
 2026-04-03 14:38:20 | INFO | src.feature_engineer:create_feature_matrix:345 | 特征矩阵创建完成 - 总特征数: 97
+2026-04-03 14:59:35 | INFO | src.app_service:__init__:56 | === AI Gold Research System Startup ===
+2026-04-03 14:59:35 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 14:59:35 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 14:59:35 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 14:59:35 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 14:59:35 | INFO | src.broker_interface:add_broker:434 | Broker added: Main
+2026-04-03 14:59:35 | INFO | src.app_service:_load_saved_broker_profiles:109 | Loaded 1 saved broker profile(s)
+2026-04-03 14:59:35 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 14:59:35 | INFO | src.broker_interface:connect_broker:476 | Active broker switched to: Main
+2026-04-03 14:59:35 | INFO | src.app_service:_autoconnect_saved_broker:130 | Auto-connected broker profile: Main
+2026-04-03 14:59:35 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 14:59:35 | INFO | src.app_service:_autoload_latest_model:177 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 14:59:35 | INFO | src.app_service:__init__:86 | Research system initialization complete
+2026-04-03 15:02:18 | INFO | src.feature_engineer:create_feature_matrix:316 | 开始创建特征矩阵...
+2026-04-03 15:02:18 | INFO | src.feature_engineer:calculate_technical_indicators:136 | 计算了 34 个技术指标
+2026-04-03 15:02:18 | INFO | src.feature_engineer:calculate_statistical_features:181 | 统计特征计算完成
+2026-04-03 15:02:18 | INFO | src.feature_engineer:calculate_time_features:222 | 时间特征计算完成
+2026-04-03 15:02:18 | INFO | src.feature_engineer:calculate_lag_features:257 | 计算了滞后特征: 5 列 × 5 期
+2026-04-03 15:02:18 | INFO | src.feature_engineer:create_feature_matrix:345 | 特征矩阵创建完成 - 总特征数: 97
+2026-04-03 15:23:43 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 15:23:43 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 15:23:46 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 15:23:48 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 15:23:49 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 15:23:50 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 15:23:50 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 15:24:55 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 15:24:55 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 15:25:17 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 15:25:17 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 15:25:18 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 15:25:19 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 15:25:23 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 15:25:23 | INFO | src.broker_interface:connect_broker:476 | Active broker switched to: Main
+2026-04-03 15:25:26 | INFO | src.feature_engineer:create_feature_matrix:316 | 开始创建特征矩阵...
+2026-04-03 15:25:26 | INFO | src.feature_engineer:calculate_technical_indicators:136 | 计算了 34 个技术指标
+2026-04-03 15:25:26 | INFO | src.feature_engineer:calculate_statistical_features:181 | 统计特征计算完成
+2026-04-03 15:25:26 | INFO | src.feature_engineer:calculate_time_features:222 | 时间特征计算完成
+2026-04-03 15:25:26 | INFO | src.feature_engineer:calculate_lag_features:257 | 计算了滞后特征: 5 列 × 5 期
+2026-04-03 15:25:26 | INFO | src.feature_engineer:create_feature_matrix:345 | 特征矩阵创建完成 - 总特征数: 97

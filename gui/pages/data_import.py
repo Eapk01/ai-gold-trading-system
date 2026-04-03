@@ -5,6 +5,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from gui.components.dividers import render_section_divider, render_subtle_divider
 from gui.components.feedback import show_response
 from gui.components.headers import render_page_header
 from src.app_service import ResearchAppService
@@ -17,6 +18,7 @@ def render(service: ResearchAppService) -> None:
     )
     config = service.get_configuration_summary()["data"]
     st.caption(f"Dataset directory: {config.get('dataset_directory')}")
+    render_section_divider()
 
     if st.button("Import Default Dataset", use_container_width=True):
         with st.spinner("Importing dataset and preparing features..."):
@@ -35,10 +37,12 @@ def render(service: ResearchAppService) -> None:
 
         selected_features = data.get("selected_features") or []
         if selected_features:
+            render_subtle_divider()
             st.subheader("Selected Features")
             st.write(", ".join(selected_features))
 
         preview = data.get("preview") or []
         if preview:
+            render_subtle_divider()
             st.subheader("Preview")
             st.dataframe(pd.DataFrame(preview), use_container_width=True)

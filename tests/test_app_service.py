@@ -89,5 +89,59 @@ class DashboardSnapshotTests(unittest.TestCase):
         self.assertEqual(snapshot["research"]["loaded_model_file"], "baseline.joblib")
 
 
+class BrokerAutoconnectTests(unittest.TestCase):
+    def test_autoconnect_prefers_default_profile(self):
+        class FakeBrokerManager:
+            def __init__(self):
+                self.attempts = []
+
+            def connect_broker(self, name):
+                self.attempts.append(name)
+                return name == "Main"
+
+        service = ResearchAppService.__new__(ResearchAppService)
+        service.config = {
+            "brokers": {
+                "profiles": {
+                    "Backup": {},
+                    "Main": {},
+                },
+                "default_profile": "Main",
+            }
+        }
+        service.broker_manager = FakeBrokerManager()
+
+        service._autoconnect_saved_broker()
+
+        self.assertEqual(service.broker_manager.attempts, ["Main"])
+        self.assertEqual(service.config["brokers"]["default_profile"], "Main")
+
+    def test_autoconnect_falls_back_to_first_saved_profile(self):
+        class FakeBrokerManager:
+            def __init__(self):
+                self.attempts = []
+
+            def connect_broker(self, name):
+                self.attempts.append(name)
+                return name == "Backup"
+
+        service = ResearchAppService.__new__(ResearchAppService)
+        service.config = {
+            "brokers": {
+                "profiles": {
+                    "Backup": {},
+                    "Second": {},
+                },
+                "default_profile": "",
+            }
+        }
+        service.broker_manager = FakeBrokerManager()
+
+        service._autoconnect_saved_broker()
+
+        self.assertEqual(service.broker_manager.attempts, ["Backup"])
+        self.assertEqual(service.config["brokers"]["default_profile"], "Backup")
+
+
 if __name__ == "__main__":
     unittest.main()

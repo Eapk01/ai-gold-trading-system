@@ -8,6 +8,7 @@ from typing import Any
 import pandas as pd
 import streamlit as st
 
+from gui.components.dividers import render_section_divider, render_subtle_divider, render_vertical_divider
 from gui.components.summaries import render_artifact_summary
 from src.app_service import ResearchAppService
 
@@ -26,11 +27,15 @@ def render(service: ResearchAppService) -> None:
 
     _render_header(live_trading)
     _render_top_kpis(broker, live_trading, positions)
+    render_section_divider()
 
-    left_col, right_col = st.columns([1.35, 1], gap="large")
+    left_col, divider_col, right_col = st.columns([1.35, 0.05, 1], gap="medium")
     with left_col:
         _render_live_trading_status(broker, live_trading)
+        render_subtle_divider()
         _render_account_and_positions(broker, positions)
+    with divider_col:
+        render_vertical_divider()
     with right_col:
         _render_research_snapshot(research)
 
@@ -109,6 +114,7 @@ def _build_state_badge(live_trading: dict[str, Any]) -> str:
         f"<div style='display:inline-block;padding:0.35rem 0.7rem;border-radius:999px;"
         f"background:{background};color:{color};font-size:0.85rem;font-weight:600;'>{label}</div>"
     )
+
 
 
 def _render_top_kpis(broker: dict[str, Any], live_trading: dict[str, Any], positions: dict[str, Any]) -> None:

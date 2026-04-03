@@ -9,6 +9,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
+from gui.components.dividers import render_section_divider, render_subtle_divider
 from gui.components.feedback import show_response
 from gui.components.headers import render_page_header
 from src.app_service import ResearchAppService
@@ -23,6 +24,7 @@ def render(service: ResearchAppService) -> None:
         "Manual Trader",
         "A simple chart, quick long or short buttons, and a compact position tracker for manual trades.",
     )
+    render_section_divider()
 
     config = service.get_configuration_summary().get("data") or {}
     default_symbol = config.get("trading_symbol", "XAUUSDm")
@@ -57,8 +59,10 @@ def render(service: ResearchAppService) -> None:
 
     _render_quote_metrics(quote, account, chart_source)
     _render_chart_source_notice(chart_source, chart_reason)
+    render_subtle_divider()
     _render_chart(chart_data)
 
+    render_subtle_divider()
     st.subheader("Quick Order Pad")
     if broker_connected:
         st.caption("Connected broker detected. Buttons submit real market orders through the active Exness profile.")
@@ -81,6 +85,7 @@ def render(service: ResearchAppService) -> None:
     if short_col.button("Open Short", use_container_width=True, disabled=not broker_connected):
         _submit_trade(service, symbol, "sell", quantity)
 
+    render_subtle_divider()
     st.subheader("Open Positions")
     if positions:
         positions_df = _positions_to_frame(positions)
@@ -97,6 +102,7 @@ def render(service: ResearchAppService) -> None:
     else:
         st.info("No open broker positions right now.")
 
+    render_subtle_divider()
     st.subheader("Action Log")
     trade_log = st.session_state.get("manual_trade_log") or []
     if trade_log:
