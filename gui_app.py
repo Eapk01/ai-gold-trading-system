@@ -8,7 +8,7 @@ import streamlit as st
 from loguru import logger
 
 from gui.components.navigation import render_sidebar_navigation
-from gui.pages import backtesting, brokers, dashboard, data_import, model_training, reports, saved_models
+from gui.pages import auto_trader, backtesting, brokers, dashboard, data_import, manual_trading, model_training, reports, saved_models
 from gui.state import bootstrap
 
 
@@ -29,6 +29,8 @@ def main() -> None:
         "Models": saved_models.render,
         "Reports": reports.render,
         "Brokers": brokers.render,
+        "Auto Trader": auto_trader.render,
+        "Manual Trader": manual_trading.render,
     }
 
     if "nav_page" not in st.session_state or st.session_state["nav_page"] not in pages:

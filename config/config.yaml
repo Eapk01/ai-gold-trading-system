@@ -1,5 +1,5 @@
 trading:
-  symbol: XAUUSD
+  symbol: XAUUSDm
   timeframe: 5m
   position_size: 0.01
   stop_loss_pips: 50
@@ -71,3 +71,10 @@ brokers:
       timeout: 30
       max_retries: 3
   default_profile: Main
+live_trading:
+  enabled_demo_only: true
+  poll_interval_seconds: 5
+  inactive_poll_interval_seconds: 30
+  signal_confidence_threshold: 0.6
+  startup_candle_buffer: 150
+  stale_candle_multiplier: 4

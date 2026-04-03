@@ -12,6 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import pandas as pd
 from loguru import logger
 
 from src.ai_models import AIModelManager
@@ -25,6 +26,7 @@ from src.config_utils import (
 )
 from src.data_collector import DataCollector
 from src.feature_engineer import FeatureEngineer
+from src.live_demo_trader import LiveDemoTrader
 
 
 CONFIG_PATH = "config/config.yaml"
@@ -61,6 +63,12 @@ class ResearchAppService:
         self.ai_model_manager = AIModelManager(self.config)
         self.backtester = Backtester(self.config)
         self.broker_manager = BrokerManager()
+        self.auto_trader = LiveDemoTrader(
+            self.config,
+            self.broker_manager,
+            self.feature_engineer,
+            self.ai_model_manager,
+        )
 
         self.feature_data = None
         self.selected_features: List[str] = []
@@ -396,6 +404,7 @@ class ResearchAppService:
             "active_broker": broker_status.get("active_broker"),
             "selected_features": len(self.selected_features),
             "latest_backtest_artifacts": self.latest_backtest_artifacts,
+            "auto_trader": self.auto_trader.get_status(),
         }
         return self._response(True, "System status loaded", data=status)
 
@@ -410,6 +419,91 @@ class ResearchAppService:
             "database_path": self.config["database"]["path"],
         }
         return self._response(True, "Configuration loaded", data=summary)
+
+    def get_trading_snapshot(
+        self,
+        *,
+        symbol: Optional[str] = None,
+        timeframe: Optional[str] = None,
+        bars: int = 200,
+    ) -> Dict[str, Any]:
+        trading_symbol = (symbol or self.config["trading"]["symbol"]).strip()
+        trading_timeframe = (timeframe or self.config["trading"]["timeframe"]).strip()
+
+        quote = self.broker_manager.get_market_data(trading_symbol)
+        account_info = self.broker_manager.get_account_info()
+        positions = self.broker_manager.get_positions()
+        chart_data, chart_source, chart_reason = self._get_chart_data(trading_symbol, trading_timeframe, bars)
+
+        return self._response(
+            True,
+            f"Trading snapshot loaded for {trading_symbol}",
+            data={
+                "symbol": trading_symbol,
+                "timeframe": trading_timeframe,
+                "quote": quote,
+                "account": account_info,
+                "positions": positions,
+                "chart": chart_data,
+                "chart_source": chart_source,
+                "chart_reason": chart_reason,
+                "broker_connected": bool(self.broker_manager.active_broker),
+            },
+        )
+
+    def place_manual_order(
+        self,
+        *,
+        symbol: str,
+        side: str,
+        quantity: float,
+        stop_loss: float | None = None,
+        take_profit: float | None = None,
+    ) -> Dict[str, Any]:
+        cleaned_symbol = symbol.strip() or self.config["trading"]["symbol"]
+        if quantity <= 0:
+            return self._response(False, "Quantity must be greater than zero")
+
+        result = self.broker_manager.place_order(
+            symbol=cleaned_symbol,
+            side=side.strip().lower(),
+            quantity=float(quantity),
+            order_type="market",
+            stop_loss=stop_loss,
+            take_profit=take_profit,
+        )
+        if result.get("success"):
+            return self._response(
+                True,
+                f"{side.title()} market order submitted for {cleaned_symbol}",
+                data=result,
+            )
+
+        return self._response(
+            False,
+            result.get("error", f"Failed to submit {side} market order"),
+            data=result,
+            errors=[result.get("error")] if result.get("error") else None,
+        )
+
+    def close_manual_position(self, position_ticket: str) -> Dict[str, Any]:
+        if not str(position_ticket).strip():
+            return self._response(False, "Position ticket is required")
+
+        result = self.broker_manager.close_position(str(position_ticket).strip())
+        if result.get("success"):
+            return self._response(
+                True,
+                f"Closed position {position_ticket}",
+                data=result,
+            )
+
+        return self._response(
+            False,
+            result.get("error", f"Failed to close position {position_ticket}"),
+            data=result,
+            errors=[result.get("error")] if result.get("error") else None,
+        )
 
     def list_broker_profiles(self) -> Dict[str, Any]:
         status = self.broker_manager.get_broker_status()
@@ -499,8 +593,66 @@ class ResearchAppService:
         self._persist_config()
         return self._response(True, f"Broker profile deleted: {name}")
 
+    def start_auto_trader(self) -> Dict[str, Any]:
+        success, message = self.auto_trader.start()
+        return self._response(success, message, data=self.auto_trader.get_status())
+
+    def stop_auto_trader(self) -> Dict[str, Any]:
+        success, message = self.auto_trader.stop()
+        return self._response(success, message, data=self.auto_trader.get_status())
+
+    def get_auto_trader_status(self) -> Dict[str, Any]:
+        return self._response(True, "Auto trader status loaded", data=self.auto_trader.get_status())
+
+    def get_auto_trader_events(self, limit: int = 20) -> Dict[str, Any]:
+        return self._response(
+            True,
+            "Auto trader events loaded",
+            data=self.auto_trader.get_recent_events(limit),
+        )
+
+    def _get_chart_data(self, symbol: str, timeframe: str, bars: int) -> tuple[List[Dict[str, Any]], str, str]:
+        broker_chart = self.broker_manager.get_historical_data(symbol, timeframe, bars)
+        if broker_chart:
+            return broker_chart, "broker", "Loaded directly from the active MT5 broker connection."
+
+        broker_reason = "MT5 chart data was unavailable."
+        if not self.broker_manager.active_broker:
+            broker_reason = "No active broker connection, so the chart fell back to the local dataset."
+
+        try:
+            local_data = self.data_collector.load_data_from_db("raw_data")
+            if local_data.empty:
+                _, local_data = self.data_collector.import_default_dataset()
+        except Exception as exc:
+            logger.warning(f"Failed to load local chart data: {exc}")
+            local_data = pd.DataFrame()
+
+        if local_data.empty:
+            return [], "unavailable", f"{broker_reason} No local dataset was available either."
+
+        frame = local_data.reset_index().copy()
+        if "Timestamp" not in frame.columns and "DateTime" in frame.columns:
+            frame["Timestamp"] = pd.to_datetime(frame["DateTime"], errors="coerce")
+        frame["Timestamp"] = pd.to_datetime(frame["Timestamp"], errors="coerce")
+        frame = frame.dropna(subset=["Timestamp", "Open", "High", "Low", "Close"]).tail(int(bars))
+
+        chart = [
+            {
+                "timestamp": int(row.Timestamp.timestamp()),
+                "open": float(row.Open),
+                "high": float(row.High),
+                "low": float(row.Low),
+                "close": float(row.Close),
+                "volume": float(getattr(row, "Volume", 0.0)),
+            }
+            for row in frame.itertuples(index=False)
+        ]
+        return chart, "local_dataset", broker_reason
+
     def cleanup(self) -> None:
         try:
+            self.auto_trader.stop()
             self.broker_manager.disconnect_all()
         except Exception as exc:
             logger.warning(f"Cleanup warning while disconnecting brokers: {exc}")

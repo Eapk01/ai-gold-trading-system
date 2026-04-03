@@ -93,6 +93,14 @@ def get_default_config() -> Dict[str, Any]:
             "profiles": {},
             "default_profile": "",
         },
+        "live_trading": {
+            "enabled_demo_only": True,
+            "poll_interval_seconds": 5,
+            "inactive_poll_interval_seconds": 30,
+            "signal_confidence_threshold": 0.60,
+            "startup_candle_buffer": 150,
+            "stale_candle_multiplier": 4,
+        },
     }
 
 
@@ -172,6 +180,11 @@ def validate_config(config: Dict[str, Any]) -> None:
     _validate_numeric(config, "data_sources.update_interval", min_value=1, errors=errors, integer=True)
     _validate_numeric(config, "data_sources.min_rows", min_value=1, errors=errors, integer=True)
     _validate_numeric(config, "ai_model.lookback_periods", min_value=1, errors=errors, integer=True)
+    _validate_numeric(config, "live_trading.poll_interval_seconds", min_value=1, errors=errors, integer=True)
+    _validate_numeric(config, "live_trading.inactive_poll_interval_seconds", min_value=1, errors=errors, integer=True)
+    _validate_numeric(config, "live_trading.signal_confidence_threshold", min_value=0, max_value=1, errors=errors)
+    _validate_numeric(config, "live_trading.startup_candle_buffer", min_value=10, errors=errors, integer=True)
+    _validate_numeric(config, "live_trading.stale_candle_multiplier", min_value=1, errors=errors, integer=True)
     _validate_numeric(config, "risk_management.max_daily_loss", min_value=0, errors=errors)
     _validate_numeric(config, "risk_management.max_positions", min_value=1, errors=errors, integer=True)
     _validate_numeric(config, "risk_management.risk_per_trade", min_value=0, max_value=1, errors=errors)

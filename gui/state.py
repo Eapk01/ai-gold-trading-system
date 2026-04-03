@@ -8,17 +8,33 @@ from main import setup_logging
 from src.app_service import ResearchAppService
 
 
+@st.cache_resource(show_spinner=False)
+def _get_shared_service() -> ResearchAppService:
+    """Create one shared backend service for the running Streamlit process."""
+    return ResearchAppService()
+
+
+def _initialize_session_defaults() -> None:
+    defaults = {
+        "last_import_result": None,
+        "last_training_result": None,
+        "last_backtest_result": None,
+        "last_report_result": None,
+        "broker_action_result": None,
+        "manual_trade_result": None,
+        "manual_trade_log": [],
+        "auto_trader_result": None,
+    }
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+
 def bootstrap() -> ResearchAppService:
     if "logging_initialized" not in st.session_state:
         setup_logging()
         st.session_state.logging_initialized = True
 
-    if "service" not in st.session_state:
-        st.session_state.service = ResearchAppService()
-        st.session_state.last_import_result = None
-        st.session_state.last_training_result = None
-        st.session_state.last_backtest_result = None
-        st.session_state.last_report_result = None
-        st.session_state.broker_action_result = None
+    _initialize_session_defaults()
 
-    return st.session_state.service
+    return _get_shared_service()

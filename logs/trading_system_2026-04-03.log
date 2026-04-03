@@ -613,3 +613,625 @@
 2026-04-03 10:52:53 | INFO | src.app_service:__init__:77 | Research system initialization complete
 2026-04-03 10:53:00 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
 2026-04-03 10:53:00 | INFO | src.broker_interface:connect_broker:332 | Active broker switched to: Main
+2026-04-03 11:01:38 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:01:38 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 11:01:38 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:01:38 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:01:38 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:01:38 | INFO | src.broker_interface:add_broker:408 | Broker added: Main
+2026-04-03 11:01:38 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:01:38 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:01:38 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:01:38 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:01:42 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:02:11 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:02:15 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 11:02:15 | INFO | src.broker_interface:connect_broker:450 | Active broker switched to: Main
+2026-04-03 11:02:16 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:02:22 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:03:13 | ERROR | src.broker_interface:get_historical_data:301 | Exness get historical data failed: cannot convert dictionary update sequence element #0 to a sequence
+2026-04-03 11:03:13 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:03:14 | ERROR | src.broker_interface:get_historical_data:301 | Exness get historical data failed: cannot convert dictionary update sequence element #0 to a sequence
+2026-04-03 11:03:14 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:03:43 | ERROR | src.broker_interface:get_historical_data:301 | Exness get historical data failed: cannot convert dictionary update sequence element #0 to a sequence
+2026-04-03 11:03:43 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:03:44 | ERROR | src.broker_interface:get_historical_data:301 | Exness get historical data failed: cannot convert dictionary update sequence element #0 to a sequence
+2026-04-03 11:03:45 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:03:47 | ERROR | src.broker_interface:get_historical_data:301 | Exness get historical data failed: cannot convert dictionary update sequence element #0 to a sequence
+2026-04-03 11:03:48 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:03:48 | ERROR | src.broker_interface:get_historical_data:301 | Exness get historical data failed: cannot convert dictionary update sequence element #0 to a sequence
+2026-04-03 11:03:48 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:03:50 | ERROR | src.broker_interface:get_historical_data:301 | Exness get historical data failed: cannot convert dictionary update sequence element #0 to a sequence
+2026-04-03 11:03:51 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:03:51 | ERROR | src.broker_interface:get_historical_data:301 | Exness get historical data failed: cannot convert dictionary update sequence element #0 to a sequence
+2026-04-03 11:03:51 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:03:58 | ERROR | src.broker_interface:get_historical_data:301 | Exness get historical data failed: cannot convert dictionary update sequence element #0 to a sequence
+2026-04-03 11:03:58 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:04:08 | ERROR | src.broker_interface:get_historical_data:301 | Exness get historical data failed: cannot convert dictionary update sequence element #0 to a sequence
+2026-04-03 11:04:08 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:04:15 | ERROR | src.broker_interface:get_historical_data:301 | Exness get historical data failed: cannot convert dictionary update sequence element #0 to a sequence
+2026-04-03 11:04:15 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:04:30 | ERROR | src.broker_interface:get_historical_data:301 | Exness get historical data failed: cannot convert dictionary update sequence element #0 to a sequence
+2026-04-03 11:04:30 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:04:30 | ERROR | src.broker_interface:place_order:168 | Exness order failed: AutoTrading disabled by client
+2026-04-03 11:04:30 | ERROR | src.broker_interface:get_historical_data:301 | Exness get historical data failed: cannot convert dictionary update sequence element #0 to a sequence
+2026-04-03 11:04:30 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:05:00 | ERROR | src.broker_interface:get_historical_data:301 | Exness get historical data failed: cannot convert dictionary update sequence element #0 to a sequence
+2026-04-03 11:05:00 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:05:00 | ERROR | src.broker_interface:place_order:168 | Exness order failed: Market closed
+2026-04-03 11:05:00 | ERROR | src.broker_interface:get_historical_data:301 | Exness get historical data failed: cannot convert dictionary update sequence element #0 to a sequence
+2026-04-03 11:05:01 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:08:14 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:08:15 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 11:08:15 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:08:15 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:08:15 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:08:15 | INFO | src.broker_interface:add_broker:408 | Broker added: Main
+2026-04-03 11:08:15 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:08:15 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:08:15 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:08:15 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:08:18 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:08:29 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 11:08:29 | INFO | src.broker_interface:connect_broker:450 | Active broker switched to: Main
+2026-04-03 11:08:30 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:08:48 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:08:59 | ERROR | src.broker_interface:get_historical_data:301 | Exness get historical data failed: cannot convert dictionary update sequence element #0 to a sequence
+2026-04-03 11:08:59 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:09:02 | ERROR | src.broker_interface:get_historical_data:301 | Exness get historical data failed: cannot convert dictionary update sequence element #0 to a sequence
+2026-04-03 11:09:02 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:10:29 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:10:29 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 11:10:29 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:10:29 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:10:29 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:10:29 | INFO | src.broker_interface:add_broker:421 | Broker added: Main
+2026-04-03 11:10:29 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:10:29 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:10:29 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:10:29 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:10:32 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:10:36 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:10:40 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 11:10:40 | INFO | src.broker_interface:connect_broker:463 | Active broker switched to: Main
+2026-04-03 11:10:42 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:11:19 | ERROR | src.broker_interface:place_order:168 | Exness order failed: Market closed
+2026-04-03 11:14:30 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:14:30 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 11:14:30 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:14:30 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:14:30 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:14:30 | INFO | src.broker_interface:add_broker:421 | Broker added: Main
+2026-04-03 11:14:30 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:14:30 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:14:30 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:14:30 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:14:32 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:14:40 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 11:14:40 | INFO | src.broker_interface:connect_broker:463 | Active broker switched to: Main
+2026-04-03 11:14:41 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:17:22 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:17:22 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 11:17:22 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:17:22 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:17:22 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:17:22 | INFO | src.broker_interface:add_broker:421 | Broker added: Main
+2026-04-03 11:17:22 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:17:23 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:17:23 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:17:23 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:17:24 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:17:40 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 11:17:40 | INFO | src.broker_interface:connect_broker:463 | Active broker switched to: Main
+2026-04-03 11:17:42 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:20:05 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:20:05 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 11:20:05 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:20:05 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:20:05 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:20:05 | INFO | src.broker_interface:add_broker:421 | Broker added: Main
+2026-04-03 11:20:05 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:20:05 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:20:05 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:20:05 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:20:08 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 11:20:08 | INFO | src.broker_interface:connect_broker:463 | Active broker switched to: Main
+2026-04-03 11:20:09 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:23:01 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:23:01 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 11:23:01 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:23:01 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:23:01 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:23:01 | INFO | src.broker_interface:add_broker:421 | Broker added: Main
+2026-04-03 11:23:01 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:23:02 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:23:02 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:23:02 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:23:08 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 11:23:08 | INFO | src.broker_interface:connect_broker:463 | Active broker switched to: Main
+2026-04-03 11:23:10 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:25:22 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:25:22 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 11:25:22 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:25:22 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:25:22 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:25:22 | INFO | src.broker_interface:add_broker:421 | Broker added: Main
+2026-04-03 11:25:22 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:25:22 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:25:22 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:25:22 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:25:23 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:25:33 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 11:25:33 | INFO | src.broker_interface:connect_broker:463 | Active broker switched to: Main
+2026-04-03 11:25:34 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:26:49 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:26:49 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 11:26:49 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:26:49 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:26:49 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:26:49 | INFO | src.broker_interface:add_broker:421 | Broker added: Main
+2026-04-03 11:26:49 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:26:50 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:26:50 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:26:50 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:26:53 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 11:26:53 | INFO | src.broker_interface:connect_broker:463 | Active broker switched to: Main
+2026-04-03 11:26:54 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:27:04 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:27:04 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:28:27 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:28:27 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 11:28:27 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:28:27 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:28:27 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:28:27 | INFO | src.broker_interface:add_broker:421 | Broker added: Main
+2026-04-03 11:28:27 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:28:27 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:28:27 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:28:27 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:28:31 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 11:28:31 | INFO | src.broker_interface:connect_broker:463 | Active broker switched to: Main
+2026-04-03 11:28:33 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:30:39 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:30:39 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 11:30:39 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:30:39 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:30:39 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:30:39 | INFO | src.broker_interface:add_broker:421 | Broker added: Main
+2026-04-03 11:30:39 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:30:39 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:30:39 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:30:39 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:30:42 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 11:30:42 | INFO | src.broker_interface:connect_broker:463 | Active broker switched to: Main
+2026-04-03 11:30:43 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:31:34 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:31:34 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 11:31:34 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:31:34 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:31:34 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:31:34 | INFO | src.broker_interface:add_broker:421 | Broker added: Main
+2026-04-03 11:31:34 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:31:34 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:31:34 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:31:34 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:31:37 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 11:31:37 | INFO | src.broker_interface:connect_broker:463 | Active broker switched to: Main
+2026-04-03 11:31:38 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:33:11 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 11:33:11 | INFO | src.broker_interface:connect_broker:463 | Active broker switched to: Main
+2026-04-03 11:33:13 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:33:19 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:33:59 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:34:08 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:34:11 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:34:11 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:34:11 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 11:34:11 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 11:34:11 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:34:11 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:34:11 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:34:11 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:34:11 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:34:11 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:34:11 | INFO | src.broker_interface:add_broker:421 | Broker added: Main
+2026-04-03 11:34:11 | INFO | src.broker_interface:add_broker:421 | Broker added: Main
+2026-04-03 11:34:11 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:34:11 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:34:11 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:34:11 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:34:11 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:34:11 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:34:11 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:34:11 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:34:15 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 11:34:15 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 11:34:15 | INFO | src.broker_interface:connect_broker:463 | Active broker switched to: Main
+2026-04-03 11:34:15 | INFO | src.broker_interface:connect_broker:463 | Active broker switched to: Main
+2026-04-03 11:34:17 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:34:17 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:35:29 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:35:29 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:35:29 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:35:29 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 11:35:29 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 11:35:29 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 11:35:29 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:35:29 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:35:29 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:35:29 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:35:29 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:35:29 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:35:29 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:35:29 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:35:29 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:35:29 | INFO | src.broker_interface:add_broker:421 | Broker added: Main
+2026-04-03 11:35:29 | INFO | src.broker_interface:add_broker:421 | Broker added: Main
+2026-04-03 11:35:29 | INFO | src.broker_interface:add_broker:421 | Broker added: Main
+2026-04-03 11:35:29 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:35:29 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:35:29 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:35:29 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:35:29 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:35:29 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:35:29 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:35:29 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:35:29 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:35:29 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:35:29 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:35:29 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:35:34 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:35:34 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:35:34 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:35:34 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:35:34 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 11:35:34 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 11:35:34 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 11:35:34 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 11:35:34 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:35:34 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:35:34 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:35:34 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:35:34 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:35:34 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:35:34 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:35:34 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:35:34 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:35:34 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:35:34 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:35:34 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:35:34 | INFO | src.broker_interface:add_broker:421 | Broker added: Main
+2026-04-03 11:35:34 | INFO | src.broker_interface:add_broker:421 | Broker added: Main
+2026-04-03 11:35:34 | INFO | src.broker_interface:add_broker:421 | Broker added: Main
+2026-04-03 11:35:34 | INFO | src.broker_interface:add_broker:421 | Broker added: Main
+2026-04-03 11:35:34 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:35:34 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:35:34 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:35:34 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:35:34 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:35:34 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:35:34 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:35:34 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:35:34 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:35:34 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:35:34 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:35:34 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:35:34 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:35:34 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:35:34 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:35:34 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:35:37 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 11:35:37 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 11:35:37 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 11:35:37 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 11:35:37 | INFO | src.broker_interface:connect_broker:463 | Active broker switched to: Main
+2026-04-03 11:35:37 | INFO | src.broker_interface:connect_broker:463 | Active broker switched to: Main
+2026-04-03 11:35:37 | INFO | src.broker_interface:connect_broker:463 | Active broker switched to: Main
+2026-04-03 11:35:37 | INFO | src.broker_interface:connect_broker:463 | Active broker switched to: Main
+2026-04-03 11:36:22 | ERROR | src.broker_interface:place_order:168 | Exness order failed: Market closed
+2026-04-03 11:36:22 | ERROR | src.broker_interface:place_order:168 | Exness order failed: Market closed
+2026-04-03 11:36:22 | ERROR | src.broker_interface:place_order:168 | Exness order failed: Market closed
+2026-04-03 11:36:22 | ERROR | src.broker_interface:place_order:168 | Exness order failed: Market closed
+2026-04-03 11:39:35 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:39:35 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:39:35 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:39:35 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:39:35 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:39:35 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 11:39:35 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 11:39:35 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 11:39:35 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 11:39:35 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 11:39:35 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:39:35 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:39:35 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:39:35 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:39:35 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:39:35 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:39:35 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:39:35 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:39:35 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:39:35 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:39:35 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:39:35 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:39:35 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:39:35 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:39:35 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:39:35 | INFO | src.broker_interface:add_broker:421 | Broker added: Main
+2026-04-03 11:39:35 | INFO | src.broker_interface:add_broker:421 | Broker added: Main
+2026-04-03 11:39:35 | INFO | src.broker_interface:add_broker:421 | Broker added: Main
+2026-04-03 11:39:35 | INFO | src.broker_interface:add_broker:421 | Broker added: Main
+2026-04-03 11:39:35 | INFO | src.broker_interface:add_broker:421 | Broker added: Main
+2026-04-03 11:39:35 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:39:35 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:39:35 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:39:35 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:39:35 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:39:35 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:39:35 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:39:35 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:39:35 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:39:35 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:39:35 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:39:35 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:39:35 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:39:35 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:39:35 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:39:35 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:39:35 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:39:35 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:39:35 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:39:35 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:39:36 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:39:36 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:39:36 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:39:36 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:39:36 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:39:42 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 11:39:42 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 11:39:42 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 11:39:42 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 11:39:42 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 11:39:42 | INFO | src.broker_interface:connect_broker:463 | Active broker switched to: Main
+2026-04-03 11:39:42 | INFO | src.broker_interface:connect_broker:463 | Active broker switched to: Main
+2026-04-03 11:39:42 | INFO | src.broker_interface:connect_broker:463 | Active broker switched to: Main
+2026-04-03 11:39:42 | INFO | src.broker_interface:connect_broker:463 | Active broker switched to: Main
+2026-04-03 11:39:42 | INFO | src.broker_interface:connect_broker:463 | Active broker switched to: Main
+2026-04-03 11:39:48 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:39:48 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:39:48 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:39:48 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:39:48 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:39:48 | INFO | src.app_service:__init__:55 | === AI Gold Research System Startup ===
+2026-04-03 11:39:48 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 11:39:48 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 11:39:48 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 11:39:48 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 11:39:48 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 11:39:48 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 11:39:48 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:39:48 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:39:48 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:39:48 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:39:48 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:39:48 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 11:39:48 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:39:48 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:39:48 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:39:48 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:39:48 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:39:48 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 11:39:48 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:39:48 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:39:48 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:39:48 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:39:48 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:39:48 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 11:39:48 | INFO | src.broker_interface:add_broker:421 | Broker added: Main
+2026-04-03 11:39:48 | INFO | src.broker_interface:add_broker:421 | Broker added: Main
+2026-04-03 11:39:48 | INFO | src.broker_interface:add_broker:421 | Broker added: Main
+2026-04-03 11:39:48 | INFO | src.broker_interface:add_broker:421 | Broker added: Main
+2026-04-03 11:39:48 | INFO | src.broker_interface:add_broker:421 | Broker added: Main
+2026-04-03 11:39:48 | INFO | src.broker_interface:add_broker:421 | Broker added: Main
+2026-04-03 11:39:48 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:39:48 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:39:48 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:39:48 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:39:48 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:39:48 | INFO | src.app_service:_load_saved_broker_profiles:101 | Loaded 1 saved broker profile(s)
+2026-04-03 11:39:48 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:39:48 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:39:48 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:39:48 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:39:48 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:39:48 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 11:39:48 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:39:48 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:39:48 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:39:48 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:39:48 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:39:48 | INFO | src.app_service:_autoload_latest_model:143 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 11:39:48 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:39:48 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:39:48 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:39:48 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:39:48 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:39:48 | INFO | src.app_service:__init__:78 | Research system initialization complete
+2026-04-03 11:39:50 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:39:50 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:39:50 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:39:50 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:39:50 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:39:50 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:39:51 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:39:51 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:39:51 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:39:51 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:39:51 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:39:51 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 11:39:55 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 11:39:55 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 11:39:55 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 11:39:55 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 11:39:55 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 11:39:55 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 11:39:55 | INFO | src.broker_interface:connect_broker:463 | Active broker switched to: Main
+2026-04-03 11:39:55 | INFO | src.broker_interface:connect_broker:463 | Active broker switched to: Main
+2026-04-03 11:39:55 | INFO | src.broker_interface:connect_broker:463 | Active broker switched to: Main
+2026-04-03 11:39:55 | INFO | src.broker_interface:connect_broker:463 | Active broker switched to: Main
+2026-04-03 11:39:55 | INFO | src.broker_interface:connect_broker:463 | Active broker switched to: Main
+2026-04-03 11:39:55 | INFO | src.broker_interface:connect_broker:463 | Active broker switched to: Main
+2026-04-03 13:53:46 | INFO | src.app_service:__init__:56 | === AI Gold Research System Startup ===
+2026-04-03 13:53:46 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 13:53:46 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 13:53:46 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 13:53:46 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 13:53:46 | INFO | src.broker_interface:add_broker:434 | Broker added: Main
+2026-04-03 13:53:46 | INFO | src.app_service:_load_saved_broker_profiles:108 | Loaded 1 saved broker profile(s)
+2026-04-03 13:53:46 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 13:53:46 | INFO | src.app_service:_autoload_latest_model:150 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 13:53:46 | INFO | src.app_service:__init__:85 | Research system initialization complete
+2026-04-03 13:53:50 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 13:53:51 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 13:54:06 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 13:54:06 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 13:54:11 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 13:54:11 | INFO | src.broker_interface:connect_broker:476 | Active broker switched to: Main
+2026-04-03 13:54:22 | INFO | src.feature_engineer:create_feature_matrix:316 | 开始创建特征矩阵...
+2026-04-03 13:54:22 | INFO | src.feature_engineer:calculate_technical_indicators:136 | 计算了 34 个技术指标
+2026-04-03 13:54:22 | INFO | src.feature_engineer:calculate_statistical_features:181 | 统计特征计算完成
+2026-04-03 13:54:22 | INFO | src.feature_engineer:calculate_time_features:222 | 时间特征计算完成
+2026-04-03 13:54:22 | INFO | src.feature_engineer:calculate_lag_features:257 | 计算了滞后特征: 5 列 × 5 期
+2026-04-03 13:54:22 | INFO | src.feature_engineer:create_feature_matrix:345 | 特征矩阵创建完成 - 总特征数: 97
+2026-04-03 13:55:52 | ERROR | src.broker_interface:place_order:181 | Exness order failed: Market closed
+2026-04-03 13:57:53 | INFO | src.feature_engineer:create_feature_matrix:316 | 开始创建特征矩阵...
+2026-04-03 13:57:53 | INFO | src.feature_engineer:calculate_technical_indicators:136 | 计算了 34 个技术指标
+2026-04-03 13:57:53 | INFO | src.feature_engineer:calculate_statistical_features:181 | 统计特征计算完成
+2026-04-03 13:57:53 | INFO | src.feature_engineer:calculate_time_features:222 | 时间特征计算完成
+2026-04-03 13:57:53 | INFO | src.feature_engineer:calculate_lag_features:257 | 计算了滞后特征: 5 列 × 5 期
+2026-04-03 13:57:53 | INFO | src.feature_engineer:create_feature_matrix:345 | 特征矩阵创建完成 - 总特征数: 97
+2026-04-03 13:57:56 | INFO | src.app_service:__init__:56 | === AI Gold Research System Startup ===
+2026-04-03 13:57:56 | INFO | src.app_service:__init__:56 | === AI Gold Research System Startup ===
+2026-04-03 13:57:56 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 13:57:56 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 13:57:56 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 13:57:56 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 13:57:56 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 13:57:56 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 13:57:56 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 13:57:56 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 13:57:56 | INFO | src.broker_interface:add_broker:434 | Broker added: Main
+2026-04-03 13:57:56 | INFO | src.broker_interface:add_broker:434 | Broker added: Main
+2026-04-03 13:57:56 | INFO | src.app_service:_load_saved_broker_profiles:108 | Loaded 1 saved broker profile(s)
+2026-04-03 13:57:56 | INFO | src.app_service:_load_saved_broker_profiles:108 | Loaded 1 saved broker profile(s)
+2026-04-03 13:57:56 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 13:57:56 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 13:57:56 | INFO | src.app_service:_autoload_latest_model:150 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 13:57:56 | INFO | src.app_service:_autoload_latest_model:150 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 13:57:56 | INFO | src.app_service:__init__:85 | Research system initialization complete
+2026-04-03 13:57:56 | INFO | src.app_service:__init__:85 | Research system initialization complete
+2026-04-03 13:57:59 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 13:57:59 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 13:58:18 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 13:58:18 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 13:58:18 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 13:58:18 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 13:58:23 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 13:58:23 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 13:58:23 | INFO | src.broker_interface:connect_broker:476 | Active broker switched to: Main
+2026-04-03 13:58:23 | INFO | src.broker_interface:connect_broker:476 | Active broker switched to: Main
+2026-04-03 13:58:27 | INFO | src.feature_engineer:create_feature_matrix:316 | 开始创建特征矩阵...
+2026-04-03 13:58:27 | INFO | src.feature_engineer:create_feature_matrix:316 | 开始创建特征矩阵...
+2026-04-03 13:58:27 | INFO | src.feature_engineer:calculate_technical_indicators:136 | 计算了 34 个技术指标
+2026-04-03 13:58:27 | INFO | src.feature_engineer:calculate_technical_indicators:136 | 计算了 34 个技术指标
+2026-04-03 13:58:27 | INFO | src.feature_engineer:calculate_statistical_features:181 | 统计特征计算完成
+2026-04-03 13:58:27 | INFO | src.feature_engineer:calculate_statistical_features:181 | 统计特征计算完成
+2026-04-03 13:58:27 | INFO | src.feature_engineer:calculate_time_features:222 | 时间特征计算完成
+2026-04-03 13:58:27 | INFO | src.feature_engineer:calculate_time_features:222 | 时间特征计算完成
+2026-04-03 13:58:27 | INFO | src.feature_engineer:calculate_lag_features:257 | 计算了滞后特征: 5 列 × 5 期
+2026-04-03 13:58:27 | INFO | src.feature_engineer:calculate_lag_features:257 | 计算了滞后特征: 5 列 × 5 期
+2026-04-03 13:58:27 | INFO | src.feature_engineer:create_feature_matrix:345 | 特征矩阵创建完成 - 总特征数: 97
+2026-04-03 13:58:27 | INFO | src.feature_engineer:create_feature_matrix:345 | 特征矩阵创建完成 - 总特征数: 97
+2026-04-03 13:58:50 | INFO | src.app_service:__init__:56 | === AI Gold Research System Startup ===
+2026-04-03 13:58:50 | INFO | src.app_service:__init__:56 | === AI Gold Research System Startup ===
+2026-04-03 13:58:50 | INFO | src.app_service:__init__:56 | === AI Gold Research System Startup ===
+2026-04-03 13:58:50 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 13:58:50 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 13:58:50 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 13:58:50 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 13:58:50 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 13:58:50 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 13:58:50 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 13:58:50 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 13:58:50 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 13:58:50 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 13:58:50 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 13:58:50 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 13:58:50 | INFO | src.broker_interface:add_broker:434 | Broker added: Main
+2026-04-03 13:58:50 | INFO | src.broker_interface:add_broker:434 | Broker added: Main
+2026-04-03 13:58:50 | INFO | src.broker_interface:add_broker:434 | Broker added: Main
+2026-04-03 13:58:50 | INFO | src.app_service:_load_saved_broker_profiles:108 | Loaded 1 saved broker profile(s)
+2026-04-03 13:58:50 | INFO | src.app_service:_load_saved_broker_profiles:108 | Loaded 1 saved broker profile(s)
+2026-04-03 13:58:50 | INFO | src.app_service:_load_saved_broker_profiles:108 | Loaded 1 saved broker profile(s)
+2026-04-03 13:58:50 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 13:58:50 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 13:58:50 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 13:58:50 | INFO | src.app_service:_autoload_latest_model:150 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 13:58:50 | INFO | src.app_service:_autoload_latest_model:150 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 13:58:50 | INFO | src.app_service:_autoload_latest_model:150 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 13:58:50 | INFO | src.app_service:__init__:85 | Research system initialization complete
+2026-04-03 13:58:50 | INFO | src.app_service:__init__:85 | Research system initialization complete
+2026-04-03 13:58:50 | INFO | src.app_service:__init__:85 | Research system initialization complete
+2026-04-03 14:02:13 | INFO | src.app_service:__init__:56 | === AI Gold Research System Startup ===
+2026-04-03 14:02:13 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 14:02:13 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 14:02:13 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 14:02:13 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 14:02:13 | INFO | src.broker_interface:add_broker:434 | Broker added: Main
+2026-04-03 14:02:13 | INFO | src.app_service:_load_saved_broker_profiles:108 | Loaded 1 saved broker profile(s)
+2026-04-03 14:02:14 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 14:02:14 | INFO | src.app_service:_autoload_latest_model:150 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 14:02:14 | INFO | src.app_service:__init__:85 | Research system initialization complete
+2026-04-03 14:02:18 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 14:03:02 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 14:03:02 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 14:05:52 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 14:05:52 | INFO | src.broker_interface:connect_broker:476 | Active broker switched to: Main
+2026-04-03 14:05:58 | INFO | src.feature_engineer:create_feature_matrix:316 | 开始创建特征矩阵...
+2026-04-03 14:05:58 | INFO | src.feature_engineer:calculate_technical_indicators:136 | 计算了 34 个技术指标
+2026-04-03 14:05:58 | INFO | src.feature_engineer:calculate_statistical_features:181 | 统计特征计算完成
+2026-04-03 14:05:58 | INFO | src.feature_engineer:calculate_time_features:222 | 时间特征计算完成
+2026-04-03 14:05:58 | INFO | src.feature_engineer:calculate_lag_features:257 | 计算了滞后特征: 5 列 × 5 期
+2026-04-03 14:05:58 | INFO | src.feature_engineer:create_feature_matrix:345 | 特征矩阵创建完成 - 总特征数: 97
+2026-04-03 14:13:04 | INFO | src.app_service:__init__:56 | === AI Gold Research System Startup ===
+2026-04-03 14:13:04 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 14:13:04 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 14:13:04 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 14:13:04 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 14:13:04 | INFO | src.broker_interface:add_broker:434 | Broker added: Main
+2026-04-03 14:13:04 | INFO | src.app_service:_load_saved_broker_profiles:108 | Loaded 1 saved broker profile(s)
+2026-04-03 14:13:04 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 14:13:04 | INFO | src.app_service:_autoload_latest_model:150 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 14:13:04 | INFO | src.app_service:__init__:85 | Research system initialization complete
+2026-04-03 14:13:12 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 14:13:12 | INFO | src.broker_interface:connect_broker:476 | Active broker switched to: Main
+2026-04-03 14:13:24 | ERROR | src.broker_interface:place_order:181 | Exness order failed: Market closed
+2026-04-03 14:13:24 | ERROR | src.broker_interface:place_order:181 | Exness order failed: Market closed
+2026-04-03 14:13:36 | INFO | src.feature_engineer:create_feature_matrix:316 | 开始创建特征矩阵...
+2026-04-03 14:13:36 | INFO | src.feature_engineer:create_feature_matrix:316 | 开始创建特征矩阵...
+2026-04-03 14:13:36 | INFO | src.feature_engineer:create_feature_matrix:316 | 开始创建特征矩阵...
+2026-04-03 14:13:36 | INFO | src.feature_engineer:calculate_technical_indicators:136 | 计算了 34 个技术指标
+2026-04-03 14:13:36 | INFO | src.feature_engineer:calculate_technical_indicators:136 | 计算了 34 个技术指标
+2026-04-03 14:13:36 | INFO | src.feature_engineer:calculate_technical_indicators:136 | 计算了 34 个技术指标
+2026-04-03 14:13:36 | INFO | src.feature_engineer:calculate_statistical_features:181 | 统计特征计算完成
+2026-04-03 14:13:36 | INFO | src.feature_engineer:calculate_statistical_features:181 | 统计特征计算完成
+2026-04-03 14:13:36 | INFO | src.feature_engineer:calculate_statistical_features:181 | 统计特征计算完成
+2026-04-03 14:13:36 | INFO | src.feature_engineer:calculate_time_features:222 | 时间特征计算完成
+2026-04-03 14:13:36 | INFO | src.feature_engineer:calculate_time_features:222 | 时间特征计算完成
+2026-04-03 14:13:36 | INFO | src.feature_engineer:calculate_time_features:222 | 时间特征计算完成
+2026-04-03 14:13:36 | INFO | src.feature_engineer:calculate_lag_features:257 | 计算了滞后特征: 5 列 × 5 期
+2026-04-03 14:13:36 | INFO | src.feature_engineer:calculate_lag_features:257 | 计算了滞后特征: 5 列 × 5 期
+2026-04-03 14:13:36 | INFO | src.feature_engineer:calculate_lag_features:257 | 计算了滞后特征: 5 列 × 5 期
+2026-04-03 14:13:36 | INFO | src.feature_engineer:create_feature_matrix:345 | 特征矩阵创建完成 - 总特征数: 97
+2026-04-03 14:13:36 | INFO | src.feature_engineer:create_feature_matrix:345 | 特征矩阵创建完成 - 总特征数: 97
+2026-04-03 14:13:36 | INFO | src.feature_engineer:create_feature_matrix:345 | 特征矩阵创建完成 - 总特征数: 97

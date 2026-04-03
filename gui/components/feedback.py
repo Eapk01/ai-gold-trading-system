@@ -11,6 +11,12 @@ def show_response(result: dict) -> None:
     else:
         st.error(result["message"])
 
+    message = str(result.get("message", "")).strip()
     errors = result.get("errors") or []
+    seen: set[str] = set()
     for error in errors:
-        st.warning(error)
+        normalized = str(error).strip()
+        if not normalized or normalized == message or normalized in seen:
+            continue
+        seen.add(normalized)
+        st.warning(normalized)

@@ -98,7 +98,16 @@ class ExnessBroker:
         except Exception as exc:
             logger.error(f"Failed to disconnect Exness broker: {exc}")
 
-    def place_order(self, symbol: str, side: str, quantity: float, order_type: str, price: Optional[float] = None) -> Dict:
+    def place_order(
+        self,
+        symbol: str,
+        side: str,
+        quantity: float,
+        order_type: str,
+        price: Optional[float] = None,
+        stop_loss: Optional[float] = None,
+        take_profit: Optional[float] = None,
+    ) -> Dict:
         """Place an order through the MetaTrader5 trading API."""
         try:
             if not self._ensure_connection():
@@ -122,6 +131,10 @@ class ExnessBroker:
                 "type_time": self.mt5.ORDER_TIME_GTC,
                 "type_filling": getattr(self.mt5, "ORDER_FILLING_IOC", 1),
             }
+            if stop_loss is not None:
+                request["sl"] = float(stop_loss)
+            if take_profit is not None:
+                request["tp"] = float(take_profit)
 
             if normalized_type == "market":
                 if side.lower() == "buy":
@@ -262,8 +275,139 @@ class ExnessBroker:
             logger.error(f"Exness get market data failed: {exc}")
             return {}
 
+    def get_historical_data(self, symbol: str, timeframe: str, bars: int = 200) -> List[Dict[str, Any]]:
+        """Return recent OHLCV bars from MetaTrader5."""
+        try:
+            if not self._ensure_connection():
+                return []
+
+            if not self.mt5.symbol_select(symbol, True):
+                return []
+
+            timeframe_value = self._resolve_timeframe(timeframe)
+            if timeframe_value is None:
+                logger.error(f"Unsupported MT5 timeframe: {timeframe}")
+                return []
+
+            rates = self.mt5.copy_rates_from_pos(symbol, timeframe_value, 0, int(bars))
+            if rates is None:
+                logger.error(f"Exness copy_rates_from_pos failed: {self.mt5.last_error()}")
+                return []
+
+            candles: List[Dict[str, Any]] = []
+            for rate in rates:
+                if hasattr(rate, "_asdict"):
+                    payload = rate._asdict()
+                elif hasattr(rate, "dtype") and getattr(rate.dtype, "names", None):
+                    payload = {name: rate[name] for name in rate.dtype.names}
+                else:
+                    payload = {
+                        "time": getattr(rate, "time", 0),
+                        "open": getattr(rate, "open", 0.0),
+                        "high": getattr(rate, "high", 0.0),
+                        "low": getattr(rate, "low", 0.0),
+                        "close": getattr(rate, "close", 0.0),
+                        "tick_volume": getattr(rate, "tick_volume", 0.0),
+                        "real_volume": getattr(rate, "real_volume", 0.0),
+                    }
+                candles.append(
+                    {
+                        "timestamp": int(payload.get("time", 0)),
+                        "open": float(payload.get("open", 0.0)),
+                        "high": float(payload.get("high", 0.0)),
+                        "low": float(payload.get("low", 0.0)),
+                        "close": float(payload.get("close", 0.0)),
+                        "volume": float(payload.get("tick_volume", payload.get("real_volume", 0.0))),
+                    }
+                )
+
+            self.last_heartbeat = datetime.now()
+            return candles
+        except Exception as exc:
+            logger.error(f"Exness get historical data failed: {exc}")
+            return []
+
+    def close_position(self, position_ticket: str) -> Dict:
+        """Close an open MetaTrader5 position at market."""
+        try:
+            if not self._ensure_connection():
+                return {"success": False, "error": "Exness broker is not connected"}
+
+            positions = self.mt5.positions_get(ticket=int(position_ticket))
+            if not positions:
+                return {"success": False, "error": f"Open position not found: {position_ticket}"}
+
+            position = positions[0]
+            symbol = getattr(position, "symbol", "")
+            volume = float(getattr(position, "volume", 0.0))
+            position_type = getattr(position, "type", None)
+
+            if not symbol or volume <= 0:
+                return {"success": False, "error": f"Invalid position payload for ticket: {position_ticket}"}
+
+            if not self.mt5.symbol_select(symbol, True):
+                return {"success": False, "error": f"Symbol unavailable: {symbol}"}
+
+            tick = self.mt5.symbol_info_tick(symbol)
+            if tick is None:
+                return {"success": False, "error": f"No market tick available for {symbol}"}
+
+            close_side = "sell" if position_type == self.mt5.ORDER_TYPE_BUY else "buy"
+            request = {
+                "action": self.mt5.TRADE_ACTION_DEAL,
+                "position": int(position_ticket),
+                "symbol": symbol,
+                "volume": volume,
+                "deviation": 20,
+                "magic": 20260403,
+                "comment": "ai-gold-trading-system-close",
+                "type_time": self.mt5.ORDER_TIME_GTC,
+                "type_filling": getattr(self.mt5, "ORDER_FILLING_IOC", 1),
+                "type": self.mt5.ORDER_TYPE_SELL if close_side == "sell" else self.mt5.ORDER_TYPE_BUY,
+                "price": tick.bid if close_side == "sell" else tick.ask,
+            }
+
+            result = self.mt5.order_send(request)
+            if result is None:
+                return {"success": False, "error": f"order_send returned None: {self.mt5.last_error()}"}
+
+            payload = result._asdict() if hasattr(result, "_asdict") else {"retcode": getattr(result, "retcode", None)}
+            success = result.retcode == getattr(self.mt5, "TRADE_RETCODE_DONE", -1)
+            if success:
+                self.last_heartbeat = datetime.now()
+                logger.info(f"Exness position closed successfully: {position_ticket}")
+                return {
+                    "success": True,
+                    "position_ticket": str(position_ticket),
+                    "status": "closed",
+                    "data": payload,
+                }
+
+            error_msg = payload.get("comment") or f"retcode={payload.get('retcode')}"
+            logger.error(f"Exness close position failed: {error_msg}")
+            return {"success": False, "error": error_msg, "data": payload}
+        except Exception as exc:
+            logger.error(f"Exness close position failed: {exc}")
+            return {"success": False, "error": str(exc)}
+
     def _ensure_connection(self) -> bool:
         return self.is_connected and self.mt5 is not None
+
+    def _resolve_timeframe(self, timeframe: str) -> Optional[int]:
+        mapping = {
+            "1m": "TIMEFRAME_M1",
+            "5m": "TIMEFRAME_M5",
+            "15m": "TIMEFRAME_M15",
+            "30m": "TIMEFRAME_M30",
+            "1h": "TIMEFRAME_H1",
+            "4h": "TIMEFRAME_H4",
+            "1d": "TIMEFRAME_D1",
+        }
+        key = str(timeframe or "").strip().lower()
+        attribute = mapping.get(key)
+        if attribute is None:
+            return None
+        return getattr(self.mt5, attribute, None)
 
 
 class BrokerManager:
@@ -366,11 +510,28 @@ class BrokerManager:
                     break
         return status
 
-    def place_order(self, symbol: str, side: str, quantity: float, order_type: str, price: Optional[float] = None) -> Dict:
+    def place_order(
+        self,
+        symbol: str,
+        side: str,
+        quantity: float,
+        order_type: str,
+        price: Optional[float] = None,
+        stop_loss: Optional[float] = None,
+        take_profit: Optional[float] = None,
+    ) -> Dict:
         """Place an order through the active Exness connection."""
         if not self.active_broker:
             return {"success": False, "error": "No active Exness broker connection"}
-        return self.active_broker.place_order(symbol, side, quantity, order_type, price)
+        return self.active_broker.place_order(
+            symbol,
+            side,
+            quantity,
+            order_type,
+            price,
+            stop_loss,
+            take_profit,
+        )
 
     def cancel_order(self, order_id: str) -> bool:
         """Cancel an order through the active Exness connection."""
@@ -401,6 +562,18 @@ class BrokerManager:
         if not self.active_broker:
             return {}
         return self.active_broker.get_market_data(symbol)
+
+    def get_historical_data(self, symbol: str, timeframe: str, bars: int = 200) -> List[Dict[str, Any]]:
+        """Fetch recent OHLCV bars from the active Exness connection."""
+        if not self.active_broker:
+            return []
+        return self.active_broker.get_historical_data(symbol, timeframe, bars)
+
+    def close_position(self, position_ticket: str) -> Dict:
+        """Close an open position through the active Exness connection."""
+        if not self.active_broker:
+            return {"success": False, "error": "No active Exness broker connection"}
+        return self.active_broker.close_position(position_ticket)
 
 
 def create_broker_config(broker_type: str, **kwargs) -> BrokerConfig:
