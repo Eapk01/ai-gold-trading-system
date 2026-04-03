@@ -1,0 +1,128 @@
+2026-04-03 09:07:11 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 09:07:11 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 09:07:11 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 09:07:11 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 09:07:11 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 09:07:11 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 09:07:11 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 09:07:11 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 09:07:49 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 09:07:49 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 09:07:49 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 09:07:49 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 09:07:49 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 09:07:49 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 09:07:49 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 09:07:49 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 09:08:21 | INFO | src.app_service:import_and_prepare_data:145 | Starting local dataset import and preparation...
+2026-04-03 09:08:21 | INFO | src.data_collector:find_first_dataset_file:48 | Selected dataset file: data\imports\XAUUSDm_M5_202501012305_202512312155.csv
+2026-04-03 09:08:21 | INFO | src.data_collector:import_mt_csv:71 | Imported local CSV dataset: data\imports\XAUUSDm_M5_202501012305_202512312155.csv (70406 rows)
+2026-04-03 09:08:21 | INFO | src.data_collector:validate_data_quality:172 | Data quality validation passed
+2026-04-03 09:08:22 | INFO | src.data_collector:save_data_to_db:120 | Data saved to database table: raw_data
+2026-04-03 09:08:22 | INFO | src.feature_engineer:create_feature_matrix:316 | 开始创建特征矩阵...
+2026-04-03 09:08:22 | INFO | src.feature_engineer:calculate_technical_indicators:136 | 计算了 34 个技术指标
+2026-04-03 09:08:22 | INFO | src.feature_engineer:calculate_statistical_features:181 | 统计特征计算完成
+2026-04-03 09:08:22 | INFO | src.feature_engineer:calculate_time_features:222 | 时间特征计算完成
+2026-04-03 09:08:22 | INFO | src.feature_engineer:calculate_lag_features:257 | 计算了滞后特征: 5 列 × 5 期
+2026-04-03 09:08:22 | INFO | src.feature_engineer:calculate_target_variables:297 | 目标变量计算完成
+2026-04-03 09:08:22 | INFO | src.feature_engineer:create_feature_matrix:345 | 特征矩阵创建完成 - 总特征数: 110
+2026-04-03 09:08:22 | INFO | src.feature_engineer:select_features:390 | 移除常数特征: 1 个
+2026-04-03 09:08:22 | INFO | src.feature_engineer:select_features:407 | 特征选择完成 - 选择了 30 个特征
+2026-04-03 09:08:22 | INFO | src.app_service:import_and_prepare_data:183 | Local dataset preparation complete - 70406 raw rows, 30 selected features
+2026-04-03 09:08:42 | INFO | src.app_service:run_backtest:284 | Starting professional backtest...
+2026-04-03 09:08:42 | INFO | src.backtester:run_backtest:321 | Starting backtest on prepared feature data...
+2026-04-03 09:08:42 | INFO | src.backtester:reset:103 | Backtester state reset
+2026-04-03 09:08:46 | INFO | src.backtester:run_backtest:384 | Backtest progress: 1.4% (1000/70406)
+2026-04-03 09:08:46 | INFO | src.backtester:run_backtest:384 | Backtest progress: 2.8% (2000/70406)
+2026-04-03 09:08:46 | INFO | src.backtester:run_backtest:384 | Backtest progress: 4.3% (3000/70406)
+2026-04-03 09:08:46 | INFO | src.backtester:run_backtest:384 | Backtest progress: 5.7% (4000/70406)
+2026-04-03 09:08:46 | INFO | src.backtester:run_backtest:384 | Backtest progress: 7.1% (5000/70406)
+2026-04-03 09:08:46 | INFO | src.backtester:run_backtest:384 | Backtest progress: 8.5% (6000/70406)
+2026-04-03 09:08:46 | INFO | src.backtester:run_backtest:384 | Backtest progress: 9.9% (7000/70406)
+2026-04-03 09:08:46 | INFO | src.backtester:run_backtest:384 | Backtest progress: 11.4% (8000/70406)
+2026-04-03 09:08:47 | INFO | src.backtester:run_backtest:384 | Backtest progress: 12.8% (9000/70406)
+2026-04-03 09:08:47 | INFO | src.backtester:run_backtest:384 | Backtest progress: 14.2% (10000/70406)
+2026-04-03 09:08:47 | INFO | src.backtester:run_backtest:384 | Backtest progress: 15.6% (11000/70406)
+2026-04-03 09:08:47 | INFO | src.backtester:run_backtest:384 | Backtest progress: 17.0% (12000/70406)
+2026-04-03 09:08:47 | INFO | src.backtester:run_backtest:384 | Backtest progress: 18.5% (13000/70406)
+2026-04-03 09:08:47 | INFO | src.backtester:run_backtest:384 | Backtest progress: 19.9% (14000/70406)
+2026-04-03 09:08:47 | INFO | src.backtester:run_backtest:384 | Backtest progress: 21.3% (15000/70406)
+2026-04-03 09:08:47 | INFO | src.backtester:run_backtest:384 | Backtest progress: 22.7% (16000/70406)
+2026-04-03 09:08:47 | INFO | src.backtester:run_backtest:384 | Backtest progress: 24.1% (17000/70406)
+2026-04-03 09:08:47 | INFO | src.backtester:run_backtest:384 | Backtest progress: 25.6% (18000/70406)
+2026-04-03 09:08:47 | INFO | src.backtester:run_backtest:384 | Backtest progress: 27.0% (19000/70406)
+2026-04-03 09:08:47 | INFO | src.backtester:run_backtest:384 | Backtest progress: 28.4% (20000/70406)
+2026-04-03 09:08:47 | INFO | src.backtester:run_backtest:384 | Backtest progress: 29.8% (21000/70406)
+2026-04-03 09:08:47 | INFO | src.backtester:run_backtest:384 | Backtest progress: 31.2% (22000/70406)
+2026-04-03 09:08:47 | INFO | src.backtester:run_backtest:384 | Backtest progress: 32.7% (23000/70406)
+2026-04-03 09:08:47 | INFO | src.backtester:run_backtest:384 | Backtest progress: 34.1% (24000/70406)
+2026-04-03 09:08:47 | INFO | src.backtester:run_backtest:384 | Backtest progress: 35.5% (25000/70406)
+2026-04-03 09:08:47 | INFO | src.backtester:run_backtest:384 | Backtest progress: 36.9% (26000/70406)
+2026-04-03 09:08:47 | INFO | src.backtester:run_backtest:384 | Backtest progress: 38.3% (27000/70406)
+2026-04-03 09:08:47 | INFO | src.backtester:run_backtest:384 | Backtest progress: 39.8% (28000/70406)
+2026-04-03 09:08:47 | INFO | src.backtester:run_backtest:384 | Backtest progress: 41.2% (29000/70406)
+2026-04-03 09:08:47 | INFO | src.backtester:run_backtest:384 | Backtest progress: 42.6% (30000/70406)
+2026-04-03 09:08:47 | INFO | src.backtester:run_backtest:384 | Backtest progress: 44.0% (31000/70406)
+2026-04-03 09:08:47 | INFO | src.backtester:run_backtest:384 | Backtest progress: 45.5% (32000/70406)
+2026-04-03 09:08:47 | INFO | src.backtester:run_backtest:384 | Backtest progress: 46.9% (33000/70406)
+2026-04-03 09:08:47 | INFO | src.backtester:run_backtest:384 | Backtest progress: 48.3% (34000/70406)
+2026-04-03 09:08:47 | INFO | src.backtester:run_backtest:384 | Backtest progress: 49.7% (35000/70406)
+2026-04-03 09:08:47 | INFO | src.backtester:run_backtest:384 | Backtest progress: 51.1% (36000/70406)
+2026-04-03 09:08:48 | INFO | src.backtester:run_backtest:384 | Backtest progress: 52.6% (37000/70406)
+2026-04-03 09:08:48 | INFO | src.backtester:run_backtest:384 | Backtest progress: 54.0% (38000/70406)
+2026-04-03 09:08:48 | INFO | src.backtester:run_backtest:384 | Backtest progress: 55.4% (39000/70406)
+2026-04-03 09:08:48 | INFO | src.backtester:run_backtest:384 | Backtest progress: 56.8% (40000/70406)
+2026-04-03 09:08:48 | INFO | src.backtester:run_backtest:384 | Backtest progress: 58.2% (41000/70406)
+2026-04-03 09:08:48 | INFO | src.backtester:run_backtest:384 | Backtest progress: 59.7% (42000/70406)
+2026-04-03 09:08:48 | INFO | src.backtester:run_backtest:384 | Backtest progress: 61.1% (43000/70406)
+2026-04-03 09:08:48 | INFO | src.backtester:run_backtest:384 | Backtest progress: 62.5% (44000/70406)
+2026-04-03 09:08:48 | INFO | src.backtester:run_backtest:384 | Backtest progress: 63.9% (45000/70406)
+2026-04-03 09:08:48 | INFO | src.backtester:run_backtest:384 | Backtest progress: 65.3% (46000/70406)
+2026-04-03 09:08:48 | INFO | src.backtester:run_backtest:384 | Backtest progress: 66.8% (47000/70406)
+2026-04-03 09:08:48 | INFO | src.backtester:run_backtest:384 | Backtest progress: 68.2% (48000/70406)
+2026-04-03 09:08:48 | INFO | src.backtester:run_backtest:384 | Backtest progress: 69.6% (49000/70406)
+2026-04-03 09:08:48 | INFO | src.backtester:run_backtest:384 | Backtest progress: 71.0% (50000/70406)
+2026-04-03 09:08:48 | INFO | src.backtester:run_backtest:384 | Backtest progress: 72.4% (51000/70406)
+2026-04-03 09:08:48 | INFO | src.backtester:run_backtest:384 | Backtest progress: 73.9% (52000/70406)
+2026-04-03 09:08:48 | INFO | src.backtester:run_backtest:384 | Backtest progress: 75.3% (53000/70406)
+2026-04-03 09:08:48 | INFO | src.backtester:run_backtest:384 | Backtest progress: 76.7% (54000/70406)
+2026-04-03 09:08:48 | INFO | src.backtester:run_backtest:384 | Backtest progress: 78.1% (55000/70406)
+2026-04-03 09:08:48 | INFO | src.backtester:run_backtest:384 | Backtest progress: 79.5% (56000/70406)
+2026-04-03 09:08:48 | INFO | src.backtester:run_backtest:384 | Backtest progress: 81.0% (57000/70406)
+2026-04-03 09:08:48 | INFO | src.backtester:run_backtest:384 | Backtest progress: 82.4% (58000/70406)
+2026-04-03 09:08:48 | INFO | src.backtester:run_backtest:384 | Backtest progress: 83.8% (59000/70406)
+2026-04-03 09:08:48 | INFO | src.backtester:run_backtest:384 | Backtest progress: 85.2% (60000/70406)
+2026-04-03 09:08:48 | INFO | src.backtester:run_backtest:384 | Backtest progress: 86.6% (61000/70406)
+2026-04-03 09:08:48 | INFO | src.backtester:run_backtest:384 | Backtest progress: 88.1% (62000/70406)
+2026-04-03 09:08:48 | INFO | src.backtester:run_backtest:384 | Backtest progress: 89.5% (63000/70406)
+2026-04-03 09:08:48 | INFO | src.backtester:run_backtest:384 | Backtest progress: 90.9% (64000/70406)
+2026-04-03 09:08:49 | INFO | src.backtester:run_backtest:384 | Backtest progress: 92.3% (65000/70406)
+2026-04-03 09:08:49 | INFO | src.backtester:run_backtest:384 | Backtest progress: 93.7% (66000/70406)
+2026-04-03 09:08:49 | INFO | src.backtester:run_backtest:384 | Backtest progress: 95.2% (67000/70406)
+2026-04-03 09:08:49 | INFO | src.backtester:run_backtest:384 | Backtest progress: 96.6% (68000/70406)
+2026-04-03 09:08:49 | INFO | src.backtester:run_backtest:384 | Backtest progress: 98.0% (69000/70406)
+2026-04-03 09:08:49 | INFO | src.backtester:run_backtest:384 | Backtest progress: 99.4% (70000/70406)
+2026-04-03 09:08:49 | INFO | src.backtester:run_backtest:402 | Backtest complete
+2026-04-03 09:08:49 | INFO | src.backtester:save_results:673 | 回测结果已保存: reports/backtest_result_20260403_090849.json
+2026-04-03 09:08:49 | INFO | src.backtester:plot_results:614 | Backtest chart saved: reports/backtest_chart_20260403_090849.png
+2026-04-03 09:08:49 | INFO | src.app_service:run_backtest:312 | Trade summary saved: reports/trade_summary_20260403_090849.csv
+2026-04-03 09:09:24 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 09:09:24 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 09:09:24 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 09:09:24 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 09:09:24 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 09:09:24 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 09:09:24 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 09:09:24 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 09:09:24 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 09:09:24 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 09:09:24 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 09:09:24 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 09:09:24 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 09:09:24 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 09:09:24 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 09:09:24 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 09:09:29 | INFO | src.app_service:run_backtest:284 | Starting professional backtest...
+2026-04-03 09:09:29 | INFO | src.app_service:run_backtest:284 | Starting professional backtest...
+2026-04-03 09:09:29 | ERROR | src.app_service:run_backtest:290 | Please prepare the data first
+2026-04-03 09:09:29 | ERROR | src.app_service:run_backtest:290 | Please prepare the data first

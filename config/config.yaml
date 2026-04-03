@@ -3,7 +3,7 @@
 # 交易基础配置
 trading:
   symbol: "XAUUSD"  # 现货黄金
-  timeframe: "1m"   # 1分钟K线
+  timeframe: "5m"   # 1分钟K线
   max_risk: 30      # 最大风险30美元
   position_size: 0.01  # 初始仓位大小
   stop_loss_pips: 50   # 止损点数

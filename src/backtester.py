@@ -8,8 +8,15 @@ import numpy as np
 from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime, timedelta
 from loguru import logger
-import matplotlib.pyplot as plt
-import seaborn as sns
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    plt = None
+
+try:
+    import seaborn as sns
+except ImportError:
+    sns = None
 from dataclasses import dataclass
 import json
 
@@ -298,34 +305,43 @@ class Backtester:
             drawdown = (self.peak_capital - total_equity) / self.peak_capital
             self.max_drawdown = max(self.max_drawdown, drawdown)
     
-    def run_backtest(self, data: pd.DataFrame, ai_model_manager, 
-                    feature_engineer, selected_features: List[str]) -> BacktestResult:
+    def run_backtest(self, prepared_data: pd.DataFrame, ai_model_manager,
+                    selected_features: List[str]) -> BacktestResult:
         """
         运行回测
         
         Args:
-            data: 历史数据
+            prepared_data: Prepared feature matrix
             ai_model_manager: AI模型管理器
-            feature_engineer: 特征工程器
             selected_features: 选择的特征
             
         Returns:
             回测结果
         """
-        logger.info("开始运行回测...")
+        logger.info("Starting backtest on prepared feature data...")
         
         # 重置状态
         self.reset()
         
         # 确保数据按时间排序
-        data = data.sort_index()
-        
-        # 创建特征矩阵
-        feature_data = feature_engineer.create_feature_matrix(data, include_targets=False)
-        
+        feature_data = prepared_data.sort_index().copy()
+
         if feature_data.empty:
-            logger.error("特征数据为空")
+            logger.error("Prepared feature data is empty")
             return BacktestResult()
+
+        missing_features = [feature for feature in selected_features if feature not in feature_data.columns]
+        if missing_features:
+            raise ValueError(f"Prepared feature data is missing selected features: {missing_features}")
+
+        prediction_frame = ai_model_manager.predict_ensemble_batch(
+            feature_data,
+            feature_columns=selected_features,
+            method='voting'
+        )
+
+        if int(prediction_frame['is_valid'].sum()) == 0:
+            raise ValueError("No valid rows remain for backtesting after feature filtering")
         
         # 回测主循环
         for i, (timestamp, row) in enumerate(feature_data.iterrows()):
@@ -343,35 +359,21 @@ class Backtester:
                 # 检查止损止盈
                 self.check_stop_conditions(current_data)
                 
-                # 获取特征向量
-                try:
-                    features = pd.to_numeric(row[selected_features], errors='coerce').to_numpy(dtype=np.float64)
-                    
-                    # 跳过包含NaN的数据
-                    if np.isnan(features).any():
-                        continue
-                    
-                    # AI预测
-                    prediction, details = ai_model_manager.predict_ensemble(
-                        features, method='voting'
-                    )
-                    
-                    if prediction is not None:
-                        # 生成交易信号
-                        signal = self._generate_signal(prediction, current_data, details)
-                        
-                        if signal:
-                            # 检查是否已有持仓
-                            if len(self.current_positions) == 0:
-                                self.open_position(signal, current_data)
-                            elif signal.get('action') == 'close':
-                                # 平仓信号
-                                for trade_id in list(self.current_positions.keys()):
-                                    self.close_position(trade_id, current_data, 'signal')
-                
-                except Exception as e:
-                    logger.debug(f"预测出错: {e}")
+                prediction_row = prediction_frame.loc[timestamp]
+                if not bool(prediction_row['is_valid']):
                     continue
+
+                prediction = int(prediction_row['prediction'])
+                confidence = float(prediction_row['confidence'])
+
+                signal = self._generate_signal(prediction, current_data, confidence)
+
+                if signal:
+                    if len(self.current_positions) == 0:
+                        self.open_position(signal, current_data)
+                    elif signal.get('action') == 'close':
+                        for trade_id in list(self.current_positions.keys()):
+                            self.close_position(trade_id, current_data, 'signal')
                 
                 # 更新权益曲线
                 self.update_equity(current_data)
@@ -379,10 +381,10 @@ class Backtester:
                 # 进度显示
                 if i % 1000 == 0:
                     progress = (i / len(feature_data)) * 100
-                    logger.info(f"回测进度: {progress:.1f}% ({i}/{len(feature_data)})")
+                    logger.info(f"Backtest progress: {progress:.1f}% ({i}/{len(feature_data)})")
                 
             except Exception as e:
-                logger.debug(f"回测循环出错: {e}")
+                logger.debug(f"Backtest loop error: {e}")
                 continue
         
         # 关闭所有未平仓位
@@ -397,26 +399,23 @@ class Backtester:
         # 计算回测结果
         result = self._calculate_results()
         
-        logger.info("回测完成")
+        logger.info("Backtest complete")
         return result
     
-    def _generate_signal(self, prediction: int, current_data: Dict, 
-                        details: Dict) -> Optional[Dict]:
+    def _generate_signal(self, prediction: int, current_data: Dict,
+                        confidence: float) -> Optional[Dict]:
         """
         根据AI预测生成交易信号
         
         Args:
             prediction: AI预测结果 (0=跌, 1=涨)
             current_data: 当前数据
-            details: 预测详情
+            confidence: Prediction confidence (0-1)
             
         Returns:
             交易信号字典
         """
         try:
-            # 获取预测置信度
-            confidence = self._calculate_confidence(details)
-            
             # 只有高置信度的信号才交易
             if confidence < 0.6:  # 60%置信度阈值
                 return None
@@ -447,40 +446,8 @@ class Backtester:
             return None
             
         except Exception as e:
-            logger.debug(f"生成信号失败: {e}")
+            logger.debug(f"Failed to generate signal: {e}")
             return None
-    
-    def _calculate_confidence(self, details: Dict) -> float:
-        """
-        计算预测置信度
-        
-        Args:
-            details: 预测详情
-            
-        Returns:
-            置信度 (0-1)
-        """
-        try:
-            probabilities = details.get('individual_probabilities', {})
-            
-            if not probabilities:
-                return 0.5  # 默认置信度
-            
-            # 计算所有模型的平均置信度
-            confidences = []
-            for model_probs in probabilities.values():
-                if isinstance(model_probs, (list, np.ndarray)) and len(model_probs) > 1:
-                    # 取最大概率作为置信度
-                    confidences.append(max(model_probs))
-            
-            if confidences:
-                return np.mean(confidences)
-            else:
-                return 0.5
-                
-        except Exception as e:
-            logger.debug(f"计算置信度失败: {e}")
-            return 0.5
     
     def _calculate_results(self) -> BacktestResult:
         """
@@ -586,54 +553,57 @@ class Backtester:
     
     def plot_results(self, result: BacktestResult, save_path: str = None):
         """
-        绘制回测结果图表
+        Plot backtest result charts.
         
         Args:
-            result: 回测结果
-            save_path: 保存路径
+            result: Backtest result
+            save_path: Optional output path
         """
         try:
+            if plt is None:
+                raise RuntimeError("matplotlib is not installed; cannot plot backtest results")
+
             fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 10))
             
-            # 权益曲线
+            # Equity curve
             if result.equity_curve:
-                ax1.plot(result.equity_curve, label='权益曲线', color='blue')
-                ax1.axhline(y=self.initial_capital, color='red', linestyle='--', label='初始资金')
-                ax1.set_title('权益曲线')
-                ax1.set_ylabel('权益 ($)')
+                ax1.plot(result.equity_curve, label='Equity Curve', color='blue')
+                ax1.axhline(y=self.initial_capital, color='red', linestyle='--', label='Initial Capital')
+                ax1.set_title('Equity Curve')
+                ax1.set_ylabel('Equity ($)')
                 ax1.legend()
                 ax1.grid(True)
             
-            # 回撤曲线
+            # Drawdown curve
             if result.equity_curve:
                 peak = np.maximum.accumulate(result.equity_curve)
                 drawdown = (peak - result.equity_curve) / peak
                 ax2.fill_between(range(len(drawdown)), drawdown, alpha=0.3, color='red')
-                ax2.set_title(f'回撤曲线 (最大回撤: {result.max_drawdown:.2%})')
-                ax2.set_ylabel('回撤比例')
+                ax2.set_title(f'Drawdown Curve (Max Drawdown: {result.max_drawdown:.2%})')
+                ax2.set_ylabel('Drawdown Ratio')
                 ax2.grid(True)
             
-            # 交易统计
-            labels = ['盈利交易', '亏损交易']
+            # Trade distribution
+            labels = ['Winning Trades', 'Losing Trades']
             sizes = [result.winning_trades, result.losing_trades]
             colors = ['green', 'red']
             ax3.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', startangle=90)
-            ax3.set_title(f'交易分布 (胜率: {result.win_rate:.1%})')
+            ax3.set_title(f'Trade Distribution (Win Rate: {result.win_rate:.1%})')
             
-            # 性能指标
+            # Performance metrics
             metrics = [
-                f'总交易次数: {result.total_trades}',
-                f'总盈亏: ${result.total_pnl:.2f}',
-                f'胜率: {result.win_rate:.1%}',
-                f'盈利因子: {result.profit_factor:.2f}',
-                f'夏普比率: {result.sharpe_ratio:.2f}',
-                f'最大回撤: {result.max_drawdown:.2%}',
-                f'平均盈利: ${result.avg_winning_trade:.2f}',
-                f'平均亏损: ${result.avg_losing_trade:.2f}'
+                f'Total Trades: {result.total_trades}',
+                f'Total PnL: ${result.total_pnl:.2f}',
+                f'Win Rate: {result.win_rate:.1%}',
+                f'Profit Factor: {result.profit_factor:.2f}',
+                f'Sharpe Ratio: {result.sharpe_ratio:.2f}',
+                f'Max Drawdown: {result.max_drawdown:.2%}',
+                f'Average Winner: ${result.avg_winning_trade:.2f}',
+                f'Average Loser: ${result.avg_losing_trade:.2f}'
             ]
             
             ax4.axis('off')
-            ax4.text(0.1, 0.9, '回测统计', fontsize=14, fontweight='bold', transform=ax4.transAxes)
+            ax4.text(0.1, 0.9, 'Backtest Summary', fontsize=14, fontweight='bold', transform=ax4.transAxes)
             for i, metric in enumerate(metrics):
                 ax4.text(0.1, 0.8 - i*0.08, metric, fontsize=10, transform=ax4.transAxes)
             
@@ -641,12 +611,12 @@ class Backtester:
             
             if save_path:
                 plt.savefig(save_path, dpi=300, bbox_inches='tight')
-                logger.info(f"回测图表已保存: {save_path}")
+                logger.info(f"Backtest chart saved: {save_path}")
             
             plt.show()
             
         except Exception as e:
-            logger.error(f"绘制回测结果失败: {e}")
+            logger.error(f"Failed to plot backtest results: {e}")
     
     def save_results(self, result: BacktestResult, file_path: str):
         """
@@ -707,10 +677,10 @@ class Backtester:
     
     def get_trade_summary(self) -> pd.DataFrame:
         """
-        获取交易汇总表
+        Return a DataFrame summarizing closed trades.
         
         Returns:
-            交易汇总DataFrame
+            Trade summary DataFrame
         """
         try:
             closed_trades = [t for t in self.trades if t.status == 'closed']
@@ -722,15 +692,15 @@ class Backtester:
             for trade in closed_trades:
                 trade_data.append({
                     'ID': trade.id,
-                    '品种': trade.symbol,
-                    '方向': trade.side,
-                    '开仓时间': trade.entry_time,
-                    '开仓价格': trade.entry_price,
-                    '平仓时间': trade.exit_time,
-                    '平仓价格': trade.exit_price,
-                    '仓位': trade.size,
-                    '盈亏': trade.pnl,
-                    '平仓原因': trade.reason
+                    'Symbol': trade.symbol,
+                    'Side': trade.side,
+                    'Entry Time': trade.entry_time,
+                    'Entry Price': trade.entry_price,
+                    'Exit Time': trade.exit_time,
+                    'Exit Price': trade.exit_price,
+                    'Size': trade.size,
+                    'PnL': trade.pnl,
+                    'Close Reason': trade.reason
                 })
             
             df = pd.DataFrame(trade_data)

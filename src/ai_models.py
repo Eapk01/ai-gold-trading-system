@@ -20,8 +20,15 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.preprocessing import StandardScaler
-import xgboost as xgb
-import lightgbm as lgb
+try:
+    import xgboost as xgb
+except ImportError:
+    xgb = None
+
+try:
+    import lightgbm as lgb
+except ImportError:
+    lgb = None
 
 
 class AIModelManager:
@@ -50,6 +57,19 @@ class AIModelManager:
         self.training_history = []
         
         logger.info(f"AI model manager initialized - model type: {self.model_type}")
+
+    def _prepare_feature_frame(self, feature_data: pd.DataFrame,
+                               feature_columns: Optional[List[str]] = None) -> pd.DataFrame:
+        """Normalize a feature matrix into numeric columns with stable ordering."""
+        columns = feature_columns or self.feature_columns
+        if not columns:
+            raise ValueError("Feature columns are not configured")
+
+        missing_columns = [column for column in columns if column not in feature_data.columns]
+        if missing_columns:
+            raise ValueError(f"Missing required feature columns: {missing_columns}")
+
+        return feature_data.loc[:, columns].apply(pd.to_numeric, errors='coerce')
     
     def _get_model_instance(self, model_name: str, task_type: str = 'classification'):
         """
@@ -78,6 +98,9 @@ class AIModelManager:
                         max_iter=1000
                     )
                 elif model_name == 'xgboost':
+                    if xgb is None:
+                        logger.warning("xgboost is not installed; skipping xgboost model")
+                        return None
                     return xgb.XGBClassifier(
                         n_estimators=100,
                         max_depth=6,
@@ -85,6 +108,9 @@ class AIModelManager:
                         random_state=42
                     )
                 elif model_name == 'lightgbm':
+                    if lgb is None:
+                        logger.warning("lightgbm is not installed; skipping lightgbm model")
+                        return None
                     return lgb.LGBMClassifier(
                         n_estimators=100,
                         max_depth=6,
@@ -113,6 +139,9 @@ class AIModelManager:
                 elif model_name == 'linear_regression':
                     return LinearRegression()
                 elif model_name == 'xgboost':
+                    if xgb is None:
+                        logger.warning("xgboost is not installed; skipping xgboost model")
+                        return None
                     return xgb.XGBRegressor(
                         n_estimators=100,
                         max_depth=6,
@@ -120,6 +149,9 @@ class AIModelManager:
                         random_state=42
                     )
                 elif model_name == 'lightgbm':
+                    if lgb is None:
+                        logger.warning("lightgbm is not installed; skipping lightgbm model")
+                        return None
                     return lgb.LGBMRegressor(
                         n_estimators=100,
                         max_depth=6,
@@ -447,6 +479,82 @@ class AIModelManager:
         except Exception as e:
             logger.error(f"集成预测失败: {e}")
             return None, {}
+
+    def predict_ensemble_batch(self, feature_data: pd.DataFrame,
+                              feature_columns: Optional[List[str]] = None,
+                              method: str = 'voting') -> pd.DataFrame:
+        """Run ensemble prediction over a full prepared feature matrix."""
+        try:
+            feature_frame = self._prepare_feature_frame(feature_data, feature_columns)
+            valid_mask = ~feature_frame.isna().any(axis=1)
+
+            results = pd.DataFrame(index=feature_frame.index)
+            results['is_valid'] = valid_mask
+            results['prediction'] = np.nan
+            results['confidence'] = 0.0
+
+            if not valid_mask.any():
+                logger.warning("No valid rows available for batch ensemble prediction")
+                return results
+
+            valid_frame = feature_frame.loc[valid_mask]
+            scaler = self.scalers.get(self.target_column)
+            if scaler:
+                scaled_features = scaler.transform(valid_frame)
+            else:
+                scaled_features = valid_frame.to_numpy(dtype=np.float64)
+
+            model_predictions = {}
+            model_confidences = {}
+
+            for model_name, model in self.models.items():
+                try:
+                    predictions = np.asarray(model.predict(scaled_features))
+                    model_predictions[model_name] = predictions
+
+                    if hasattr(model, 'predict_proba'):
+                        probabilities = np.asarray(model.predict_proba(scaled_features), dtype=np.float64)
+                        model_confidences[model_name] = np.max(probabilities, axis=1)
+                except Exception as exc:
+                    logger.warning(f"Batch prediction skipped for model {model_name}: {exc}")
+
+            if not model_predictions:
+                logger.warning("No models produced batch predictions")
+                return results
+
+            prediction_frame = pd.DataFrame(model_predictions, index=valid_frame.index)
+
+            if method == 'voting':
+                final_predictions = prediction_frame.mode(axis=1)[0]
+            elif method == 'weighted':
+                weighted_sum = np.zeros(len(prediction_frame), dtype=np.float64)
+                total_weight = 0.0
+
+                for model_name, predictions in model_predictions.items():
+                    weight = self.model_performance.get(model_name, {}).get('test_accuracy', 0.5)
+                    weighted_sum += np.asarray(predictions, dtype=np.float64) * weight
+                    total_weight += weight
+
+                final_predictions = pd.Series(
+                    np.where(total_weight > 0, np.rint(weighted_sum / total_weight), 0).astype(int),
+                    index=valid_frame.index
+                )
+            else:
+                final_predictions = prediction_frame.mean(axis=1).round().astype(int)
+
+            if model_confidences:
+                confidence_frame = pd.DataFrame(model_confidences, index=valid_frame.index)
+                confidences = confidence_frame.mean(axis=1)
+            else:
+                confidences = pd.Series(0.5, index=valid_frame.index)
+
+            results.loc[valid_frame.index, 'prediction'] = final_predictions.astype(np.float64)
+            results.loc[valid_frame.index, 'confidence'] = confidences.astype(np.float64)
+            return results
+
+        except Exception as e:
+            logger.error(f"Batch ensemble prediction failed: {e}")
+            raise
     
     def get_feature_importance(self, model_name: str) -> Optional[Dict]:
         """
