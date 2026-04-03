@@ -403,10 +403,82 @@ class ResearchAppService:
             "saved_broker_profiles": len(self.config.get("brokers", {}).get("profiles", {})),
             "active_broker": broker_status.get("active_broker"),
             "selected_features": len(self.selected_features),
+            "latest_backtest_summary": self.latest_backtest_summary,
             "latest_backtest_artifacts": self.latest_backtest_artifacts,
             "auto_trader": self.auto_trader.get_status(),
         }
         return self._response(True, "System status loaded", data=status)
+
+    def get_dashboard_snapshot(self) -> Dict[str, Any]:
+        system_status = self.get_system_status().get("data") or {}
+        config_summary = self.get_configuration_summary().get("data") or {}
+        trading_snapshot = self.get_trading_snapshot().get("data") or {}
+
+        account = trading_snapshot.get("account") or {}
+        positions = trading_snapshot.get("positions") or []
+        auto_trader = system_status.get("auto_trader") or {}
+
+        open_positions_profit_total = 0.0
+        open_buy_positions = 0
+        open_sell_positions = 0
+        normalized_positions = []
+
+        for position in positions:
+            profit = self._safe_float(position.get("profit")) or 0.0
+            position_type = self._safe_int(position.get("type"))
+            side = "Buy" if position_type == 0 else "Sell"
+            if side == "Buy":
+                open_buy_positions += 1
+            else:
+                open_sell_positions += 1
+            open_positions_profit_total += profit
+            normalized_positions.append(
+                {
+                    "Ticket": str(position.get("ticket", "")),
+                    "Symbol": str(position.get("symbol", "")),
+                    "Side": side,
+                    "Volume": self._safe_float(position.get("volume")),
+                    "Current Profit": profit,
+                }
+            )
+
+        payload = {
+            "broker": {
+                "active_broker": system_status.get("active_broker"),
+                "broker_connected": bool(trading_snapshot.get("broker_connected")),
+                "balance": self._safe_float(account.get("balance")),
+                "equity": self._safe_float(account.get("equity")),
+                "margin_free": self._safe_float(account.get("margin_free")),
+                "leverage": self._safe_float(account.get("leverage")),
+            },
+            "live_trading": {
+                "symbol": config_summary.get("trading_symbol"),
+                "timeframe": config_summary.get("timeframe"),
+                "running": bool(auto_trader.get("running")),
+                "market_state": auto_trader.get("market_state"),
+                "latest_action": auto_trader.get("latest_action"),
+                "last_processed_candle": auto_trader.get("last_processed_candle"),
+                "managed_positions": self._safe_int(auto_trader.get("managed_positions")),
+                "last_candle_age_seconds": auto_trader.get("last_candle_age_seconds"),
+            },
+            "positions": {
+                "open_positions_count": len(positions),
+                "open_positions_profit_total": open_positions_profit_total,
+                "open_buy_positions": open_buy_positions,
+                "open_sell_positions": open_sell_positions,
+                "items": normalized_positions,
+            },
+            "research": {
+                "loaded_model_file": system_status.get("loaded_model_file"),
+                "saved_model_files": system_status.get("saved_model_files", 0),
+                "selected_features": system_status.get("selected_features", 0),
+                "dataset_imported": bool(system_status.get("last_import_summary")),
+                "last_import_summary": system_status.get("last_import_summary") or {},
+                "latest_backtest_summary": system_status.get("latest_backtest_summary") or {},
+                "latest_backtest_artifacts": system_status.get("latest_backtest_artifacts") or {},
+            },
+        }
+        return self._response(True, "Dashboard snapshot loaded", data=payload)
 
     def get_configuration_summary(self) -> Dict[str, Any]:
         summary = {
@@ -656,3 +728,17 @@ class ResearchAppService:
             self.broker_manager.disconnect_all()
         except Exception as exc:
             logger.warning(f"Cleanup warning while disconnecting brokers: {exc}")
+
+    def _safe_float(self, value: Any) -> float | None:
+        if value in (None, ""):
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    def _safe_int(self, value: Any) -> int:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return 0

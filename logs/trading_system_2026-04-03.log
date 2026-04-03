@@ -1235,3 +1235,155 @@
 2026-04-03 14:13:36 | INFO | src.feature_engineer:create_feature_matrix:345 | 特征矩阵创建完成 - 总特征数: 97
 2026-04-03 14:13:36 | INFO | src.feature_engineer:create_feature_matrix:345 | 特征矩阵创建完成 - 总特征数: 97
 2026-04-03 14:13:36 | INFO | src.feature_engineer:create_feature_matrix:345 | 特征矩阵创建完成 - 总特征数: 97
+2026-04-03 14:26:06 | INFO | src.app_service:__init__:56 | === AI Gold Research System Startup ===
+2026-04-03 14:26:06 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 14:26:06 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 14:26:06 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 14:26:06 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 14:26:06 | INFO | src.broker_interface:add_broker:434 | Broker added: Main
+2026-04-03 14:26:06 | INFO | src.app_service:_load_saved_broker_profiles:108 | Loaded 1 saved broker profile(s)
+2026-04-03 14:26:06 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 14:26:06 | INFO | src.app_service:_autoload_latest_model:150 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 14:26:06 | INFO | src.app_service:__init__:85 | Research system initialization complete
+2026-04-03 14:26:07 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 14:26:12 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 14:26:22 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 14:26:25 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 14:26:27 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 14:26:29 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 14:26:29 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 14:26:33 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 14:26:33 | INFO | src.broker_interface:connect_broker:476 | Active broker switched to: Main
+2026-04-03 14:27:13 | INFO | src.feature_engineer:create_feature_matrix:316 | 开始创建特征矩阵...
+2026-04-03 14:27:13 | INFO | src.feature_engineer:calculate_technical_indicators:136 | 计算了 34 个技术指标
+2026-04-03 14:27:13 | INFO | src.feature_engineer:calculate_statistical_features:181 | 统计特征计算完成
+2026-04-03 14:27:13 | INFO | src.feature_engineer:calculate_time_features:222 | 时间特征计算完成
+2026-04-03 14:27:13 | INFO | src.feature_engineer:calculate_lag_features:257 | 计算了滞后特征: 5 列 × 5 期
+2026-04-03 14:27:13 | INFO | src.feature_engineer:create_feature_matrix:345 | 特征矩阵创建完成 - 总特征数: 97
+2026-04-03 14:31:11 | INFO | src.app_service:__init__:56 | === AI Gold Research System Startup ===
+2026-04-03 14:31:11 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 14:31:11 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 14:31:11 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 14:31:11 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 14:31:11 | INFO | src.broker_interface:add_broker:434 | Broker added: Main
+2026-04-03 14:31:11 | INFO | src.app_service:_load_saved_broker_profiles:108 | Loaded 1 saved broker profile(s)
+2026-04-03 14:31:11 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 14:31:11 | INFO | src.app_service:_autoload_latest_model:150 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 14:31:11 | INFO | src.app_service:__init__:85 | Research system initialization complete
+2026-04-03 14:31:12 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 14:31:18 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 14:31:19 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 14:31:21 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 14:35:00 | INFO | src.app_service:__init__:56 | === AI Gold Research System Startup ===
+2026-04-03 14:35:00 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 14:35:00 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 14:35:00 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 14:35:00 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 14:35:00 | INFO | src.broker_interface:add_broker:434 | Broker added: Main
+2026-04-03 14:35:00 | INFO | src.app_service:_load_saved_broker_profiles:108 | Loaded 1 saved broker profile(s)
+2026-04-03 14:35:00 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 14:35:00 | INFO | src.app_service:_autoload_latest_model:150 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 14:35:00 | INFO | src.app_service:__init__:85 | Research system initialization complete
+2026-04-03 14:35:00 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 14:35:00 | ERROR | __main__:main:44 | GUI page failed
+Traceback (most recent call last):
+
+  File "C:\Users\Bruh\AppData\Local\Programs\Python\Python312\Lib\threading.py", line 1032, in _bootstrap
+    self._bootstrap_inner()
+    │    └ <function Thread._bootstrap_inner at 0x0000019885B21080>
+    └ <Thread(ScriptRunner.scriptThread, started 15224)>
+  File "C:\Users\Bruh\AppData\Local\Programs\Python\Python312\Lib\threading.py", line 1075, in _bootstrap_inner
+    self.run()
+    │    └ <function Thread.run at 0x0000019885B20D60>
+    └ <Thread(ScriptRunner.scriptThread, started 15224)>
+  File "C:\Users\Bruh\AppData\Local\Programs\Python\Python312\Lib\threading.py", line 1012, in run
+    self._target(*self._args, **self._kwargs)
+    │    │        │    │        │    └ {}
+    │    │        │    │        └ <Thread(ScriptRunner.scriptThread, started 15224)>
+    │    │        │    └ ()
+    │    │        └ <Thread(ScriptRunner.scriptThread, started 15224)>
+    │    └ <bound method ScriptRunner._run_script_thread of ScriptRunner(_session_id='287714f5-300c-4343-80c5-e093655ad040', _main_scrip...
+    └ <Thread(ScriptRunner.scriptThread, started 15224)>
+  File "C:\Users\Bruh\Desktop\Senior\Project\ai-gold-trading-system\.venv\Lib\site-packages\streamlit\runtime\scriptrunner\script_runner.py", line 368, in _run_script_thread
+    self._run_script(request.rerun_data)
+    │    │           │       └ <property object at 0x0000019888248BD0>
+    │    │           └ ScriptRequest(type=<ScriptRequestType.RERUN: 'RERUN'>, _rerun_data=RerunData(widget_states=, context_info=timezone: "Asia/Riy...
+    │    └ <function ScriptRunner._run_script at 0x00000198882EE0C0>
+    └ ScriptRunner(_session_id='287714f5-300c-4343-80c5-e093655ad040', _main_script_path='gui_app.py', _session_state={$$ID-0ec29c8...
+  File "C:\Users\Bruh\Desktop\Senior\Project\ai-gold-trading-system\.venv\Lib\site-packages\streamlit\runtime\scriptrunner\script_runner.py", line 656, in _run_script
+    ) = exec_func_with_error_handling(code_to_exec, ctx)
+        │                             │             └ ScriptRunContext(session_id='287714f5-300c-4343-80c5-e093655ad040', _enqueue=<bound method ScriptRunner._enqueue_forward_msg ...
+        │                             └ <function ScriptRunner._run_script.<locals>.code_to_exec at 0x00000198896E1F80>
+        └ <function exec_func_with_error_handling at 0x000001988828F420>
+  File "C:\Users\Bruh\Desktop\Senior\Project\ai-gold-trading-system\.venv\Lib\site-packages\streamlit\runtime\scriptrunner\exec_code.py", line 121, in exec_func_with_error_handling
+    result = func()
+             └ <function ScriptRunner._run_script.<locals>.code_to_exec at 0x00000198896E1F80>
+  File "C:\Users\Bruh\Desktop\Senior\Project\ai-gold-trading-system\.venv\Lib\site-packages\streamlit\runtime\scriptrunner\script_runner.py", line 640, in code_to_exec
+    exec(code, module.__dict__)
+         │     │      └ <member '__dict__' of 'module' objects>
+         │     └ <module '__main__' from 'gui_app.py'>
+         └ <code object <module> at 0x00000198896AC1A0, file "C:\Users\Bruh\Desktop\Senior\Project\ai-gold-trading-system\gui_app.py", l...
+
+  File "C:\Users\Bruh\Desktop\Senior\Project\ai-gold-trading-system\gui_app.py", line 49, in <module>
+    main()
+    └ <function main at 0x00000198896909A0>
+
+> File "C:\Users\Bruh\Desktop\Senior\Project\ai-gold-trading-system\gui_app.py", line 42, in main
+    pages[selected_page](service)
+    │     │              └ <src.app_service.ResearchAppService object at 0x00000198EFBBCEF0>
+    │     └ 'Dashboard'
+    └ {'Dashboard': <function render at 0x00000198F0CC22A0>, 'Import': <function render at 0x00000198F0CC3380>, 'Training': <functi...
+
+  File "C:\Users\Bruh\Desktop\Senior\Project\ai-gold-trading-system\gui\pages\dashboard.py", line 27, in render
+    _render_header(live_trading)
+    │              └ {'symbol': 'XAUUSDm', 'timeframe': '5m', 'running': False, 'market_state': 'idle', 'latest_action': 'idle', 'last_processed_c...
+    └ <function _render_header at 0x00000198F0CC2840>
+
+  File "C:\Users\Bruh\Desktop\Senior\Project\ai-gold-trading-system\gui\pages\dashboard.py", line 69, in _render_header
+    refresh_col, toggle_col, interval_col = st.columns([0.95, 1.35, 1], vertical_alignment="bottom")
+                                            │  └ <bound method LayoutsMixin.columns of DeltaGenerator()>
+                                            └ <module 'streamlit' from 'C:\\Users\\Bruh\\Desktop\\Senior\\Project\\ai-gold-trading-system\\.venv\\Lib\\site-packages\\strea...
+
+  File "C:\Users\Bruh\Desktop\Senior\Project\ai-gold-trading-system\.venv\Lib\site-packages\streamlit\runtime\metrics_util.py", line 410, in wrapped_func
+    result = non_optional_func(*args, **kwargs)
+             │                  │       └ {'vertical_alignment': 'bottom'}
+             │                  └ (DeltaGenerator(), [0.95, 1.35, 1])
+             └ <function LayoutsMixin.columns at 0x0000019888421620>
+  File "C:\Users\Bruh\Desktop\Senior\Project\ai-gold-trading-system\.venv\Lib\site-packages\streamlit\elements\layouts.py", line 381, in columns
+    return [row._block(column_proto(w / total_weight)) for w in weights]
+            │   │      │                │                       └ [0.95, 1.35, 1]
+            │   │      │                └ 3.3
+            │   │      └ <function LayoutsMixin.columns.<locals>.column_proto at 0x00000198F1F9C9A0>
+            │   └ <function DeltaGenerator._block at 0x000001988851EFC0>
+            └ DeltaGenerator(_provided_cursor=RunningCursor(_parent_path=(1, 1, 0, 1, 0)), _parent=DeltaGenerator(_provided_cursor=RunningC...
+  File "C:\Users\Bruh\Desktop\Senior\Project\ai-gold-trading-system\.venv\Lib\site-packages\streamlit\delta_generator.py", line 518, in _block
+    _check_nested_element_violation(self, block_type, ancestor_block_types)
+    │                               │     │           └ ['horizontal', 'column', 'horizontal', 'column', 'horizontal']
+    │                               │     └ 'column'
+    │                               └ DeltaGenerator(_provided_cursor=RunningCursor(_parent_path=(1, 1, 0, 1, 0)), _parent=DeltaGenerator(_provided_cursor=RunningC...
+    └ <function _check_nested_element_violation at 0x000001988852CD60>
+  File "C:\Users\Bruh\Desktop\Senior\Project\ai-gold-trading-system\.venv\Lib\site-packages\streamlit\delta_generator.py", line 590, in _check_nested_element_violation
+    raise StreamlitAPIException(
+          └ <class 'streamlit.errors.StreamlitAPIException'>
+
+streamlit.errors.StreamlitAPIException: Columns can only be placed inside other columns up to one level of nesting.
+2026-04-03 14:35:58 | INFO | src.app_service:__init__:56 | === AI Gold Research System Startup ===
+2026-04-03 14:35:58 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSDm
+2026-04-03 14:35:58 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 14:35:58 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 14:35:58 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 14:35:58 | INFO | src.broker_interface:add_broker:434 | Broker added: Main
+2026-04-03 14:35:58 | INFO | src.app_service:_load_saved_broker_profiles:108 | Loaded 1 saved broker profile(s)
+2026-04-03 14:35:58 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 14:35:58 | INFO | src.app_service:_autoload_latest_model:150 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 14:35:58 | INFO | src.app_service:__init__:85 | Research system initialization complete
+2026-04-03 14:35:59 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 14:36:09 | INFO | src.data_collector:load_data_from_db:142 | Loaded data from database: 70406 rows
+2026-04-03 14:36:13 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 14:36:13 | INFO | src.broker_interface:connect_broker:476 | Active broker switched to: Main
+2026-04-03 14:38:20 | INFO | src.feature_engineer:create_feature_matrix:316 | 开始创建特征矩阵...
+2026-04-03 14:38:20 | INFO | src.feature_engineer:calculate_technical_indicators:136 | 计算了 34 个技术指标
+2026-04-03 14:38:20 | INFO | src.feature_engineer:calculate_statistical_features:181 | 统计特征计算完成
+2026-04-03 14:38:20 | INFO | src.feature_engineer:calculate_time_features:222 | 时间特征计算完成
+2026-04-03 14:38:20 | INFO | src.feature_engineer:calculate_lag_features:257 | 计算了滞后特征: 5 列 × 5 期
+2026-04-03 14:38:20 | INFO | src.feature_engineer:create_feature_matrix:345 | 特征矩阵创建完成 - 总特征数: 97
