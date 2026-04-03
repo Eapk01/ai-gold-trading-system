@@ -1,81 +1,73 @@
-# AI黄金交易系统配置文件
-
-# 交易基础配置
 trading:
-  symbol: "XAUUSD"  # 现货黄金
-  timeframe: "5m"   # 1分钟K线
-  max_risk: 30      # 最大风险30美元
-  position_size: 0.01  # 初始仓位大小
-  stop_loss_pips: 50   # 止损点数
-  take_profit_pips: 100  # 止盈点数
-
-# 数据源配置
+  symbol: XAUUSD
+  timeframe: 5m
+  position_size: 0.01
+  stop_loss_pips: 50
+  take_profit_pips: 100
+  confidence_threshold: 0.6
+  max_risk: 30
 data_sources:
-  primary: "local_csv"  # Primary historical source
-  backup: "oanda"      # 备用数据源
-  update_interval: 60  # 数据更新间隔(秒)
-  dataset_directory: "data/imports"
+  primary: local_csv
+  backup: oanda
+  update_interval: 60
+  dataset_directory: data/imports
   min_rows: 100
-  
-# AI模型配置
 ai_model:
-  type: "ensemble"     # 模型类型: single, ensemble
+  type: ensemble
   models:
-    - "random_forest"
-    - "xgboost" 
-    - "logistic_regression"
-  retrain_interval: 168  # 重训练间隔(小时)
-  lookback_periods: 100  # 历史数据回看期数
-  
-# 特征工程配置
+  - random_forest
+  - xgboost
+  - logistic_regression
+  retrain_interval: 168
+  lookback_periods: 100
 features:
   technical_indicators:
-    - "sma_5"      # 5期简单移动平均
-    - "sma_20"     # 20期简单移动平均
-    - "rsi_14"     # 14期RSI
-    - "macd"       # MACD
-    - "bollinger_bands"  # 布林带
-    - "atr_14"     # 14期ATR
+  - sma_5
+  - sma_20
+  - rsi_14
+  - macd
+  - bollinger_bands
+  - atr_14
   market_sentiment:
-    - "vix"        # 恐慌指数
-    - "dxy"        # 美元指数
-  
-# 风险管理配置
+  - vix
+  - dxy
 risk_management:
-  max_daily_loss: 30      # 每日最大亏损
-  max_positions: 3        # 最大持仓数
-  risk_per_trade: 0.02    # 每笔交易风险比例
-  drawdown_limit: 0.15    # 回撤限制
-  
-# 回测配置
+  max_daily_loss: 30
+  max_positions: 3
+  risk_per_trade: 0.02
+  drawdown_limit: 0.15
 backtest:
-  start_date: "2023-01-01"
-  end_date: "2024-12-31"
+  start_date: '2023-01-01'
+  end_date: '2024-12-31'
   initial_capital: 10000
-  commission: 0.0001     # 手续费
-  slippage: 0.0002       # 滑点
-  
-# 数据库配置
+  commission: 0.0001
+  slippage: 0.0002
 database:
-  type: "sqlite"
-  path: "data/trading_system.db"
-  
-# 日志配置
+  type: sqlite
+  path: data/trading_system.db
 logging:
-  level: "INFO"
-  file_path: "logs/trading_system.log"
-  max_file_size: "10MB"
+  level: INFO
+  file_path: logs/trading_system.log
+  max_file_size: 10MB
   backup_count: 5
-
-# 券商配置
 brokers:
   exness:
     enabled: false
-    server: ""
-    login: ""
-    password: ""
-    terminal_path: ""
+    server: ''
+    login: ''
+    password: ''
+    terminal_path: ''
     timeout: 30
     max_retries: 3
-  profiles: {}
-  default_profile: ""
+  profiles:
+    Main:
+      broker_type: exness
+      login: '262589312'
+      password: LeMrOo12!
+      server: Exness-MT5Trial16
+      terminal_path: ''
+      sandbox: false
+      account_id: ''
+      timeout: 30
+      max_retries: 3
+  default_profile: Main

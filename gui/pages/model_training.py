@@ -1,0 +1,40 @@
+"""Model training page."""
+
+from __future__ import annotations
+
+import pandas as pd
+import streamlit as st
+
+from gui.components.feedback import show_response
+from gui.components.headers import render_page_header
+from gui.components.summaries import render_artifact_summary
+from src.app_service import ResearchAppService
+
+
+def render(service: ResearchAppService) -> None:
+    render_page_header(
+        "Model Training",
+        "Train the configured ensemble and save a named model artifact.",
+    )
+    model_name = st.text_input("Saved model name", value="default")
+
+    if st.button("Train Models", use_container_width=True):
+        with st.spinner("Training models..."):
+            st.session_state.last_training_result = service.train_models(model_name)
+
+    result = st.session_state.get("last_training_result")
+    if result:
+        show_response(result)
+        data = result.get("data") or {}
+        training_results = data.get("training_results") or {}
+        if training_results:
+            training_df = pd.DataFrame(training_results).T.reset_index().rename(columns={"index": "model_name"})
+            st.dataframe(training_df, use_container_width=True)
+
+        artifacts = result.get("artifacts") or {}
+        if artifacts:
+            st.subheader("Artifacts")
+            render_artifact_summary(
+                artifacts,
+                saved_model_name=data.get("saved_model_name"),
+            )

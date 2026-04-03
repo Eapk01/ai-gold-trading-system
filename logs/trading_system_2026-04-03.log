@@ -126,3 +126,490 @@
 2026-04-03 09:09:29 | INFO | src.app_service:run_backtest:284 | Starting professional backtest...
 2026-04-03 09:09:29 | ERROR | src.app_service:run_backtest:290 | Please prepare the data first
 2026-04-03 09:09:29 | ERROR | src.app_service:run_backtest:290 | Please prepare the data first
+2026-04-03 09:21:09 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 09:21:09 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 09:21:09 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 09:21:09 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 09:21:09 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 09:21:09 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 09:21:09 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 09:21:09 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 09:25:21 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 09:25:21 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 09:25:21 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 09:25:21 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 09:25:21 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 09:25:21 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 09:25:21 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 09:25:21 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 09:28:13 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 09:28:13 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 09:28:13 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 09:28:13 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 09:28:13 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 09:28:13 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 09:28:13 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 09:28:13 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 09:28:49 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 09:28:49 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 09:28:49 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 09:28:49 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 09:28:49 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 09:28:49 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 09:28:49 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 09:28:49 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 09:28:49 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 09:28:49 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 09:28:49 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 09:28:49 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 09:28:49 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 09:28:49 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 09:28:49 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 09:28:49 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 09:32:21 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 09:32:21 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 09:32:21 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 09:32:21 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 09:32:21 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 09:32:21 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 09:32:21 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 09:32:21 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 09:32:34 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 09:32:34 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 09:32:34 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 09:32:34 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 09:32:34 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 09:32:34 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 09:32:34 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 09:32:34 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 09:32:34 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 09:32:34 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 09:32:34 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 09:32:34 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 09:32:34 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 09:32:34 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 09:32:34 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 09:32:34 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 09:33:37 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 09:33:37 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 09:33:37 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 09:33:37 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 09:33:37 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 09:33:37 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 09:33:37 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 09:33:37 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 09:35:02 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 09:35:02 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 09:35:02 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 09:35:02 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 09:35:02 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 09:35:02 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 09:35:02 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 09:35:02 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 09:37:14 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 09:37:14 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 09:37:14 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 09:37:14 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 09:37:14 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 09:37:14 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 09:37:14 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 09:37:14 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 09:37:14 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 09:37:14 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 09:37:14 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 09:37:14 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 09:37:14 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 09:37:14 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 09:37:14 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 09:37:14 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 09:41:18 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 09:41:18 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 09:41:18 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 09:41:18 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 09:41:18 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 09:41:18 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 09:41:18 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 09:41:18 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 09:48:16 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 09:48:16 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 09:48:16 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 09:48:16 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 09:48:16 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 09:48:16 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 09:48:16 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 09:48:16 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 10:00:19 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 10:00:19 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 10:00:19 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 10:00:19 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 10:00:19 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 10:00:19 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 10:00:19 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 10:00:19 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 10:00:43 | INFO | src.app_service:import_and_prepare_data:145 | Starting local dataset import and preparation...
+2026-04-03 10:00:43 | INFO | src.data_collector:find_first_dataset_file:48 | Selected dataset file: data\imports\XAUUSDm_M5_202501012305_202512312155.csv
+2026-04-03 10:00:43 | INFO | src.data_collector:import_mt_csv:71 | Imported local CSV dataset: data\imports\XAUUSDm_M5_202501012305_202512312155.csv (70406 rows)
+2026-04-03 10:00:43 | INFO | src.data_collector:validate_data_quality:172 | Data quality validation passed
+2026-04-03 10:00:44 | INFO | src.data_collector:save_data_to_db:120 | Data saved to database table: raw_data
+2026-04-03 10:00:44 | INFO | src.feature_engineer:create_feature_matrix:316 | 开始创建特征矩阵...
+2026-04-03 10:00:44 | INFO | src.feature_engineer:calculate_technical_indicators:136 | 计算了 34 个技术指标
+2026-04-03 10:00:44 | INFO | src.feature_engineer:calculate_statistical_features:181 | 统计特征计算完成
+2026-04-03 10:00:44 | INFO | src.feature_engineer:calculate_time_features:222 | 时间特征计算完成
+2026-04-03 10:00:44 | INFO | src.feature_engineer:calculate_lag_features:257 | 计算了滞后特征: 5 列 × 5 期
+2026-04-03 10:00:44 | INFO | src.feature_engineer:calculate_target_variables:297 | 目标变量计算完成
+2026-04-03 10:00:44 | INFO | src.feature_engineer:create_feature_matrix:345 | 特征矩阵创建完成 - 总特征数: 110
+2026-04-03 10:00:44 | INFO | src.feature_engineer:select_features:390 | 移除常数特征: 1 个
+2026-04-03 10:00:44 | INFO | src.feature_engineer:select_features:407 | 特征选择完成 - 选择了 30 个特征
+2026-04-03 10:00:44 | INFO | src.app_service:import_and_prepare_data:183 | Local dataset preparation complete - 70406 raw rows, 30 selected features
+2026-04-03 10:00:51 | INFO | src.app_service:run_backtest:284 | Starting professional backtest...
+2026-04-03 10:00:51 | INFO | src.backtester:run_backtest:321 | Starting backtest on prepared feature data...
+2026-04-03 10:00:51 | INFO | src.backtester:reset:103 | Backtester state reset
+2026-04-03 10:00:55 | INFO | src.backtester:run_backtest:384 | Backtest progress: 1.4% (1000/70406)
+2026-04-03 10:00:55 | INFO | src.backtester:run_backtest:384 | Backtest progress: 2.8% (2000/70406)
+2026-04-03 10:00:55 | INFO | src.backtester:run_backtest:384 | Backtest progress: 4.3% (3000/70406)
+2026-04-03 10:00:55 | INFO | src.backtester:run_backtest:384 | Backtest progress: 5.7% (4000/70406)
+2026-04-03 10:00:56 | INFO | src.backtester:run_backtest:384 | Backtest progress: 7.1% (5000/70406)
+2026-04-03 10:00:56 | INFO | src.backtester:run_backtest:384 | Backtest progress: 8.5% (6000/70406)
+2026-04-03 10:00:56 | INFO | src.backtester:run_backtest:384 | Backtest progress: 9.9% (7000/70406)
+2026-04-03 10:00:56 | INFO | src.backtester:run_backtest:384 | Backtest progress: 11.4% (8000/70406)
+2026-04-03 10:00:56 | INFO | src.backtester:run_backtest:384 | Backtest progress: 12.8% (9000/70406)
+2026-04-03 10:00:56 | INFO | src.backtester:run_backtest:384 | Backtest progress: 14.2% (10000/70406)
+2026-04-03 10:00:56 | INFO | src.backtester:run_backtest:384 | Backtest progress: 15.6% (11000/70406)
+2026-04-03 10:00:56 | INFO | src.backtester:run_backtest:384 | Backtest progress: 17.0% (12000/70406)
+2026-04-03 10:00:56 | INFO | src.backtester:run_backtest:384 | Backtest progress: 18.5% (13000/70406)
+2026-04-03 10:00:56 | INFO | src.backtester:run_backtest:384 | Backtest progress: 19.9% (14000/70406)
+2026-04-03 10:00:56 | INFO | src.backtester:run_backtest:384 | Backtest progress: 21.3% (15000/70406)
+2026-04-03 10:00:56 | INFO | src.backtester:run_backtest:384 | Backtest progress: 22.7% (16000/70406)
+2026-04-03 10:00:56 | INFO | src.backtester:run_backtest:384 | Backtest progress: 24.1% (17000/70406)
+2026-04-03 10:00:56 | INFO | src.backtester:run_backtest:384 | Backtest progress: 25.6% (18000/70406)
+2026-04-03 10:00:56 | INFO | src.backtester:run_backtest:384 | Backtest progress: 27.0% (19000/70406)
+2026-04-03 10:00:56 | INFO | src.backtester:run_backtest:384 | Backtest progress: 28.4% (20000/70406)
+2026-04-03 10:00:56 | INFO | src.backtester:run_backtest:384 | Backtest progress: 29.8% (21000/70406)
+2026-04-03 10:00:56 | INFO | src.backtester:run_backtest:384 | Backtest progress: 31.2% (22000/70406)
+2026-04-03 10:00:56 | INFO | src.backtester:run_backtest:384 | Backtest progress: 32.7% (23000/70406)
+2026-04-03 10:00:56 | INFO | src.backtester:run_backtest:384 | Backtest progress: 34.1% (24000/70406)
+2026-04-03 10:00:56 | INFO | src.backtester:run_backtest:384 | Backtest progress: 35.5% (25000/70406)
+2026-04-03 10:00:56 | INFO | src.backtester:run_backtest:384 | Backtest progress: 36.9% (26000/70406)
+2026-04-03 10:00:56 | INFO | src.backtester:run_backtest:384 | Backtest progress: 38.3% (27000/70406)
+2026-04-03 10:00:56 | INFO | src.backtester:run_backtest:384 | Backtest progress: 39.8% (28000/70406)
+2026-04-03 10:00:56 | INFO | src.backtester:run_backtest:384 | Backtest progress: 41.2% (29000/70406)
+2026-04-03 10:00:56 | INFO | src.backtester:run_backtest:384 | Backtest progress: 42.6% (30000/70406)
+2026-04-03 10:00:56 | INFO | src.backtester:run_backtest:384 | Backtest progress: 44.0% (31000/70406)
+2026-04-03 10:00:56 | INFO | src.backtester:run_backtest:384 | Backtest progress: 45.5% (32000/70406)
+2026-04-03 10:00:56 | INFO | src.backtester:run_backtest:384 | Backtest progress: 46.9% (33000/70406)
+2026-04-03 10:00:56 | INFO | src.backtester:run_backtest:384 | Backtest progress: 48.3% (34000/70406)
+2026-04-03 10:00:57 | INFO | src.backtester:run_backtest:384 | Backtest progress: 49.7% (35000/70406)
+2026-04-03 10:00:57 | INFO | src.backtester:run_backtest:384 | Backtest progress: 51.1% (36000/70406)
+2026-04-03 10:00:57 | INFO | src.backtester:run_backtest:384 | Backtest progress: 52.6% (37000/70406)
+2026-04-03 10:00:57 | INFO | src.backtester:run_backtest:384 | Backtest progress: 54.0% (38000/70406)
+2026-04-03 10:00:57 | INFO | src.backtester:run_backtest:384 | Backtest progress: 55.4% (39000/70406)
+2026-04-03 10:00:57 | INFO | src.backtester:run_backtest:384 | Backtest progress: 56.8% (40000/70406)
+2026-04-03 10:00:57 | INFO | src.backtester:run_backtest:384 | Backtest progress: 58.2% (41000/70406)
+2026-04-03 10:00:57 | INFO | src.backtester:run_backtest:384 | Backtest progress: 59.7% (42000/70406)
+2026-04-03 10:00:57 | INFO | src.backtester:run_backtest:384 | Backtest progress: 61.1% (43000/70406)
+2026-04-03 10:00:57 | INFO | src.backtester:run_backtest:384 | Backtest progress: 62.5% (44000/70406)
+2026-04-03 10:00:57 | INFO | src.backtester:run_backtest:384 | Backtest progress: 63.9% (45000/70406)
+2026-04-03 10:00:57 | INFO | src.backtester:run_backtest:384 | Backtest progress: 65.3% (46000/70406)
+2026-04-03 10:00:57 | INFO | src.backtester:run_backtest:384 | Backtest progress: 66.8% (47000/70406)
+2026-04-03 10:00:57 | INFO | src.backtester:run_backtest:384 | Backtest progress: 68.2% (48000/70406)
+2026-04-03 10:00:57 | INFO | src.backtester:run_backtest:384 | Backtest progress: 69.6% (49000/70406)
+2026-04-03 10:00:57 | INFO | src.backtester:run_backtest:384 | Backtest progress: 71.0% (50000/70406)
+2026-04-03 10:00:57 | INFO | src.backtester:run_backtest:384 | Backtest progress: 72.4% (51000/70406)
+2026-04-03 10:00:57 | INFO | src.backtester:run_backtest:384 | Backtest progress: 73.9% (52000/70406)
+2026-04-03 10:00:57 | INFO | src.backtester:run_backtest:384 | Backtest progress: 75.3% (53000/70406)
+2026-04-03 10:00:57 | INFO | src.backtester:run_backtest:384 | Backtest progress: 76.7% (54000/70406)
+2026-04-03 10:00:57 | INFO | src.backtester:run_backtest:384 | Backtest progress: 78.1% (55000/70406)
+2026-04-03 10:00:57 | INFO | src.backtester:run_backtest:384 | Backtest progress: 79.5% (56000/70406)
+2026-04-03 10:00:57 | INFO | src.backtester:run_backtest:384 | Backtest progress: 81.0% (57000/70406)
+2026-04-03 10:00:57 | INFO | src.backtester:run_backtest:384 | Backtest progress: 82.4% (58000/70406)
+2026-04-03 10:00:57 | INFO | src.backtester:run_backtest:384 | Backtest progress: 83.8% (59000/70406)
+2026-04-03 10:00:57 | INFO | src.backtester:run_backtest:384 | Backtest progress: 85.2% (60000/70406)
+2026-04-03 10:00:57 | INFO | src.backtester:run_backtest:384 | Backtest progress: 86.6% (61000/70406)
+2026-04-03 10:00:57 | INFO | src.backtester:run_backtest:384 | Backtest progress: 88.1% (62000/70406)
+2026-04-03 10:00:57 | INFO | src.backtester:run_backtest:384 | Backtest progress: 89.5% (63000/70406)
+2026-04-03 10:00:58 | INFO | src.backtester:run_backtest:384 | Backtest progress: 90.9% (64000/70406)
+2026-04-03 10:00:58 | INFO | src.backtester:run_backtest:384 | Backtest progress: 92.3% (65000/70406)
+2026-04-03 10:00:58 | INFO | src.backtester:run_backtest:384 | Backtest progress: 93.7% (66000/70406)
+2026-04-03 10:00:58 | INFO | src.backtester:run_backtest:384 | Backtest progress: 95.2% (67000/70406)
+2026-04-03 10:00:58 | INFO | src.backtester:run_backtest:384 | Backtest progress: 96.6% (68000/70406)
+2026-04-03 10:00:58 | INFO | src.backtester:run_backtest:384 | Backtest progress: 98.0% (69000/70406)
+2026-04-03 10:00:58 | INFO | src.backtester:run_backtest:384 | Backtest progress: 99.4% (70000/70406)
+2026-04-03 10:00:58 | INFO | src.backtester:run_backtest:402 | Backtest complete
+2026-04-03 10:00:58 | INFO | src.backtester:save_results:673 | 回测结果已保存: reports/backtest_result_20260403_100058.json
+2026-04-03 10:00:58 | INFO | src.backtester:plot_results:614 | Backtest chart saved: reports/backtest_chart_20260403_100058.png
+2026-04-03 10:00:58 | INFO | src.app_service:run_backtest:312 | Trade summary saved: reports/trade_summary_20260403_100058.csv
+2026-04-03 10:03:52 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 10:03:52 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 10:03:52 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 10:03:52 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 10:03:52 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 10:03:52 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 10:03:52 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 10:03:52 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 10:06:29 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 10:06:29 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 10:06:29 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 10:06:29 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 10:06:29 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 10:06:29 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 10:06:29 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 10:06:29 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 10:06:57 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 10:06:57 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 10:06:57 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 10:06:57 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 10:06:57 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 10:06:57 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 10:06:57 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 10:06:57 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 10:06:57 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 10:06:57 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 10:06:57 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 10:06:57 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 10:06:57 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 10:06:57 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 10:06:57 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 10:06:57 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 10:06:59 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 10:06:59 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 10:06:59 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 10:06:59 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 10:06:59 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 10:06:59 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 10:06:59 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 10:06:59 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 10:06:59 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 10:06:59 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 10:06:59 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 10:06:59 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 10:06:59 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 10:06:59 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 10:06:59 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 10:06:59 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 10:06:59 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 10:06:59 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 10:06:59 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 10:06:59 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 10:06:59 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 10:06:59 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 10:06:59 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 10:06:59 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 10:10:33 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 10:10:33 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 10:10:33 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 10:10:33 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 10:10:33 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 10:10:33 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 10:10:33 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 10:10:33 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 10:13:00 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 10:13:00 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 10:13:00 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 10:13:00 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 10:13:00 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 10:13:00 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 10:13:00 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 10:13:00 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 10:13:11 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 10:13:11 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 10:13:11 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 10:13:11 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 10:13:11 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 10:13:11 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 10:13:11 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 10:13:11 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 10:13:11 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 10:13:11 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 10:13:11 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 10:13:11 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 10:13:11 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 10:13:11 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 10:13:11 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 10:13:11 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 10:16:25 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 10:16:25 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 10:16:25 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 10:16:25 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 10:16:25 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 10:16:25 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 10:16:25 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 10:16:25 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 10:24:03 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 10:24:03 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 10:24:03 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 10:24:03 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 10:24:03 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 10:24:03 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 10:24:03 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 10:24:03 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 10:24:28 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 10:24:28 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 10:24:28 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 10:24:28 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 10:24:28 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 10:24:28 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 10:24:28 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 10:24:28 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 10:29:07 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 10:29:07 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 10:29:07 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 10:29:07 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 10:29:07 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 10:29:07 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 10:29:07 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 10:29:07 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 10:29:07 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Dashboard
+2026-04-03 10:29:09 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Dashboard
+2026-04-03 10:29:09 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Dashboard
+2026-04-03 10:29:10 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Import
+2026-04-03 10:29:16 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Import
+2026-04-03 10:29:16 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Import
+2026-04-03 10:29:17 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Training
+2026-04-03 10:29:23 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Import
+2026-04-03 10:29:24 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Dashboard
+2026-04-03 10:29:25 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Training
+2026-04-03 10:30:16 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Dashboard
+2026-04-03 10:30:17 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Import
+2026-04-03 10:30:18 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Training
+2026-04-03 10:30:20 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Reports
+2026-04-03 10:30:22 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Dashboard
+2026-04-03 10:30:39 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Dashboard
+2026-04-03 10:30:39 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Dashboard
+2026-04-03 10:30:41 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Import
+2026-04-03 10:30:42 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Training
+2026-04-03 10:30:43 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Backtest
+2026-04-03 10:30:43 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Models
+2026-04-03 10:32:16 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 10:32:16 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 10:32:17 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 10:32:17 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 10:32:17 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 10:32:17 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 10:32:17 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 10:32:17 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 10:32:17 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Dashboard
+2026-04-03 10:32:19 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Dashboard
+2026-04-03 10:32:19 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Dashboard
+2026-04-03 10:35:42 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 10:35:42 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 10:35:42 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 10:35:42 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 10:35:42 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 10:35:42 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 10:35:42 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 10:35:42 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 10:35:42 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 10:35:42 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 10:35:42 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 10:35:42 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 10:35:42 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 10:35:42 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 10:35:42 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 10:35:42 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 10:35:42 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Dashboard
+2026-04-03 10:35:42 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Dashboard
+2026-04-03 10:35:43 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Dashboard
+2026-04-03 10:35:43 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Dashboard
+2026-04-03 10:35:43 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Dashboard
+2026-04-03 10:35:43 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Dashboard
+2026-04-03 10:35:43 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Import
+2026-04-03 10:35:43 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Import
+2026-04-03 10:35:47 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Training
+2026-04-03 10:35:47 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Training
+2026-04-03 10:35:48 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Import
+2026-04-03 10:35:48 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Import
+2026-04-03 10:35:48 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Dashboard
+2026-04-03 10:35:48 | INFO | __main__:render_sidebar_navigation:96 | Sidebar navigation render - active page: Dashboard
+2026-04-03 10:37:13 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 10:37:13 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 10:37:13 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 10:37:13 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 10:37:13 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 10:37:14 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 10:37:14 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 10:37:14 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 10:37:14 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Dashboard
+2026-04-03 10:37:15 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Import
+2026-04-03 10:37:15 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Training
+2026-04-03 10:37:16 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Backtest
+2026-04-03 10:37:16 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Models
+2026-04-03 10:37:17 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Reports
+2026-04-03 10:37:17 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Brokers
+2026-04-03 10:37:18 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Brokers
+2026-04-03 10:37:18 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Brokers
+2026-04-03 10:37:21 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Dashboard
+2026-04-03 10:37:23 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Brokers
+2026-04-03 10:37:24 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Reports
+2026-04-03 10:37:27 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Reports
+2026-04-03 10:37:31 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Models
+2026-04-03 10:37:33 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Backtest
+2026-04-03 10:37:34 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Brokers
+2026-04-03 10:38:58 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Brokers
+2026-04-03 10:38:58 | INFO | src.broker_interface:add_broker:290 | Broker added: Main
+2026-04-03 10:39:03 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Brokers
+2026-04-03 10:39:05 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 10:39:05 | INFO | src.broker_interface:connect_broker:332 | Active broker switched to: Main
+2026-04-03 10:39:23 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 10:39:23 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 10:39:23 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 10:39:23 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 10:39:23 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 10:39:23 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 10:39:23 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 10:39:23 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 10:39:23 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 10:39:23 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 10:39:23 | INFO | src.broker_interface:add_broker:290 | Broker added: Main
+2026-04-03 10:39:23 | INFO | src.broker_interface:add_broker:290 | Broker added: Main
+2026-04-03 10:39:23 | INFO | src.app_service:_load_saved_broker_profiles:100 | Loaded 1 saved broker profile(s)
+2026-04-03 10:39:23 | INFO | src.app_service:_load_saved_broker_profiles:100 | Loaded 1 saved broker profile(s)
+2026-04-03 10:39:23 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 10:39:23 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 10:39:23 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 10:39:23 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 10:39:23 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 10:39:23 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 10:39:23 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Dashboard
+2026-04-03 10:39:23 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Dashboard
+2026-04-03 10:39:27 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Import
+2026-04-03 10:39:27 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Import
+2026-04-03 10:39:29 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Training
+2026-04-03 10:39:29 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Training
+2026-04-03 10:39:31 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Backtest
+2026-04-03 10:39:31 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Backtest
+2026-04-03 10:39:32 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Models
+2026-04-03 10:39:32 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Models
+2026-04-03 10:39:33 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Reports
+2026-04-03 10:39:33 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Reports
+2026-04-03 10:39:34 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Brokers
+2026-04-03 10:39:34 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Brokers
+2026-04-03 10:39:40 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Brokers
+2026-04-03 10:39:40 | INFO | __main__:render_sidebar_navigation:97 | Sidebar navigation render - active page: Brokers
+2026-04-03 10:39:40 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 10:39:40 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 10:39:40 | INFO | src.broker_interface:connect_broker:332 | Active broker switched to: Main
+2026-04-03 10:39:40 | INFO | src.broker_interface:connect_broker:332 | Active broker switched to: Main
+2026-04-03 10:45:53 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 10:45:53 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 10:45:53 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 10:45:53 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 10:45:53 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 10:45:53 | INFO | src.broker_interface:add_broker:290 | Broker added: Main
+2026-04-03 10:45:53 | INFO | src.app_service:_load_saved_broker_profiles:100 | Loaded 1 saved broker profile(s)
+2026-04-03 10:45:53 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 10:45:53 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 10:45:53 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 10:46:00 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 10:46:00 | INFO | src.broker_interface:connect_broker:332 | Active broker switched to: Main
+2026-04-03 10:52:53 | INFO | src.app_service:__init__:54 | === AI Gold Research System Startup ===
+2026-04-03 10:52:53 | INFO | src.data_collector:__init__:37 | Data collector initialized - symbol: XAUUSD
+2026-04-03 10:52:53 | INFO | src.feature_engineer:__init__:29 | Feature engineer initialized
+2026-04-03 10:52:53 | INFO | src.ai_models:__init__:59 | AI model manager initialized - model type: ensemble
+2026-04-03 10:52:53 | INFO | src.backtester:__init__:91 | Backtester initialized - initial capital: $10000
+2026-04-03 10:52:53 | INFO | src.broker_interface:add_broker:290 | Broker added: Main
+2026-04-03 10:52:53 | INFO | src.app_service:_load_saved_broker_profiles:100 | Loaded 1 saved broker profile(s)
+2026-04-03 10:52:53 | INFO | src.ai_models:load_models:635 | 模型已从 models\Main.joblib 加载
+2026-04-03 10:52:53 | INFO | src.app_service:_autoload_latest_model:142 | Auto-loaded latest saved model: Main.joblib
+2026-04-03 10:52:53 | INFO | src.app_service:__init__:77 | Research system initialization complete
+2026-04-03 10:53:00 | INFO | src.broker_interface:connect:85 | Exness connection established through MetaTrader5
+2026-04-03 10:53:00 | INFO | src.broker_interface:connect_broker:332 | Active broker switched to: Main
