@@ -42,8 +42,6 @@ def get_default_config() -> Dict[str, Any]:
         },
         "data_sources": {
             "primary": "local_csv",
-            "backup": "oanda",
-            "update_interval": 60,
             "dataset_directory": "data/imports",
             "min_rows": 100,
         },
@@ -85,7 +83,6 @@ def get_default_config() -> Dict[str, Any]:
                 "enabled": False,
                 "server": "",
                 "login": "",
-                "password": "",
                 "terminal_path": "",
                 "timeout": 30,
                 "max_retries": 3,
@@ -164,7 +161,7 @@ def validate_config(config: Dict[str, Any]) -> None:
         config,
         {
             "trading": ["symbol", "timeframe", "position_size", "stop_loss_pips", "take_profit_pips"],
-            "data_sources": ["primary", "update_interval"],
+            "data_sources": ["primary", "dataset_directory", "min_rows"],
             "ai_model": ["type", "models", "lookback_periods"],
             "risk_management": ["max_daily_loss", "max_positions", "risk_per_trade", "drawdown_limit"],
             "backtest": ["initial_capital", "commission", "slippage"],
@@ -177,7 +174,6 @@ def validate_config(config: Dict[str, Any]) -> None:
     _validate_numeric(config, "trading.position_size", min_value=0, errors=errors)
     _validate_numeric(config, "trading.stop_loss_pips", min_value=0, errors=errors)
     _validate_numeric(config, "trading.take_profit_pips", min_value=0, errors=errors)
-    _validate_numeric(config, "data_sources.update_interval", min_value=1, errors=errors, integer=True)
     _validate_numeric(config, "data_sources.min_rows", min_value=1, errors=errors, integer=True)
     _validate_numeric(config, "ai_model.lookback_periods", min_value=1, errors=errors, integer=True)
     _validate_numeric(config, "live_trading.poll_interval_seconds", min_value=1, errors=errors, integer=True)
@@ -197,15 +193,12 @@ def validate_config(config: Dict[str, Any]) -> None:
     if not isinstance(models, list) or not models:
         errors.append("ai_model.models must be a non-empty list")
 
-    supported_data_sources = {"local_csv", "yfinance", "oanda", "alpaca", "exness"}
+    supported_data_sources = {"local_csv"}
     primary_source = str(config.get("data_sources", {}).get("primary", "")).lower()
     if primary_source not in supported_data_sources:
         errors.append(
             f"data_sources.primary must be one of {sorted(supported_data_sources)}, got '{primary_source}'"
         )
-
-    if config.get("data_sources", {}).get("primary", "").lower() == "exness":
-        _validate_exness_settings(config.get("brokers", {}).get("exness", {}), errors)
 
     if config.get("brokers", {}).get("exness", {}).get("enabled"):
         _validate_exness_settings(config["brokers"]["exness"], errors)
@@ -215,7 +208,7 @@ def validate_config(config: Dict[str, Any]) -> None:
 
 
 def _validate_exness_settings(exness_config: Dict[str, Any], errors: List[str]) -> None:
-    required_fields = ["server", "login", "password"]
+    required_fields = ["server", "login"]
     missing = [field for field in required_fields if not str(exness_config.get(field, "")).strip()]
     if missing:
         errors.append(f"brokers.exness is missing required fields: {', '.join(missing)}")

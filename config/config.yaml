@@ -8,8 +8,6 @@ trading:
   max_risk: 30
 data_sources:
   primary: local_csv
-  backup: oanda
-  update_interval: 60
   dataset_directory: data/imports
   min_rows: 100
 ai_model:
@@ -55,22 +53,11 @@ brokers:
     enabled: false
     server: ''
     login: ''
-    password: ''
     terminal_path: ''
     timeout: 30
     max_retries: 3
-  profiles:
-    Main:
-      broker_type: exness
-      login: '262589312'
-      password: LeMrOo12!
-      server: Exness-MT5Trial16
-      terminal_path: ''
-      sandbox: false
-      account_id: ''
-      timeout: 30
-      max_retries: 3
-  default_profile: Main
+  profiles: {}
+  default_profile: ''
 live_trading:
   enabled_demo_only: true
   poll_interval_seconds: 5

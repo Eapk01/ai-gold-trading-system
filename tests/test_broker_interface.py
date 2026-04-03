@@ -145,13 +145,9 @@ class BrokerInterfaceTests(unittest.TestCase):
             "saved-exness": {
                 "broker_type": "exness",
                 "login": "123456",
-                "password": "secret",
                 "server": "Exness-MT5Real",
                 "terminal_path": "",
                 "sandbox": False,
-                "api_key": "",
-                "secret_key": "",
-                "endpoint": "",
                 "account_id": "",
                 "timeout": 30,
                 "max_retries": 3,

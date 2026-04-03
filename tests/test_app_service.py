@@ -1,11 +1,14 @@
 import unittest
 import sys
 import types
+from tempfile import TemporaryDirectory
+from pathlib import Path
 
 sys.modules.setdefault("talib", types.SimpleNamespace())
 sys.modules.setdefault("pandas_ta", types.SimpleNamespace())
 
 from src.app_service import ResearchAppService
+from src.secret_store import BrokerSecretStore
 
 
 class DashboardSnapshotTests(unittest.TestCase):
@@ -95,8 +98,8 @@ class BrokerAutoconnectTests(unittest.TestCase):
             def __init__(self):
                 self.attempts = []
 
-            def connect_broker(self, name):
-                self.attempts.append(name)
+            def connect_broker(self, name, password=""):
+                self.attempts.append((name, password))
                 return name == "Main"
 
         service = ResearchAppService.__new__(ResearchAppService)
@@ -110,10 +113,12 @@ class BrokerAutoconnectTests(unittest.TestCase):
             }
         }
         service.broker_manager = FakeBrokerManager()
+        service.secret_store = type("Secrets", (), {"get_password": staticmethod(lambda name: "secret")})()
+        service._persist_config = lambda: None
 
         service._autoconnect_saved_broker()
 
-        self.assertEqual(service.broker_manager.attempts, ["Main"])
+        self.assertEqual(service.broker_manager.attempts, [("Main", "secret")])
         self.assertEqual(service.config["brokers"]["default_profile"], "Main")
 
     def test_autoconnect_falls_back_to_first_saved_profile(self):
@@ -121,8 +126,8 @@ class BrokerAutoconnectTests(unittest.TestCase):
             def __init__(self):
                 self.attempts = []
 
-            def connect_broker(self, name):
-                self.attempts.append(name)
+            def connect_broker(self, name, password=""):
+                self.attempts.append((name, password))
                 return name == "Backup"
 
         service = ResearchAppService.__new__(ResearchAppService)
@@ -136,11 +141,133 @@ class BrokerAutoconnectTests(unittest.TestCase):
             }
         }
         service.broker_manager = FakeBrokerManager()
+        service.secret_store = type("Secrets", (), {"get_password": staticmethod(lambda name: "secret")})()
+        service._persist_config = lambda: None
 
         service._autoconnect_saved_broker()
 
-        self.assertEqual(service.broker_manager.attempts, ["Backup"])
+        self.assertEqual(service.broker_manager.attempts, [("Backup", "secret")])
         self.assertEqual(service.config["brokers"]["default_profile"], "Backup")
+
+    def test_autoconnect_skips_profile_when_secret_missing(self):
+        class FakeBrokerManager:
+            def __init__(self):
+                self.attempts = []
+
+            def connect_broker(self, name, password=""):
+                self.attempts.append((name, password))
+                return False
+
+        service = ResearchAppService.__new__(ResearchAppService)
+        service.config = {
+            "brokers": {
+                "profiles": {
+                    "Main": {},
+                    "Backup": {},
+                },
+                "default_profile": "Main",
+            }
+        }
+        service.broker_manager = FakeBrokerManager()
+        service.secret_store = type(
+            "Secrets",
+            (),
+            {"get_password": staticmethod(lambda name: "" if name == "Main" else "secret")},
+        )()
+        service._persist_config = lambda: None
+
+        service._autoconnect_saved_broker()
+
+        self.assertEqual(service.broker_manager.attempts, [("Backup", "secret")])
+
+
+class SecretStoreTests(unittest.TestCase):
+    def test_secret_store_round_trip_and_delete(self):
+        with TemporaryDirectory() as temp_dir:
+            store = BrokerSecretStore(Path(temp_dir) / "broker_secrets.json")
+
+            store.set_password("Main", "secret")
+            self.assertTrue(store.has_password("Main"))
+            self.assertEqual(store.get_password("Main"), "secret")
+
+            store.delete_password("Main")
+            self.assertFalse(store.has_password("Main"))
+            self.assertEqual(store.get_password("Main"), "")
+
+
+class SecretMigrationTests(unittest.TestCase):
+    def test_plaintext_profile_passwords_are_migrated_out_of_config(self):
+        with TemporaryDirectory() as temp_dir:
+            config_path = Path(temp_dir) / "config.yaml"
+            config_path.write_text(
+                "\n".join(
+                    [
+                        "trading:",
+                        "  symbol: XAUUSDm",
+                        "  timeframe: 5m",
+                        "  position_size: 0.01",
+                        "  stop_loss_pips: 50",
+                        "  take_profit_pips: 100",
+                        "data_sources:",
+                        "  primary: local_csv",
+                        "  dataset_directory: data/imports",
+                        "  min_rows: 100",
+                        "ai_model:",
+                        "  type: ensemble",
+                        "  models: [random_forest]",
+                        "  lookback_periods: 100",
+                        "risk_management:",
+                        "  max_daily_loss: 30",
+                        "  max_positions: 3",
+                        "  risk_per_trade: 0.02",
+                        "  drawdown_limit: 0.15",
+                        "backtest:",
+                        "  initial_capital: 10000",
+                        "  commission: 0.0001",
+                        "  slippage: 0.0002",
+                        "database:",
+                        "  path: data/test.db",
+                        "logging:",
+                        "  level: INFO",
+                        "  file_path: logs/test.log",
+                        "brokers:",
+                        "  profiles:",
+                        "    Main:",
+                        "      broker_type: exness",
+                        "      login: '123456'",
+                        "      password: secret",
+                        "      server: Exness-MT5Trial16",
+                        "      terminal_path: ''",
+                        "      sandbox: false",
+                        "      account_id: ''",
+                        "      timeout: 30",
+                        "      max_retries: 3",
+                        "  default_profile: Main",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            service = ResearchAppService.__new__(ResearchAppService)
+            service.config_path = str(config_path)
+            service.config = {
+                "brokers": {
+                    "profiles": {
+                        "Main": {
+                            "password": "secret",
+                            "login": "123456",
+                            "server": "Exness-MT5Trial16",
+                        }
+                    }
+                }
+            }
+            service.secret_store = BrokerSecretStore(Path(temp_dir) / "broker_secrets.json")
+            service._persist_config = lambda: None
+
+            service._migrate_plaintext_broker_secrets()
+
+            self.assertEqual(service.config["brokers"]["profiles"]["Main"]["password"], "")
+            self.assertEqual(service.secret_store.get_password("Main"), "secret")
 
 
 if __name__ == "__main__":

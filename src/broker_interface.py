@@ -70,6 +70,10 @@ class ExnessBroker:
 
             login_value = self.config.login or self.config.account_id
             if login_value:
+                if not str(self.config.password).strip():
+                    logger.error("Exness password is missing for this saved profile")
+                    self.mt5.shutdown()
+                    return False
                 authorized = self.mt5.login(
                     login=int(login_value),
                     password=self.config.password,
@@ -463,7 +467,7 @@ class BrokerManager:
                 logger.error(f"Failed to load broker profile '{name}': {exc}")
         return count
 
-    def connect_broker(self, name: str) -> bool:
+    def connect_broker(self, name: str, password: str = "") -> bool:
         """Connect the named saved broker and mark it active."""
         try:
             if name not in self.brokers:
@@ -471,6 +475,11 @@ class BrokerManager:
                 return False
 
             broker = self.brokers[name]
+            if password:
+                broker.config.password = password
+            elif not str(broker.config.password).strip():
+                logger.warning(f"Cannot connect broker '{name}': password is unavailable")
+                return False
             if broker.connect():
                 self.active_broker = broker
                 logger.info(f"Active broker switched to: {name}")

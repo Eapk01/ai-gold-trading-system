@@ -27,6 +27,7 @@ from src.config_utils import (
 from src.data_collector import DataCollector
 from src.feature_engineer import FeatureEngineer
 from src.live_demo_trader import LiveDemoTrader
+from src.secret_store import BrokerSecretStore
 
 
 CONFIG_PATH = "config/config.yaml"
@@ -57,6 +58,8 @@ class ResearchAppService:
         self.config_path = config_path
         self.config = load_app_config(config_path)
         ensure_runtime_directories(self.config)
+        self.secret_store = BrokerSecretStore()
+        self._migrate_plaintext_broker_secrets()
 
         self.data_collector = DataCollector(self.config)
         self.feature_engineer = FeatureEngineer(self.config)
@@ -108,9 +111,30 @@ class ResearchAppService:
         if loaded_count:
             logger.info(f"Loaded {loaded_count} saved broker profile(s)")
 
+    def _migrate_plaintext_broker_secrets(self) -> None:
+        changed = False
+
+        exness_config = self.config.get("brokers", {}).get("exness", {})
+        if "password" in exness_config and exness_config.get("password"):
+            exness_config["password"] = ""
+            changed = True
+
+        profiles = self.config.get("brokers", {}).get("profiles", {})
+        for profile_name, profile_data in profiles.items():
+            password = str(profile_data.get("password", "")).strip()
+            if password:
+                self.secret_store.set_password(profile_name, password)
+                profile_data["password"] = ""
+                changed = True
+                logger.info(f"Migrated plaintext broker secret for profile: {profile_name}")
+
+        if changed:
+            self._persist_config()
+
     def _autoconnect_saved_broker(self) -> None:
         profiles = self.config.get("brokers", {}).get("profiles", {})
         if not profiles:
+            logger.info("No saved broker profiles available for auto-connect")
             return
 
         default_profile = str(self.config.get("brokers", {}).get("default_profile", "")).strip()
@@ -124,9 +148,14 @@ class ResearchAppService:
 
         for profile_name in candidates:
             try:
-                if self.broker_manager.connect_broker(profile_name):
+                secret = self.secret_store.get_password(profile_name)
+                if not secret:
+                    logger.warning(f"Auto-connect skipped for '{profile_name}': saved secret is missing")
+                    continue
+                if self.broker_manager.connect_broker(profile_name, password=secret):
                     self.config.setdefault("brokers", {})
                     self.config["brokers"]["default_profile"] = profile_name
+                    self._persist_config()
                     logger.info(f"Auto-connected broker profile: {profile_name}")
                     return
             except Exception as exc:
@@ -617,6 +646,7 @@ class ResearchAppService:
                     "type": info.get("type"),
                     "connected": info.get("connected"),
                     "sandbox": info.get("sandbox"),
+                    "secret_saved": self.secret_store.has_password(name),
                     "last_heartbeat": info.get("last_heartbeat"),
                     "is_active": name == active_broker,
                 }
@@ -636,6 +666,8 @@ class ResearchAppService:
         name = name.strip()
         if not name:
             return self._response(False, "Profile name is required")
+        if not str(password).strip():
+            return self._response(False, "MT5 password is required")
 
         existing_profiles = self.config.get("brokers", {}).get("profiles", {})
         if name in existing_profiles and not overwrite:
@@ -645,7 +677,7 @@ class ResearchAppService:
             broker_config = create_broker_config(
                 broker_type="exness",
                 login=login.strip(),
-                password=password,
+                password="",
                 server=server.strip(),
                 terminal_path=terminal_path.strip(),
                 sandbox=False,
@@ -662,16 +694,20 @@ class ResearchAppService:
         self.config["brokers"]["profiles"][name] = broker_config_to_dict(broker_config)
         if not self.config["brokers"].get("default_profile"):
             self.config["brokers"]["default_profile"] = name
+        self.secret_store.set_password(name, password)
         self._persist_config()
 
         return self._response(
             True,
-            f"Broker profile saved: {name}",
+            f"Broker profile saved securely: {name}",
             data={"name": name, "server": broker_config.server},
         )
 
     def connect_broker(self, name: str) -> Dict[str, Any]:
-        success = self.broker_manager.connect_broker(name)
+        secret = self.secret_store.get_password(name)
+        if not secret:
+            return self._response(False, f"Connection failed for broker: {name}. Saved secret is missing.")
+        success = self.broker_manager.connect_broker(name, password=secret)
         if not success:
             return self._response(False, f"Connection failed for broker: {name}")
         self.config.setdefault("brokers", {})
@@ -690,6 +726,7 @@ class ResearchAppService:
 
         del profiles[name]
         self.broker_manager.remove_broker(name)
+        self.secret_store.delete_password(name)
         if self.config["brokers"].get("default_profile") == name:
             self.config["brokers"]["default_profile"] = next(iter(profiles.keys()), "")
         self._persist_config()

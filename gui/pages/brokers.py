@@ -53,6 +53,8 @@ def render(service: ResearchAppService) -> None:
         profiles_df = pd.DataFrame(profiles)
         if "connected" in profiles_df.columns:
             profiles_df["connected"] = profiles_df["connected"].astype(bool)
+        if "secret_saved" in profiles_df.columns:
+            profiles_df["secret_saved"] = profiles_df["secret_saved"].astype(bool)
         if "is_active" in profiles_df.columns:
             profiles_df["is_active"] = profiles_df["is_active"].astype(bool)
         profiles_df = profiles_df.rename(
@@ -60,6 +62,7 @@ def render(service: ResearchAppService) -> None:
                 "name": "Name",
                 "type": "Type",
                 "connected": "Connected",
+                "secret_saved": "Secret Saved",
                 "sandbox": "Sandbox",
                 "last_heartbeat": "Last Heartbeat",
                 "is_active": "Active",

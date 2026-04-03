@@ -24,13 +24,9 @@ class ConfigUtilsTests(unittest.TestCase):
             "demo-exness": {
                 "broker_type": "exness",
                 "login": "123456",
-                "password": "secret",
                 "server": "Exness-MT5Trial",
                 "terminal_path": "C:\\Terminal64.exe",
                 "sandbox": False,
-                "api_key": "",
-                "secret_key": "",
-                "endpoint": "",
                 "account_id": "",
                 "timeout": 30,
                 "max_retries": 3,
@@ -52,7 +48,6 @@ class ConfigUtilsTests(unittest.TestCase):
         config["brokers"]["exness"]["enabled"] = True
         config["brokers"]["exness"]["server"] = "Exness-MT5Real"
         config["brokers"]["exness"]["login"] = "123456"
-        config["brokers"]["exness"]["password"] = "secret"
 
         with self.assertRaises(ConfigValidationError):
             validate_config(config)
