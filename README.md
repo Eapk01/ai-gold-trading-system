@@ -1,409 +1,216 @@
-# AI Gold Trading System
+# AI Gold Research System
 
-An AI-powered automated gold trading system that uses machine learning algorithms for market analysis and trading decisions.
+A GUI-first local research and Exness demo-trading system for gold-focused ML workflows.
 
-## Project Overview
+The current product is built around:
+- importing local MetaTrader-style OHLCV CSV data
+- generating technical and statistical features
+- training an ensemble of ML models
+- saving and auto-loading trained models
+- running fast historical backtests
+- managing saved Exness broker profiles securely
+- using a Streamlit GUI for dashboarding, manual trading, and auto trading
 
-This project is a complete AI-driven gold trading solution with end-to-end capabilities for data collection, model training, strategy backtesting, real-time trading, paper trading, broker integration, and system monitoring.
+## Current Product Shape
 
-## System Architecture
+This repository is no longer the broad prototype described in older docs. The current app is intentionally narrower and easier to operate:
 
-### Three-Phase Development Plan
+- **Local data only**: historical research starts from a CSV in `data/imports`
+- **Exness only**: broker connectivity is focused on Exness through a local MetaTrader 5 terminal
+- **GUI first**: the main interface is Streamlit
+- **Research core**: import, feature prep, training, saved models, backtesting, reports
+- **Execution layer**: manual trading tools and a demo-first auto trader
+- **Secure local secrets**: broker passwords are stored outside the tracked repo config
 
-#### Phase 1: Core Framework
-- Data collection and preprocessing
-- Baseline AI model implementation
-- Basic backtesting functionality
-- Configuration management
+## Main Workflow
 
-#### Phase 2: AI Model Development
-- Professional-grade backtesting system
-- Real-time trading engine
-- Model performance analysis
-- Risk management system
+1. Put a MetaTrader-style CSV file in `data/imports`
+2. Launch the GUI with `streamlit run gui_app.py`
+3. Import and prepare the dataset
+4. Train models and save them by name
+5. Run backtests and inspect reports
+6. Save/connect an Exness broker profile
+7. Use the Manual Trader or Auto Trader pages for demo execution workflows
 
-#### Phase 3: Real-Time Trading System
-- Paper trading environment
-- Broker API integration
-- Monitoring and logging system
-- Complete end-to-end real-time trading workflow
+The CLI in `main.py` still exists, but it is now a secondary interface.
 
-## Technology Stack
+## Current Features
 
-- **Programming Language**: Python 3.8+
-- **Machine Learning**: scikit-learn, XGBoost
-- **Data Processing**: pandas, numpy
-- **Visualization**: matplotlib, seaborn
-- **Real-Time Data**: yfinance, MetaTrader5
-- **Trading Interfaces**: Alpaca, OANDA
-- **Monitoring**: SQLite, custom alerting
-- **Configuration Management**: YAML
+- **Dashboard**: account state, open PnL, auto-trader state, model and backtest snapshot
+- **Import**: automatic import of the first MetaTrader-style CSV in `data/imports`
+- **Training**: ensemble model training and named model saving
+- **Backtest**: prepared-feature backtesting with batch prediction and saved artifacts
+- **Models**: list, load, and reuse saved model files
+- **Reports**: inspect generated backtest results and outputs
+- **Brokers**: save, connect, auto-connect, and delete Exness profiles
+- **Auto Trader**: closed-candle Exness demo auto trader with stale-market handling
+- **Manual Trader**: direct broker-side manual trade actions from the GUI
 
 ## Project Structure
 
 ```text
 ai-gold-trading-system/
 ├── config/
-│   └── config.yaml              # System configuration file
+│   └── config.yaml
+├── data/
+│   └── imports/
+├── gui/
+│   ├── components/
+│   ├── pages/
+│   └── state.py
+├── logs/
+├── models/
+├── reports/
 ├── src/
-│   ├── __init__.py
-│   ├── data_collector.py        # Data collection module
-│   ├── ai_model.py              # Core AI model module
-│   ├── backtester.py            # Professional backtesting engine
-│   ├── trader.py                # Real-time trading engine
-│   ├── paper_trading.py         # Paper trading system
-│   ├── broker_interface.py      # Broker integration module
-│   └── monitoring.py            # Monitoring and logging system
-├── data/                        # Data storage directory
-├── logs/                        # Log file directory
-├── models/                      # Trained model storage
-├── main.py                      # Main application entry point
-├── phase2_demo.py               # Phase 2 demo
-├── phase3_demo.py               # Phase 3 demo
-├── requirements.txt             # Python dependencies
-└── README.md                    # Project documentation
+│   ├── app_service.py
+│   ├── ai_models.py
+│   ├── backtester.py
+│   ├── broker_interface.py
+│   ├── data_collector.py
+│   ├── feature_engineer.py
+│   ├── live_demo_trader.py
+│   └── secret_store.py
+├── tests/
+├── gui_app.py
+├── main.py
+├── requirements.txt
+└── README.md
 ```
 
-## Quick Start
-
-### 1. Set Up the Environment
+## Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-repo/ai-gold-trading-system.git
+git clone <your-repo-url>
 cd ai-gold-trading-system
-
-# Install dependencies
 pip install -r requirements.txt
-
-# Create required directories
-mkdir -p data logs models
 ```
 
-### 2. Configure the System
+## Quick Start on Windows
 
-Edit `config/config.yaml` to set trading parameters, API keys, and other runtime options.
+For the easiest local startup on Windows:
 
-### 3. Run the Application
+```bat
+start.bat
+```
 
-#### Option 1: Run the Full System
+That launcher will:
+- create `.venv` if it does not exist
+- activate the virtual environment
+- install/update dependencies from `requirements.txt`
+- launch the Streamlit GUI
+
+The launcher prefers **Python 3.11** for fresh environments because dependency installation is most reliable there. If a compatible environment already exists in `.venv`, it will reuse it.
+
+Additional Windows helpers:
+
+```bat
+start_cli.bat
+check_env.bat
+```
+
+- `start_cli.bat`: creates/uses `.venv`, installs dependencies, and launches the CLI
+- `check_env.bat`: checks the selected Python interpreter, warns if it is not Python 3.11, and verifies key imports such as `streamlit`, `TA-Lib`, `MetaTrader5`, `pandas-ta`, and `xgboost`
+
+## Running the App
+
+### Primary interface: Streamlit GUI
+
+```bash
+streamlit run gui_app.py
+```
+
+### Secondary interface: CLI
+
 ```bash
 python main.py
 ```
 
-#### Option 2: Run the Phase 3 Demo
+## Data Expectations
+
+The importer expects a MetaTrader-style export with columns shaped like:
+
+```text
+<DATE> <TIME> <OPEN> <HIGH> <LOW> <CLOSE> <TICKVOL> <VOL> <SPREAD>
+```
+
+Example rows:
+
+```text
+2025.01.01 23:05:00 2625.179 2625.839 2624.575 2625.230 344 0 160
+2025.01.01 23:10:00 2625.249 2625.418 2624.374 2624.789 318 0 160
+```
+
+The app normalizes that structure into the internal OHLCV format used for training and backtesting.
+
+Default dataset location:
+
+```text
+data/imports
+```
+
+The current import flow automatically picks the first `.csv` file in that directory.
+
+## Configuration Overview
+
+The main runtime settings live in `config/config.yaml`.
+
+Important sections:
+
+- `trading`: symbol, timeframe, position size, TP/SL values, confidence threshold
+- `data_sources`: local dataset directory and minimum row count
+- `ai_model`: enabled models, lookback periods, retraining interval
+- `backtest`: initial capital, slippage, commission, date range
+- `brokers`: Exness broker settings and saved profile metadata
+- `live_trading`: auto-trader polling, stale-market detection, confidence threshold
+
+## Security Notes
+
+- Saved broker passwords are **not** stored in the tracked repo config
+- Passwords are stored in a local machine-only secret store managed by the app
+- The tracked config keeps profile metadata only
+- Before sharing the repo, keep `config/config.yaml` free of personal broker metadata as well
+
+## Important Notes
+
+- The system is **gold-first**, but not hard-locked to gold. If you switch symbols, retrain and retune for that symbol.
+- The live trading flow is currently **Exness demo-first**.
+- The auto trader evaluates **closed candles**, not in-progress candles.
+- The current stop-loss / take-profit settings are config-driven and should be reviewed carefully before real execution use.
+- Backtesting uses the historical dataset as the simulated market and reuses the prepared feature matrix for speed and consistency.
+
+## Architecture Notes
+
+The shared backend orchestration layer lives in `src/app_service.py`.
+
+Key runtime pieces:
+
+- `ResearchAppService`: shared workflow/service layer for GUI and CLI
+- `LiveDemoTrader`: Exness demo auto-trading runtime
+- `BrokerInterface`: Exness/MetaTrader 5 integration
+- `DataCollector`: local CSV import and normalization
+- `FeatureEngineer`: technical/statistical feature generation
+- `AIModelManager`: model training, saving, loading, and prediction
+- `Backtester`: feature-driven historical simulation and report generation
+
+## Development and Testing
+
+Run the test suite:
+
 ```bash
-python phase3_demo.py
+python -m unittest discover -s tests -v
 ```
 
-## Key Features
+## Attribution
 
-### Data and Model Management
-1. **Data collection and preprocessing**: Automatically retrieves gold price data
-2. **AI model training**: Uses multiple machine learning algorithms in an ensemble setup
-3. **Model performance evaluation**: Produces detailed performance reports
-4. **Data updates**: Refreshes market data on a scheduled basis
+This project builds on the original repository foundation by **zhaowl1993**.
 
-### Backtesting and Analysis
-5. **Run backtests**: Perform professional historical backtesting
-6. **View backtest reports**: Inspect detailed backtest results and analysis
-7. **Analyze model performance**: Review deeper model performance metrics
+The current streamlined product shape, GUI-first workflow, Exness-focused execution path, and recent modernization/refactor work are credited to **Marwan**.
 
-### Real-Time Trading
-8. **Start simulated trading**: Generate real-time trading signals
-9. **Trading engine status**: Monitor trading activity in real time
-10. **Stop the trading engine**: Safely stop the trading system
-11. **Manual trading test**: Test trading behavior manually
+## Future Direction
 
-### Phase 3 Features
-12. **Paper trading demo**: Explore a risk-free simulated trading environment
-13. **Broker interface management**: Manage integrations with multiple broker APIs
-14. **Monitoring system control**: Run and inspect real-time system monitoring
-15. **System status view**: Check comprehensive system health and runtime status
-16. **Alert management**: Use intelligent alerts and notifications
-17. **Log export**: Export complete logs and records
-18. **Full Phase 3 demo**: Experience all Phase 3 capabilities in one workflow
+The main remaining roadmap areas are:
 
-### System Management
-19. **System configuration**: Flexibly manage runtime parameters
-20. **Generate reports**: Automatically generate analysis reports
+- adding more ML models and strategy research paths
+- integrating with MetaTrader Expert Advisors more directly
 
-## Core Modules
-
-### Paper Trading System
-- Provides a complete simulated trading environment with no real capital risk
-- Supports multiple order types: market, limit, and stop orders
-- Includes real-time order management: submit, cancel, and query status
-- Maintains detailed trading records, including fills and PnL statistics
-- Simulates realistic trading costs such as commissions and slippage
-
-```python
-from src.paper_trading import PaperTradingEngine, OrderType
-
-# Create a paper trading engine
-paper_trader = PaperTradingEngine({
-    'initial_capital': 10000.0,
-    'commission': 0.0001,
-    'slippage': 0.0002
-})
-
-# Submit an order
-order_id = paper_trader.submit_order(
-    symbol='XAUUSD',
-    side='buy',
-    quantity=0.1,
-    order_type=OrderType.MARKET
-)
-```
-
-### Broker Interface System
-- Supports multiple brokers such as Alpaca and OANDA
-- Provides a unified interface for standardized API interaction
-- Includes connection management, automatic reconnection, and status monitoring
-- Supports order submission, cancellation, and status queries
-- Supports WebSocket-based real-time market data
-
-```python
-from src.broker_interface import BrokerManager, create_broker_config
-
-# Create a broker manager
-broker_manager = BrokerManager()
-
-# Add an Alpaca broker
-config = create_broker_config(
-    broker_type='alpaca',
-    api_key='your_api_key',
-    secret_key='your_secret_key',
-    sandbox=True
-)
-broker_manager.add_broker('alpaca', config)
-```
-
-### Monitoring System
-- Monitors CPU, memory, and disk usage
-- Tracks trading PnL, drawdown, and win rate
-- Provides a multi-level alerting system
-- Stores logs in SQLite
-- Supports email and webhook notifications
-
-```python
-from src.monitoring import MonitoringSystem, AlertType, AlertLevel
-
-# Create the monitoring system
-monitoring = MonitoringSystem(config)
-monitoring.start()
-
-# Send a custom alert
-monitoring.send_custom_alert(
-    alert_type=AlertType.TRADING,
-    level=AlertLevel.WARNING,
-    title="Trading anomaly",
-    message="An abnormal trading signal was detected"
-)
-```
-
-## Trading Strategy
-
-### AI Model Ensemble
-- **Random Forest**: Handles nonlinear relationships
-- **XGBoost**: Gradient-boosted decision trees
-- **Logistic Regression**: Baseline linear model
-- **Ensemble Learning**: Combines multiple models with a voting mechanism
-
-### Technical Indicators
-- **Trend indicators**: SMA, EMA, MACD
-- **Momentum indicators**: RSI, stochastic oscillator
-- **Volatility indicators**: Bollinger Bands, ATR
-- **Volume indicators**: OBV, volume moving average
-
-### Risk Management
-- **Stop-loss mechanisms**: Fixed stop-loss and dynamic stop-loss
-- **Position sizing**: Kelly criterion and fixed-percentage allocation
-- **Maximum drawdown limit**: 15% drawdown protection
-- **Daily loss limit**: $30 daily loss cap
-
-## Performance Metrics
-
-### Example Backtest Results
-- **Total return**: +15.2%
-- **Sharpe ratio**: 1.85
-- **Maximum drawdown**: -8.3%
-- **Win rate**: 58.7%
-- **Profit factor**: 1.42
-
-### System Performance
-- **Data processing speed**: 1000 records/second
-- **Signal latency**: <100 ms
-- **System availability**: 99.9%
-- **Memory usage**: <512 MB
-
-## Configuration Guide
-
-### Trading Configuration
-```yaml
-trading:
-  symbol: "XAUUSD"                    # Trading instrument
-  initial_capital: 10000.0            # Initial capital
-  max_daily_loss: 30.0                # Maximum daily loss
-  position_size: 0.01                 # Position size
-  confidence_threshold: 0.65          # Confidence threshold
-```
-
-### Broker Configuration
-```yaml
-brokers:
-  alpaca:
-    api_key: "your_api_key"
-    secret_key: "your_secret_key"
-    sandbox: true
-  oanda:
-    api_token: "your_token"
-    account_id: "your_account"
-    sandbox: true
-```
-
-### Monitoring Configuration
-```yaml
-monitoring:
-  system:
-    cpu_threshold: 80.0               # CPU alert threshold
-    memory_threshold: 85.0            # Memory alert threshold
-    check_interval: 10                # Check interval (seconds)
-  trading:
-    max_drawdown_threshold: 0.15      # Maximum drawdown threshold
-    max_daily_loss_threshold: 1000    # Daily loss threshold
-  notifications:
-    enabled_channels: ['log', 'email', 'webhook']
-```
-
-## Deployment Guide
-
-### Development Environment
-```bash
-# Run in development mode
-python main.py
-
-# Or run the demo
-python phase3_demo.py
-```
-
-### Production Environment
-```bash
-# Install supervisor
-sudo apt-get install supervisor
-
-# Configure supervisor
-sudo nano /etc/supervisor/conf.d/ai-trading.conf
-
-# Start the service
-sudo supervisorctl reread
-sudo supervisorctl update
-sudo supervisorctl start ai-trading
-```
-
-### Docker Deployment
-```dockerfile
-FROM python:3.8-slim
-
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
-COPY . .
-CMD ["python", "main.py"]
-```
-
-## API Reference
-
-### Paper Trading API
-```python
-# Submit an order
-order_id = paper_trader.submit_order(symbol, side, quantity, order_type, price)
-
-# Cancel an order
-success = paper_trader.cancel_order(order_id)
-
-# Query positions
-positions = paper_trader.get_positions_list()
-
-# Get account information
-account = paper_trader.get_account()
-```
-
-### Monitoring System API
-```python
-# Start monitoring
-monitoring.start()
-
-# Update trading metrics
-monitoring.update_trading_metrics(metrics)
-
-# Send an alert
-monitoring.send_custom_alert(alert_type, level, title, message)
-
-# Export logs
-log_file = monitoring.export_logs(hours=24)
-```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Failed to retrieve data**
-   - Check your network connection
-   - Verify your API keys
-   - Confirm that the data source is available
-
-2. **Model training failed**
-   - Check data quality
-   - Verify the feature engineering pipeline
-   - Adjust model parameters
-
-3. **Trading connection issues**
-   - Check broker API configuration
-   - Verify account permissions
-   - Confirm network stability
-
-### Viewing Logs
-```bash
-# View system logs
-tail -f logs/system.log
-
-# View trading logs
-tail -f logs/trading.log
-
-# View error logs
-tail -f logs/error.log
-```
-
-## Contributing
-
-### Development Workflow
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Open a Pull Request
-
-### Coding Standards
-- Follow PEP 8
-- Add complete docstrings
-- Write unit tests
-- Keep the code clean and maintainable
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-## Contact
-
-- **Project Homepage**: https://github.com/your-repo/ai-gold-trading-system
-- **Issue Tracker**: https://github.com/your-repo/ai-gold-trading-system/issues
-- **Email**: your-email@example.com
-
-## Acknowledgments
-
-Thank you to all developers and users who have contributed to this project.
-
----
-
-If this project is helpful, please consider giving it a star.
+For the current roadmap, see [FUTURE_WORK_AND_IMPROVEMENT_PLAN.md](C:/Users/Bruh/Desktop/Senior/Project/ai-gold-trading-system/FUTURE_WORK_AND_IMPROVEMENT_PLAN.md).
