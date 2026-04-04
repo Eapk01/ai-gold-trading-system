@@ -31,7 +31,11 @@ def render(service: ResearchAppService) -> None:
         training_results = data.get("training_results") or {}
         if training_results:
             render_subtle_divider()
-            training_df = pd.DataFrame(training_results).T.reset_index().rename(columns={"index": "model_name"})
+            training_df = pd.DataFrame.from_dict(training_results, orient="index").reset_index()
+            training_df = training_df.rename(columns={"index": "trained_model"})
+            if "model_name" in training_df.columns:
+                training_df = training_df.rename(columns={"model_name": "reported_model"})
+            training_df = training_df.loc[:, ~training_df.columns.duplicated()]
             st.dataframe(training_df, use_container_width=True)
 
         artifacts = result.get("artifacts") or {}
