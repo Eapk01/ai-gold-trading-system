@@ -5,6 +5,7 @@ from __future__ import annotations
 import streamlit as st
 
 from main import setup_logging
+from gui.theme import initialize_theme_mode
 from src.app_service import ResearchAppService
 
 
@@ -24,6 +25,7 @@ def _initialize_session_defaults() -> None:
         "manual_trade_result": None,
         "manual_trade_log": [],
         "auto_trader_result": None,
+        "theme_mode": None,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -36,5 +38,6 @@ def bootstrap() -> ResearchAppService:
         st.session_state.logging_initialized = True
 
     _initialize_session_defaults()
+    initialize_theme_mode()
 
     return _get_shared_service()

@@ -6,46 +6,8 @@ from typing import Any
 
 import streamlit as st
 
+from gui.theme import get_theme_mode, inject_theme_styles, set_theme_mode
 from src.app_service import ResearchAppService
-
-
-def inject_sidebar_nav_styles() -> None:
-    st.markdown(
-        """
-        <style>
-        [data-testid="stSidebar"] .stButton {
-            margin-bottom: 0.15rem !important;
-        }
-
-        [data-testid="stSidebar"] .stButton > button {
-            justify-content: flex-start !important;
-            font-size: 0.9rem !important;
-            padding: 0.26rem 0.55rem !important;
-            border-radius: 0.5rem !important;
-            min-height: 2.05rem !important;
-        }
-
-        [data-testid="stSidebar"] .stButton > button[data-testid="stBaseButton-tertiary"] {
-            border: 1px solid transparent !important;
-            background: transparent !important;
-            box-shadow: none !important;
-        }
-
-        [data-testid="stSidebar"] .stButton > button[data-testid="stBaseButton-tertiary"]:hover {
-            border-color: transparent !important;
-            background: rgba(49, 51, 63, 0.04) !important;
-        }
-
-        [data-testid="stSidebar"] .stButton > button[data-testid="stBaseButton-secondary"] {
-            border: 1px solid rgba(255, 255, 255, 0.12) !important;
-            background: rgba(255, 255, 255, 0.04) !important;
-            color: rgba(255, 255, 255, 0.85) !important;
-            transition: all 0.15s ease;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
 
 
 def set_nav_page(page: str) -> None:
@@ -53,7 +15,7 @@ def set_nav_page(page: str) -> None:
 
 
 def render_sidebar_navigation(service: ResearchAppService, pages: dict[str, Any]) -> str:
-    inject_sidebar_nav_styles()
+    inject_theme_styles()
     st.sidebar.title("Navigation")
 
     current_page = st.session_state.get("nav_page", "Dashboard")
@@ -68,6 +30,18 @@ def render_sidebar_navigation(service: ResearchAppService, pages: dict[str, Any]
             args=(page_name,),
         ):
             st.rerun()
+
+    current_mode = get_theme_mode()
+    theme_enabled = st.sidebar.toggle(
+        "Light mode",
+        value=current_mode == "light",
+        key="theme_mode_toggle",
+        help="Switch between the default dark theme and a lighter alternative.",
+    )
+    selected_mode = "light" if theme_enabled else "dark"
+    if selected_mode != current_mode:
+        set_theme_mode(selected_mode)
+        st.rerun()
 
     status = service.get_system_status()["data"]
     active_broker = status.get("active_broker")

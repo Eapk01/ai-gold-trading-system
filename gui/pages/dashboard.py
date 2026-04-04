@@ -10,6 +10,7 @@ import streamlit as st
 
 from gui.components.dividers import render_section_divider, render_subtle_divider, render_vertical_divider
 from gui.components.summaries import render_artifact_summary
+from gui.theme import get_theme_tokens
 from src.app_service import ResearchAppService
 
 
@@ -97,18 +98,19 @@ def _render_header(live_trading: dict[str, Any]) -> None:
 
 
 def _build_state_badge(live_trading: dict[str, Any]) -> str:
+    tokens = get_theme_tokens()
     if not live_trading.get("running"):
         label = "Stopped"
-        background = "#e5e7eb"
-        color = "#374151"
+        background = tokens["badge_stopped_background"]
+        color = tokens["badge_stopped_text"]
     elif str(live_trading.get("market_state") or "") == "market_closed_or_stale":
         label = "Stale"
-        background = "#fef3c7"
-        color = "#92400e"
+        background = tokens["badge_stale_background"]
+        color = tokens["badge_stale_text"]
     else:
         label = "Live"
-        background = "#dcfce7"
-        color = "#166534"
+        background = tokens["badge_live_background"]
+        color = tokens["badge_live_text"]
 
     return (
         f"<div style='display:inline-block;padding:0.35rem 0.7rem;border-radius:999px;"

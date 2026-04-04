@@ -11,6 +11,7 @@ import streamlit as st
 from gui.components.dividers import render_section_divider, render_subtle_divider
 from gui.components.feedback import show_response
 from gui.components.headers import render_page_header
+from gui.theme import style_altair_chart
 from src.app_service import ResearchAppService
 
 
@@ -169,6 +170,7 @@ def _render_chart(chart_data: list[dict[str, Any]]) -> None:
         .properties(height=320)
         .interactive()
     )
+    chart = style_altair_chart(chart)
     st.altair_chart(chart, use_container_width=True)
 
 
