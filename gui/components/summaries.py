@@ -78,6 +78,38 @@ def render_backtest_summary(summary: dict) -> None:
     render_raw_expander("Raw details", summary)
 
 
+def render_model_test_summary(summary: dict) -> None:
+    if not summary:
+        return
+
+    cols = st.columns(4)
+    cols[0].metric("Scored Rows", format_value(summary.get("scored_rows", 0), "integer"))
+    cols[1].metric("Coverage", format_value(summary.get("coverage_rate", 0), "percent"))
+    cols[2].metric("Accuracy", format_value(summary.get("accuracy", 0), "percent"))
+    cols[3].metric("F1", format_value(summary.get("f1", 0), "float"))
+
+    confusion = summary.get("confusion_matrix") or {}
+    detail_items = [
+        ("Total Rows", summary.get("total_rows"), "integer"),
+        ("Valid Prediction Rows", summary.get("valid_prediction_rows"), "integer"),
+        ("Invalid Rows", summary.get("invalid_rows"), "integer"),
+        ("Target Missing Rows", summary.get("target_missing_rows"), "integer"),
+        ("Precision", summary.get("precision"), "float"),
+        ("Recall", summary.get("recall"), "float"),
+        ("Positive Precision", summary.get("positive_precision"), "float"),
+        ("Positive Recall", summary.get("positive_recall"), "float"),
+        ("Negative Precision", summary.get("negative_precision"), "float"),
+        ("Negative Recall", summary.get("negative_recall"), "float"),
+        ("True Negatives", confusion.get("tn"), "integer"),
+        ("False Positives", confusion.get("fp"), "integer"),
+        ("False Negatives", confusion.get("fn"), "integer"),
+        ("True Positives", confusion.get("tp"), "integer"),
+    ]
+
+    render_key_value_summary(detail_items)
+    render_raw_expander("Raw details", summary)
+
+
 def render_artifact_summary(artifacts: dict, *, saved_model_name: str | None = None) -> None:
     if not artifacts and not saved_model_name:
         return
@@ -91,6 +123,7 @@ def render_artifact_summary(artifacts: dict, *, saved_model_name: str | None = N
         ("Report File", artifacts.get("report_file"), "auto"),
         ("Chart File", artifacts.get("chart_file"), "auto"),
         ("Trade Summary File", artifacts.get("trade_summary_file"), "auto"),
+        ("Evaluation Rows File", artifacts.get("evaluation_rows_file"), "auto"),
     ]
     items.extend([item for item in artifact_fields if item[1]])
 

@@ -8,6 +8,7 @@ import numpy as np
 from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime, timedelta
 from loguru import logger
+from src.config_utils import get_effective_confidence_threshold
 try:
     import matplotlib.pyplot as plt
 except ImportError:
@@ -73,9 +74,11 @@ class Backtester:
         """
         self.config = config
         self.backtest_config = config['backtest']
+        self.trading_config = config['trading']
         self.initial_capital = self.backtest_config['initial_capital']
         self.commission = self.backtest_config['commission']
         self.slippage = self.backtest_config['slippage']
+        self.signal_confidence_threshold = get_effective_confidence_threshold(config, "backtest")
         
         # Trade tracking
         self.trades: List[Trade] = []
@@ -88,7 +91,10 @@ class Backtester:
         self.peak_capital = self.initial_capital
         self.max_drawdown = 0.0
         
-        logger.info(f"Backtester initialized - initial capital: ${self.initial_capital}")
+        logger.info(
+            f"Backtester initialized - initial capital: ${self.initial_capital}, "
+            f"signal threshold: {self.signal_confidence_threshold:.3f}"
+        )
     
     def reset(self):
         """Reset backtest state."""
@@ -238,7 +244,7 @@ class Backtester:
             logger.error(f"Failed to close position: {e}")
             return False
     
-    def check_stop_conditions(self, current_data: Dict):
+    def check_stop_conditions(self, current_data: Dict) -> bool:
         """
         检查止损止盈条件
         
@@ -273,8 +279,11 @@ class Backtester:
                 positions_to_close.append((trade_id, reason))
         
         # 执行平仓
+        closed_any = False
         for trade_id, reason in positions_to_close:
-            self.close_position(trade_id, current_data, reason)
+            closed_any = self.close_position(trade_id, current_data, reason) or closed_any
+
+        return closed_any
     
     def update_equity(self, current_data: Dict):
         """
@@ -357,7 +366,11 @@ class Backtester:
                 }
                 
                 # 检查止损止盈
-                self.check_stop_conditions(current_data)
+                closed_this_bar = self.check_stop_conditions(current_data)
+
+                if closed_this_bar:
+                    self.update_equity(current_data)
+                    continue
                 
                 prediction_row = prediction_frame.loc[timestamp]
                 if not bool(prediction_row['is_valid']):
@@ -417,7 +430,7 @@ class Backtester:
         """
         try:
             # 只有高置信度的信号才交易
-            if confidence < 0.6:  # 60%置信度阈值
+            if confidence < self.signal_confidence_threshold:
                 return None
             
             current_price = current_data['close']
@@ -426,21 +439,21 @@ class Backtester:
                 return {
                     'action': 'open',
                     'side': 'buy',
-                    'symbol': 'XAUUSD',
-                    'size': 0.01,
+                    'symbol': self.trading_config.get('symbol', 'XAUUSD'),
+                    'size': float(self.trading_config.get('position_size', 0.01)),
                     'confidence': confidence,
-                    'stop_loss': current_price - self.config['trading']['stop_loss_pips'],
-                    'take_profit': current_price + self.config['trading']['take_profit_pips']
+                    'stop_loss': current_price - self.trading_config['stop_loss_pips'],
+                    'take_profit': current_price + self.trading_config['take_profit_pips']
                 }
             elif prediction == 0:  # 看跌信号
                 return {
                     'action': 'open',
                     'side': 'sell',
-                    'symbol': 'XAUUSD',
-                    'size': 0.01,
+                    'symbol': self.trading_config.get('symbol', 'XAUUSD'),
+                    'size': float(self.trading_config.get('position_size', 0.01)),
                     'confidence': confidence,
-                    'stop_loss': current_price + self.config['trading']['stop_loss_pips'],
-                    'take_profit': current_price - self.config['trading']['take_profit_pips']
+                    'stop_loss': current_price + self.trading_config['stop_loss_pips'],
+                    'take_profit': current_price - self.trading_config['take_profit_pips']
                 }
             
             return None

@@ -8,7 +8,7 @@ import streamlit as st
 from loguru import logger
 
 from gui.components.navigation import render_sidebar_navigation
-from gui.pages import auto_trader, backtesting, brokers, dashboard, data_import, manual_trading, model_training, reports, saved_models
+from gui.pages import auto_trader, backtesting, brokers, dashboard, data_import, manual_trading, model_tester, model_training, reports, saved_models
 from gui.state import bootstrap
 
 
@@ -25,6 +25,7 @@ def main() -> None:
         "Dashboard": dashboard.render,
         "Import": data_import.render,
         "Training": model_training.render,
+        "Model Tester": model_tester.render,
         "Backtest": backtesting.render,
         "Models": saved_models.render,
         "Reports": reports.render,

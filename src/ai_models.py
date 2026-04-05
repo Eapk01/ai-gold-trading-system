@@ -20,6 +20,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.preprocessing import StandardScaler
+from src.config_utils import get_target_column
 try:
     import xgboost as xgb
 except ImportError:
@@ -50,7 +51,7 @@ class AIModelManager:
         self.models = {}
         self.scalers = {}
         self.feature_columns = []
-        self.target_column = 'Future_Direction_1'
+        self.target_column = get_target_column(config)
         
         # 模型性能记录
         self.model_performance = {}
@@ -171,7 +172,7 @@ class AIModelManager:
     
     def prepare_training_data(self, data: pd.DataFrame, 
                             feature_columns: List[str],
-                            target_column: str = 'Future_Direction_1',
+                            target_column: Optional[str] = None,
                             test_size: float = 0.2) -> Tuple[Any, Any, Any, Any]:
         """
         准备训练数据
@@ -186,6 +187,7 @@ class AIModelManager:
             X_train, X_test, y_train, y_test
         """
         try:
+            target_column = target_column or self.target_column
             # 移除包含NaN的行
             clean_data = data[feature_columns + [target_column]].dropna()
             
@@ -320,7 +322,7 @@ class AIModelManager:
     
     def train_ensemble_models(self, data: pd.DataFrame, 
                             feature_columns: List[str],
-                            target_column: str = 'Future_Direction_1') -> Dict:
+                            target_column: Optional[str] = None) -> Dict:
         """
         训练集成模型
         
@@ -333,6 +335,7 @@ class AIModelManager:
             训练结果汇总
         """
         logger.info("开始训练集成模型...")
+        target_column = target_column or self.target_column
         
         # 准备数据
         X_train, X_test, y_train, y_test = self.prepare_training_data(

@@ -10,6 +10,7 @@ import talib
 import pandas_ta as ta
 from loguru import logger
 from scipy import stats
+from src.config_utils import get_target_column
 
 
 class FeatureEngineer:
@@ -347,7 +348,7 @@ class FeatureEngineer:
         return df
     
     def select_features(self, data: pd.DataFrame, 
-                       target_column: str = 'Future_Direction_1',
+                       target_column: Optional[str] = None,
                        method: str = 'correlation',
                        max_features: int = 50) -> List[str]:
         """
@@ -363,6 +364,7 @@ class FeatureEngineer:
             选择的特征列表
         """
         try:
+            target_column = target_column or get_target_column(self.config)
             if target_column not in data.columns:
                 logger.warning(f"目标列 {target_column} 不存在")
                 return []

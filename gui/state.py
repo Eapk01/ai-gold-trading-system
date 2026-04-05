@@ -14,12 +14,22 @@ def _get_shared_service() -> ResearchAppService:
     return ResearchAppService()
 
 
+def _service_supports_current_ui(service: ResearchAppService) -> bool:
+    """Detect stale cached service instances after code changes."""
+    return (
+        getattr(service, "api_compatibility_version", None)
+        == ResearchAppService.API_COMPATIBILITY_VERSION
+    )
+
+
 def _initialize_session_defaults() -> None:
     defaults = {
         "last_import_result": None,
         "last_training_result": None,
+        "last_model_test_result": None,
         "last_backtest_result": None,
         "last_report_result": None,
+        "last_model_test_report_result": None,
         "broker_action_result": None,
         "manual_trade_result": None,
         "manual_trade_log": [],
@@ -36,5 +46,8 @@ def bootstrap() -> ResearchAppService:
         st.session_state.logging_initialized = True
 
     _initialize_session_defaults()
-
-    return _get_shared_service()
+    service = _get_shared_service()
+    if not _service_supports_current_ui(service):
+        _get_shared_service.clear()
+        service = _get_shared_service()
+    return service

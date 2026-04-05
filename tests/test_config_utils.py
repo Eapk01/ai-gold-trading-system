@@ -3,13 +3,22 @@ from unittest.mock import patch
 from tempfile import TemporaryDirectory
 from pathlib import Path
 
-from src.config_utils import ConfigValidationError, get_default_config, load_config, save_config, validate_config
+from src.config_utils import (
+    ConfigValidationError,
+    get_default_config,
+    get_effective_confidence_threshold,
+    get_target_column,
+    load_config,
+    save_config,
+    validate_config,
+)
 
 
 class ConfigUtilsTests(unittest.TestCase):
     def test_default_config_is_valid_without_exness_enabled(self):
         config = get_default_config()
         validate_config(config)
+        self.assertEqual(get_target_column(config), "Future_Direction_1")
 
     def test_validate_config_rejects_invalid_position_size(self):
         config = get_default_config()
@@ -51,6 +60,15 @@ class ConfigUtilsTests(unittest.TestCase):
 
         with self.assertRaises(ConfigValidationError):
             validate_config(config)
+
+    def test_effective_confidence_threshold_prefers_mode_override(self):
+        config = get_default_config()
+        config["trading"]["confidence_threshold"] = 0.61
+        config["backtest"]["signal_confidence_threshold"] = 0.72
+        config["live_trading"]["signal_confidence_threshold"] = 0.67
+
+        self.assertEqual(get_effective_confidence_threshold(config, "backtest"), 0.72)
+        self.assertEqual(get_effective_confidence_threshold(config, "live_trading"), 0.67)
 
 
 if __name__ == "__main__":

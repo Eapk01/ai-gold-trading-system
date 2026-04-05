@@ -11,6 +11,8 @@ from typing import Any, Dict, List, Tuple
 
 import yaml
 
+DEFAULT_TARGET_COLUMN = "Future_Direction_1"
+
 
 class ConfigValidationError(ValueError):
     """Raised when the application configuration is invalid."""
@@ -50,6 +52,7 @@ def get_default_config() -> Dict[str, Any]:
             "models": ["random_forest", "xgboost", "logistic_regression"],
             "retrain_interval": 168,
             "lookback_periods": 100,
+            "target_column": DEFAULT_TARGET_COLUMN,
         },
         "features": {
             "technical_indicators": ["sma_5", "sma_20", "rsi_14", "macd", "atr_14"],
@@ -67,6 +70,7 @@ def get_default_config() -> Dict[str, Any]:
             "initial_capital": 10000.0,
             "commission": 0.0001,
             "slippage": 0.0002,
+            "signal_confidence_threshold": 0.60,
         },
         "database": {
             "type": "sqlite",
@@ -153,6 +157,30 @@ def ensure_runtime_directories(config: Dict[str, Any]) -> List[str]:
     return created
 
 
+def get_target_column(config: Dict[str, Any]) -> str:
+    """Return the configured model target column with a stable fallback."""
+    raw_value = config.get("ai_model", {}).get("target_column", DEFAULT_TARGET_COLUMN)
+    target_column = str(raw_value).strip()
+    return target_column or DEFAULT_TARGET_COLUMN
+
+
+def get_effective_confidence_threshold(config: Dict[str, Any], mode: str) -> float:
+    """Return the effective confidence threshold for a runtime mode.
+
+    `trading.confidence_threshold` is treated as the shared default.
+    `live_trading.signal_confidence_threshold` and
+    `backtest.signal_confidence_threshold` are mode-specific overrides.
+    """
+    trading_default = float(config.get("trading", {}).get("confidence_threshold", 0.60))
+
+    if mode == "live_trading":
+        return float(config.get("live_trading", {}).get("signal_confidence_threshold", trading_default))
+    if mode == "backtest":
+        return float(config.get("backtest", {}).get("signal_confidence_threshold", trading_default))
+
+    raise ValueError(f"Unsupported confidence-threshold mode: {mode}")
+
+
 def validate_config(config: Dict[str, Any]) -> None:
     """Validate configuration and raise ConfigValidationError on issues."""
     errors: List[str] = []
@@ -172,6 +200,7 @@ def validate_config(config: Dict[str, Any]) -> None:
     )
 
     _validate_numeric(config, "trading.position_size", min_value=0, errors=errors)
+    _validate_numeric(config, "trading.confidence_threshold", min_value=0, max_value=1, errors=errors)
     _validate_numeric(config, "trading.stop_loss_pips", min_value=0, errors=errors)
     _validate_numeric(config, "trading.take_profit_pips", min_value=0, errors=errors)
     _validate_numeric(config, "data_sources.min_rows", min_value=1, errors=errors, integer=True)
@@ -188,10 +217,15 @@ def validate_config(config: Dict[str, Any]) -> None:
     _validate_numeric(config, "backtest.initial_capital", min_value=0, errors=errors)
     _validate_numeric(config, "backtest.commission", min_value=0, errors=errors)
     _validate_numeric(config, "backtest.slippage", min_value=0, errors=errors)
+    _validate_numeric(config, "backtest.signal_confidence_threshold", min_value=0, max_value=1, errors=errors)
 
     models = config.get("ai_model", {}).get("models", [])
     if not isinstance(models, list) or not models:
         errors.append("ai_model.models must be a non-empty list")
+
+    target_column = get_target_column(config)
+    if not target_column:
+        errors.append("ai_model.target_column must be a non-empty string")
 
     supported_data_sources = {"local_csv"}
     primary_source = str(config.get("data_sources", {}).get("primary", "")).lower()

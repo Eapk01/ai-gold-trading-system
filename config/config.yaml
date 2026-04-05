@@ -18,6 +18,7 @@ ai_model:
   - logistic_regression
   retrain_interval: 168
   lookback_periods: 100
+  target_column: Future_Direction_1
 features:
   technical_indicators:
   - sma_5
@@ -40,6 +41,7 @@ backtest:
   initial_capital: 10000
   commission: 0.0001
   slippage: 0.0002
+  signal_confidence_threshold: 0.6
 database:
   type: sqlite
   path: data/trading_system.db

@@ -270,5 +270,74 @@ class SecretMigrationTests(unittest.TestCase):
             self.assertEqual(service.secret_store.get_password("Main"), "secret")
 
 
+class RuntimeReloadTests(unittest.TestCase):
+    def test_reload_runtime_rebuilds_all_config_dependent_components(self):
+        with TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            config_path = temp_path / "config.yaml"
+            config_path.write_text(
+                "\n".join(
+                    [
+                        "trading:",
+                        "  symbol: XAUUSDm",
+                        "  timeframe: 5m",
+                        "  position_size: 0.01",
+                        "  stop_loss_pips: 50",
+                        "  take_profit_pips: 100",
+                        "  confidence_threshold: 0.61",
+                        "data_sources:",
+                        f"  dataset_directory: {str(temp_path / 'imports').replace(chr(92), '/')}",
+                        "  primary: local_csv",
+                        "  min_rows: 100",
+                        "ai_model:",
+                        "  type: ensemble",
+                        "  models: [random_forest]",
+                        "  lookback_periods: 100",
+                        "  target_column: Future_Direction_1",
+                        "risk_management:",
+                        "  max_daily_loss: 30",
+                        "  max_positions: 3",
+                        "  risk_per_trade: 0.02",
+                        "  drawdown_limit: 0.15",
+                        "backtest:",
+                        "  initial_capital: 10000",
+                        "  commission: 0.0001",
+                        "  slippage: 0.0002",
+                        "  signal_confidence_threshold: 0.68",
+                        "database:",
+                        f"  path: {str(temp_path / 'data' / 'test.db').replace(chr(92), '/')}",
+                        "logging:",
+                        "  level: INFO",
+                        f"  file_path: {str(temp_path / 'logs' / 'test.log').replace(chr(92), '/')}",
+                        "brokers:",
+                        "  profiles: {}",
+                        "  default_profile: ''",
+                        "live_trading:",
+                        "  enabled_demo_only: true",
+                        "  poll_interval_seconds: 5",
+                        "  inactive_poll_interval_seconds: 30",
+                        "  signal_confidence_threshold: 0.73",
+                        "  startup_candle_buffer: 150",
+                        "  stale_candle_multiplier: 4",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            service = ResearchAppService(str(config_path))
+            feature_data = object()
+            service.feature_data = feature_data
+            service.selected_features = ["feat1"]
+
+            config_path.write_text(config_path.read_text(encoding="utf-8").replace("0.68", "0.75").replace("0.73", "0.79"))
+            service._reload_runtime_from_disk()
+
+            self.assertIs(service.feature_data, feature_data)
+            self.assertEqual(service.selected_features, ["feat1"])
+            self.assertAlmostEqual(service.backtester.signal_confidence_threshold, 0.75)
+            self.assertAlmostEqual(service.auto_trader.confidence_threshold, 0.79)
+            self.assertEqual(service.ai_model_manager.target_column, "Future_Direction_1")
+
+
 if __name__ == "__main__":
     unittest.main()

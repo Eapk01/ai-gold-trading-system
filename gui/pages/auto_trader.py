@@ -54,6 +54,8 @@ def render(service: ResearchAppService) -> None:
                 f"`{float(latest_signal.get('price', 0.0)):.2f}` "
                 f"with confidence `{float(latest_signal.get('confidence', 0.0)):.3f}`"
             )
+        else:
+            st.caption("Latest signal: `None`")
 
     market_state = str(status.get("market_state") or "idle")
     if market_state == "market_closed_or_stale":

@@ -1,11 +1,7 @@
-"""
-Shared application service layer for CLI and GUI workflows.
-"""
+"""Shared application service layer for CLI and GUI workflows."""
 
 from __future__ import annotations
 
-import glob
-import json
 import re
 from dataclasses import asdict, dataclass
 from datetime import datetime
@@ -17,17 +13,21 @@ from loguru import logger
 
 from src.ai_models import AIModelManager
 from src.backtester import BacktestResult, Backtester
-from src.broker_interface import BrokerManager, broker_config_to_dict, create_broker_config
+from src.broker_interface import BrokerManager
 from src.config_utils import (
     ConfigValidationError,
     ensure_runtime_directories,
+    get_target_column,
     load_config as load_validated_config,
     save_config,
 )
 from src.data_collector import DataCollector
 from src.feature_engineer import FeatureEngineer
 from src.live_demo_trader import LiveDemoTrader
+from src.model_tester import ModelTestResult, ModelTester
+from src.report_store import ReportStore
 from src.secret_store import BrokerSecretStore
+from src.services import ReportWorkflowService, ResearchWorkflowService, TradingWorkflowService
 
 
 CONFIG_PATH = "config/config.yaml"
@@ -53,25 +53,16 @@ def load_app_config(config_path: str = CONFIG_PATH) -> Dict[str, Any]:
 class ResearchAppService:
     """Shared service layer for the research workflow."""
 
+    API_COMPATIBILITY_VERSION = "2026.04.config-sanity-v1"
+
     def __init__(self, config_path: str = CONFIG_PATH):
         logger.info("=== AI Gold Research System Startup ===")
+        self.api_compatibility_version = self.API_COMPATIBILITY_VERSION
         self.config_path = config_path
         self.config = load_app_config(config_path)
         ensure_runtime_directories(self.config)
         self.secret_store = BrokerSecretStore()
-        self._migrate_plaintext_broker_secrets()
-
-        self.data_collector = DataCollector(self.config)
-        self.feature_engineer = FeatureEngineer(self.config)
-        self.ai_model_manager = AIModelManager(self.config)
-        self.backtester = Backtester(self.config)
         self.broker_manager = BrokerManager()
-        self.auto_trader = LiveDemoTrader(
-            self.config,
-            self.broker_manager,
-            self.feature_engineer,
-            self.ai_model_manager,
-        )
 
         self.feature_data = None
         self.selected_features: List[str] = []
@@ -80,8 +71,17 @@ class ResearchAppService:
         self.latest_training_results: Dict[str, Any] = {}
         self.latest_backtest_summary: Dict[str, Any] = {}
         self.latest_backtest_artifacts: Dict[str, str] = {}
+        self.latest_model_test_summary: Dict[str, Any] = {}
+        self.latest_model_test_artifacts: Dict[str, str] = {}
         self.latest_data_preview: List[Dict[str, Any]] = []
         self.latest_model_analysis: Dict[str, Any] = {}
+        self.report_store = ReportStore()
+
+        self._migrate_plaintext_broker_secrets()
+        self._build_runtime_components()
+        self.research_workflows = ResearchWorkflowService(self)
+        self.report_workflows = ReportWorkflowService(self, self.report_store)
+        self.trading_workflows = TradingWorkflowService(self)
 
         self._load_saved_broker_profiles()
         self._autoconnect_saved_broker()
@@ -104,6 +104,17 @@ class ResearchAppService:
             artifacts=artifacts,
             errors=errors,
         ).to_dict()
+
+    def _ensure_workflow_services(self) -> None:
+        """Lazily attach delegated workflow helpers for lightweight test fixtures."""
+        if not hasattr(self, "report_store"):
+            self.report_store = ReportStore()
+        if not hasattr(self, "research_workflows"):
+            self.research_workflows = ResearchWorkflowService(self)
+        if not hasattr(self, "report_workflows"):
+            self.report_workflows = ReportWorkflowService(self, self.report_store)
+        if not hasattr(self, "trading_workflows"):
+            self.trading_workflows = TradingWorkflowService(self)
 
     def _load_saved_broker_profiles(self) -> None:
         profiles = self.config.get("brokers", {}).get("profiles", {})
@@ -166,6 +177,52 @@ class ResearchAppService:
     def _persist_config(self) -> None:
         save_config(self.config, self.config_path)
 
+    def _build_runtime_components(self) -> None:
+        """Build all config-dependent runtime components from one config snapshot."""
+        self.data_collector = DataCollector(self.config)
+        self.feature_engineer = FeatureEngineer(self.config)
+        self.ai_model_manager = AIModelManager(self.config)
+        self.backtester = Backtester(self.config)
+        self.model_tester = ModelTester()
+        self.auto_trader = LiveDemoTrader(
+            self.config,
+            self.broker_manager,
+            self.feature_engineer,
+            self.ai_model_manager,
+        )
+
+    def _reload_runtime_from_disk(self) -> None:
+        """Reload config and rebuild all config-backed components together when safe."""
+        if not getattr(self, "config_path", None):
+            return
+        if hasattr(self, "auto_trader") and self.auto_trader.get_status().get("running"):
+            logger.info("Runtime reload skipped because the auto trader is currently running")
+            return
+
+        previous_model_path = self.loaded_model_path
+        previous_selected_features = list(self.selected_features)
+
+        self.config = load_app_config(self.config_path)
+        ensure_runtime_directories(self.config)
+        self._build_runtime_components()
+        self._load_saved_broker_profiles()
+
+        if previous_model_path and Path(previous_model_path).exists():
+            if self.ai_model_manager.load_models(str(previous_model_path)):
+                self.loaded_model_path = str(previous_model_path)
+                self.selected_features = list(self.ai_model_manager.feature_columns) or previous_selected_features
+            else:
+                self.loaded_model_path = None
+                self.selected_features = previous_selected_features
+        else:
+            self.selected_features = previous_selected_features
+
+    def get_target_column(self) -> str:
+        """Return the canonical target column used for train/eval workflows."""
+        if hasattr(self, "ai_model_manager") and getattr(self.ai_model_manager, "target_column", ""):
+            return str(self.ai_model_manager.target_column)
+        return get_target_column(self.config)
+
     def _sanitize_model_name(self, model_name: str) -> str:
         cleaned = re.sub(r"[^A-Za-z0-9_-]+", "_", model_name.strip())
         return cleaned.strip("_") or "default"
@@ -194,6 +251,9 @@ class ResearchAppService:
             "equity_curve_points": len(result.equity_curve or []),
         }
 
+    def _serialize_model_test_result(self, result: ModelTestResult) -> Dict[str, Any]:
+        return dict(result.summary)
+
     def _autoload_latest_model(self) -> None:
         saved_models = self._get_saved_model_files()
         if not saved_models:
@@ -206,61 +266,8 @@ class ResearchAppService:
             logger.info(f"Auto-loaded latest saved model: {latest_model.name}")
 
     def import_and_prepare_data(self) -> Dict[str, Any]:
-        logger.info("Starting local dataset import and preparation...")
-        try:
-            csv_path, historical_data = self.data_collector.import_default_dataset()
-            is_valid, issues = self.data_collector.validate_data_quality(historical_data)
-
-            if historical_data.empty:
-                logger.error("Imported dataset is empty after normalization")
-                return self._response(False, "Imported dataset is empty after normalization")
-
-            self.data_collector.save_data_to_db(historical_data, "raw_data")
-            self.feature_data = self.feature_engineer.create_feature_matrix(historical_data, include_targets=True)
-
-            if self.feature_data.empty:
-                logger.error("Failed to create features")
-                return self._response(False, "Failed to create features")
-
-            self.selected_features = self.feature_engineer.select_features(
-                self.feature_data,
-                target_column="Future_Direction_1",
-                method="correlation",
-                max_features=30,
-            )
-
-            if not self.selected_features:
-                logger.error("Feature selection failed")
-                return self._response(False, "Feature selection failed")
-
-            self.last_import_summary = {
-                "path": str(csv_path),
-                "rows": len(historical_data),
-                "selected_features": len(self.selected_features),
-                "data_valid": is_valid,
-                "issues": issues,
-                "feature_rows": len(self.feature_data),
-            }
-            preview_frame = historical_data.reset_index().head(20)
-            self.latest_data_preview = preview_frame.to_dict(orient="records")
-
-            logger.info(
-                f"Local dataset preparation complete - {len(historical_data)} raw rows, "
-                f"{len(self.selected_features)} selected features"
-            )
-            return self._response(
-                True,
-                f"Imported {len(historical_data)} rows and selected {len(self.selected_features)} features",
-                data={
-                    "summary": self.last_import_summary,
-                    "selected_features": list(self.selected_features),
-                    "preview": self.latest_data_preview,
-                },
-                errors=list(issues),
-            )
-        except Exception as exc:
-            logger.error(f"Failed to import local dataset: {exc}")
-            return self._response(False, f"Local dataset import failed: {exc}", errors=[str(exc)])
+        self._ensure_workflow_services()
+        return self.research_workflows.import_and_prepare_data()
 
     def list_saved_models(self) -> Dict[str, Any]:
         models = []
@@ -310,143 +317,36 @@ class ResearchAppService:
         return self._response(False, f"Failed to load model: {selected_model.name}")
 
     def train_models(self, model_name: str = "default") -> Dict[str, Any]:
-        if self.feature_data is None or not self.selected_features:
-            logger.error("Please prepare the data first")
-            return self._response(False, "Please prepare the data first")
-
-        logger.info("Starting AI model training...")
-        training_results = self.ai_model_manager.train_ensemble_models(
-            self.feature_data,
-            self.selected_features,
-            target_column="Future_Direction_1",
-        )
-
-        if not training_results:
-            logger.error("Model training failed")
-            return self._response(False, "Model training failed")
-
-        safe_name = self._sanitize_model_name(model_name or "default")
-        model_path = Path("models") / f"{safe_name}.joblib"
-        self.ai_model_manager.save_models(model_path)
-        self.loaded_model_path = str(model_path)
-        self.selected_features = list(self.ai_model_manager.feature_columns)
-        self.latest_training_results = training_results
-
-        return self._response(
-            True,
-            f"Training complete. Saved model file: {model_path.name}",
-            data={
-                "training_results": training_results,
-                "saved_model_name": model_path.stem,
-                "saved_model_path": str(model_path),
-                "selected_features": list(self.selected_features),
-            },
-            artifacts={"model_path": str(model_path)},
-        )
+        self._ensure_workflow_services()
+        return self.research_workflows.train_models(model_name)
 
     def run_backtest(self) -> Dict[str, Any]:
-        logger.info("Starting professional backtest...")
+        self._ensure_workflow_services()
+        return self.research_workflows.run_backtest()
 
-        if not self.ai_model_manager.models:
-            logger.error("Please train or load the models first")
-            return self._response(False, "Please train or load the models first")
-        if self.feature_data is None or not self.selected_features:
-            logger.error("Please prepare the data first")
-            return self._response(False, "Please prepare the data first")
-
-        try:
-            result = self.backtester.run_backtest(
-                self.feature_data,
-                self.ai_model_manager,
-                self.selected_features,
-            )
-
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            result_file = f"reports/backtest_result_{timestamp}.json"
-            chart_file = f"reports/backtest_chart_{timestamp}.png"
-            summary_file = ""
-
-            self.backtester.save_results(result, result_file)
-            self.backtester.plot_results(result, chart_file)
-
-            trade_summary = self.backtester.get_trade_summary()
-            if not trade_summary.empty:
-                summary_file = f"reports/trade_summary_{timestamp}.csv"
-                trade_summary.to_csv(summary_file, index=False, encoding="utf-8-sig")
-                logger.info(f"Trade summary saved: {summary_file}")
-
-            result_summary = self._serialize_backtest_result(result)
-            artifacts = {
-                "report_file": result_file,
-                "chart_file": chart_file,
-            }
-            if summary_file:
-                artifacts["trade_summary_file"] = summary_file
-
-            self.latest_backtest_summary = result_summary
-            self.latest_backtest_artifacts = artifacts
-
-            return self._response(
-                True,
-                "Backtest completed successfully",
-                data={
-                    "summary": result_summary,
-                    "trade_summary_rows": len(trade_summary),
-                },
-                artifacts=artifacts,
-            )
-        except Exception as exc:
-            logger.error(f"Professional backtest failed: {exc}")
-            return self._response(False, f"Professional backtest failed: {exc}", errors=[str(exc)])
+    def run_model_test(self) -> Dict[str, Any]:
+        self._ensure_workflow_services()
+        return self.research_workflows.run_model_test()
 
     def list_backtest_reports(self, limit: int = 10) -> Dict[str, Any]:
-        report_files = sorted(glob.glob("reports/backtest_result_*.json"), reverse=True)
-        reports = [
-            {
-                "path": file_path,
-                "name": Path(file_path).name,
-                "timestamp": Path(file_path).stem.replace("backtest_result_", ""),
-            }
-            for file_path in report_files[:limit]
-        ]
-        message = "Backtest reports loaded" if reports else "No backtest report files found"
-        return self._response(True, message, data=reports)
+        self._ensure_workflow_services()
+        return self.report_workflows.list_backtest_reports(limit)
 
     def get_backtest_report(self, report_path: str) -> Dict[str, Any]:
-        try:
-            with open(report_path, "r", encoding="utf-8") as report_file:
-                report = json.load(report_file)
+        self._ensure_workflow_services()
+        return self.report_workflows.get_backtest_report(report_path)
 
-            summary = report.get("backtest_summary", {})
-            return self._response(
-                True,
-                f"Loaded backtest report: {Path(report_path).name}",
-                data={
-                    "path": report_path,
-                    "summary": summary,
-                    "trade_count": len(report.get("trades", [])),
-                },
-            )
-        except Exception as exc:
-            logger.error(f"Failed to load backtest report: {exc}")
-            return self._response(False, f"Failed to load backtest report: {exc}", errors=[str(exc)])
+    def list_model_test_reports(self, limit: int = 10) -> Dict[str, Any]:
+        self._ensure_workflow_services()
+        return self.report_workflows.list_model_test_reports(limit)
+
+    def get_model_test_report(self, report_path: str) -> Dict[str, Any]:
+        self._ensure_workflow_services()
+        return self.report_workflows.get_model_test_report(report_path)
 
     def get_model_analysis(self) -> Dict[str, Any]:
-        if not self.ai_model_manager.models:
-            return self._response(False, "Please train or load the models first")
-
-        summary = self.ai_model_manager.get_models_summary()
-        feature_importance = {}
-        for model_name in self.ai_model_manager.models:
-            importance = self.ai_model_manager.get_feature_importance(model_name)
-            if importance:
-                feature_importance[model_name] = list(importance.items())[:10]
-
-        self.latest_model_analysis = {
-            "summary": summary.to_dict(orient="records") if not summary.empty else [],
-            "feature_importance": feature_importance,
-        }
-        return self._response(True, "Model analysis loaded", data=self.latest_model_analysis)
+        self._ensure_workflow_services()
+        return self.research_workflows.get_model_analysis()
 
     def get_system_status(self) -> Dict[str, Any]:
         broker_status = self.broker_manager.get_broker_status()
@@ -461,6 +361,8 @@ class ResearchAppService:
             "selected_features": len(self.selected_features),
             "latest_backtest_summary": self.latest_backtest_summary,
             "latest_backtest_artifacts": self.latest_backtest_artifacts,
+            "latest_model_test_summary": self.latest_model_test_summary,
+            "latest_model_test_artifacts": self.latest_model_test_artifacts,
             "auto_trader": self.auto_trader.get_status(),
         }
         return self._response(True, "System status loaded", data=status)
@@ -532,21 +434,15 @@ class ResearchAppService:
                 "last_import_summary": system_status.get("last_import_summary") or {},
                 "latest_backtest_summary": system_status.get("latest_backtest_summary") or {},
                 "latest_backtest_artifacts": system_status.get("latest_backtest_artifacts") or {},
+                "latest_model_test_summary": system_status.get("latest_model_test_summary") or {},
+                "latest_model_test_artifacts": system_status.get("latest_model_test_artifacts") or {},
             },
         }
         return self._response(True, "Dashboard snapshot loaded", data=payload)
 
     def get_configuration_summary(self) -> Dict[str, Any]:
-        summary = {
-            "trading_symbol": self.config["trading"]["symbol"],
-            "timeframe": self.config["trading"]["timeframe"],
-            "primary_data_source": self.config["data_sources"]["primary"],
-            "dataset_directory": self.config["data_sources"].get("dataset_directory", "data/imports"),
-            "model_type": self.config["ai_model"]["type"],
-            "enabled_models": list(self.config["ai_model"]["models"]),
-            "database_path": self.config["database"]["path"],
-        }
-        return self._response(True, "Configuration loaded", data=summary)
+        self._ensure_workflow_services()
+        return self.trading_workflows.get_configuration_summary()
 
     def get_trading_snapshot(
         self,
@@ -555,29 +451,8 @@ class ResearchAppService:
         timeframe: Optional[str] = None,
         bars: int = 200,
     ) -> Dict[str, Any]:
-        trading_symbol = (symbol or self.config["trading"]["symbol"]).strip()
-        trading_timeframe = (timeframe or self.config["trading"]["timeframe"]).strip()
-
-        quote = self.broker_manager.get_market_data(trading_symbol)
-        account_info = self.broker_manager.get_account_info()
-        positions = self.broker_manager.get_positions()
-        chart_data, chart_source, chart_reason = self._get_chart_data(trading_symbol, trading_timeframe, bars)
-
-        return self._response(
-            True,
-            f"Trading snapshot loaded for {trading_symbol}",
-            data={
-                "symbol": trading_symbol,
-                "timeframe": trading_timeframe,
-                "quote": quote,
-                "account": account_info,
-                "positions": positions,
-                "chart": chart_data,
-                "chart_source": chart_source,
-                "chart_reason": chart_reason,
-                "broker_connected": bool(self.broker_manager.active_broker),
-            },
-        )
+        self._ensure_workflow_services()
+        return self.trading_workflows.get_trading_snapshot(symbol=symbol, timeframe=timeframe, bars=bars)
 
     def place_manual_order(
         self,
@@ -588,50 +463,18 @@ class ResearchAppService:
         stop_loss: float | None = None,
         take_profit: float | None = None,
     ) -> Dict[str, Any]:
-        cleaned_symbol = symbol.strip() or self.config["trading"]["symbol"]
-        if quantity <= 0:
-            return self._response(False, "Quantity must be greater than zero")
-
-        result = self.broker_manager.place_order(
-            symbol=cleaned_symbol,
-            side=side.strip().lower(),
-            quantity=float(quantity),
-            order_type="market",
+        self._ensure_workflow_services()
+        return self.trading_workflows.place_manual_order(
+            symbol=symbol,
+            side=side,
+            quantity=quantity,
             stop_loss=stop_loss,
             take_profit=take_profit,
         )
-        if result.get("success"):
-            return self._response(
-                True,
-                f"{side.title()} market order submitted for {cleaned_symbol}",
-                data=result,
-            )
-
-        return self._response(
-            False,
-            result.get("error", f"Failed to submit {side} market order"),
-            data=result,
-            errors=[result.get("error")] if result.get("error") else None,
-        )
 
     def close_manual_position(self, position_ticket: str) -> Dict[str, Any]:
-        if not str(position_ticket).strip():
-            return self._response(False, "Position ticket is required")
-
-        result = self.broker_manager.close_position(str(position_ticket).strip())
-        if result.get("success"):
-            return self._response(
-                True,
-                f"Closed position {position_ticket}",
-                data=result,
-            )
-
-        return self._response(
-            False,
-            result.get("error", f"Failed to close position {position_ticket}"),
-            data=result,
-            errors=[result.get("error")] if result.get("error") else None,
-        )
+        self._ensure_workflow_services()
+        return self.trading_workflows.close_manual_position(position_ticket)
 
     def list_broker_profiles(self) -> Dict[str, Any]:
         status = self.broker_manager.get_broker_status()
@@ -663,92 +506,43 @@ class ResearchAppService:
         terminal_path: str = "",
         overwrite: bool = False,
     ) -> Dict[str, Any]:
-        name = name.strip()
-        if not name:
-            return self._response(False, "Profile name is required")
-        if not str(password).strip():
-            return self._response(False, "MT5 password is required")
-
-        existing_profiles = self.config.get("brokers", {}).get("profiles", {})
-        if name in existing_profiles and not overwrite:
-            return self._response(False, f"A saved profile named '{name}' already exists")
-
-        try:
-            broker_config = create_broker_config(
-                broker_type="exness",
-                login=login.strip(),
-                password="",
-                server=server.strip(),
-                terminal_path=terminal_path.strip(),
-                sandbox=False,
-            )
-        except Exception as exc:
-            return self._response(False, f"Failed to create broker profile: {exc}", errors=[str(exc)])
-
-        success = self.broker_manager.add_broker(name, broker_config)
-        if not success:
-            return self._response(False, f"Failed to save broker profile: {name}")
-
-        self.config.setdefault("brokers", {})
-        self.config["brokers"].setdefault("profiles", {})
-        self.config["brokers"]["profiles"][name] = broker_config_to_dict(broker_config)
-        if not self.config["brokers"].get("default_profile"):
-            self.config["brokers"]["default_profile"] = name
-        self.secret_store.set_password(name, password)
-        self._persist_config()
-
-        return self._response(
-            True,
-            f"Broker profile saved securely: {name}",
-            data={"name": name, "server": broker_config.server},
+        self._ensure_workflow_services()
+        return self.trading_workflows.save_broker_profile(
+            name=name,
+            login=login,
+            password=password,
+            server=server,
+            terminal_path=terminal_path,
+            overwrite=overwrite,
         )
 
     def connect_broker(self, name: str) -> Dict[str, Any]:
-        secret = self.secret_store.get_password(name)
-        if not secret:
-            return self._response(False, f"Connection failed for broker: {name}. Saved secret is missing.")
-        success = self.broker_manager.connect_broker(name, password=secret)
-        if not success:
-            return self._response(False, f"Connection failed for broker: {name}")
-        self.config.setdefault("brokers", {})
-        self.config["brokers"]["default_profile"] = name
-        self._persist_config()
-        return self._response(True, f"Connection successful for broker: {name}")
+        self._ensure_workflow_services()
+        return self.trading_workflows.connect_broker(name)
 
     def disconnect_all_brokers(self) -> Dict[str, Any]:
-        self.broker_manager.disconnect_all()
-        return self._response(True, "Disconnected all broker connections")
+        self._ensure_workflow_services()
+        return self.trading_workflows.disconnect_all_brokers()
 
     def delete_broker_profile(self, name: str) -> Dict[str, Any]:
-        profiles = self.config.setdefault("brokers", {}).setdefault("profiles", {})
-        if name not in profiles:
-            return self._response(False, f"Saved profile not found: {name}")
-
-        del profiles[name]
-        self.broker_manager.remove_broker(name)
-        self.secret_store.delete_password(name)
-        if self.config["brokers"].get("default_profile") == name:
-            self.config["brokers"]["default_profile"] = next(iter(profiles.keys()), "")
-        self._persist_config()
-        return self._response(True, f"Broker profile deleted: {name}")
+        self._ensure_workflow_services()
+        return self.trading_workflows.delete_broker_profile(name)
 
     def start_auto_trader(self) -> Dict[str, Any]:
-        success, message = self.auto_trader.start()
-        return self._response(success, message, data=self.auto_trader.get_status())
+        self._ensure_workflow_services()
+        return self.trading_workflows.start_auto_trader()
 
     def stop_auto_trader(self) -> Dict[str, Any]:
-        success, message = self.auto_trader.stop()
-        return self._response(success, message, data=self.auto_trader.get_status())
+        self._ensure_workflow_services()
+        return self.trading_workflows.stop_auto_trader()
 
     def get_auto_trader_status(self) -> Dict[str, Any]:
-        return self._response(True, "Auto trader status loaded", data=self.auto_trader.get_status())
+        self._ensure_workflow_services()
+        return self.trading_workflows.get_auto_trader_status()
 
     def get_auto_trader_events(self, limit: int = 20) -> Dict[str, Any]:
-        return self._response(
-            True,
-            "Auto trader events loaded",
-            data=self.auto_trader.get_recent_events(limit),
-        )
+        self._ensure_workflow_services()
+        return self.trading_workflows.get_auto_trader_events(limit)
 
     def _get_chart_data(self, symbol: str, timeframe: str, bars: int) -> tuple[List[Dict[str, Any]], str, str]:
         broker_chart = self.broker_manager.get_historical_data(symbol, timeframe, bars)

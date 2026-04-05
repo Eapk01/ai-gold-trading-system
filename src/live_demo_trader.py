@@ -13,6 +13,7 @@ from typing import Any, Deque, Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 from loguru import logger
+from src.config_utils import get_effective_confidence_threshold
 
 
 class LiveDemoTrader:
@@ -31,9 +32,7 @@ class LiveDemoTrader:
         self.stop_loss_pips = float(config["trading"]["stop_loss_pips"])
         self.take_profit_pips = float(config["trading"]["take_profit_pips"])
         self.lookback_periods = int(config["ai_model"]["lookback_periods"])
-        self.confidence_threshold = float(
-            live_config.get("signal_confidence_threshold", config["trading"].get("confidence_threshold", 0.60))
-        )
+        self.confidence_threshold = get_effective_confidence_threshold(config, "live_trading")
         self.poll_interval_seconds = int(live_config.get("poll_interval_seconds", 5))
         self.inactive_poll_interval_seconds = int(live_config.get("inactive_poll_interval_seconds", 30))
         self.startup_candle_buffer = int(live_config.get("startup_candle_buffer", 150))

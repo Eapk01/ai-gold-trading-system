@@ -43,8 +43,12 @@ class BacktestingRefactorTests(unittest.TestCase):
                 "initial_capital": 10000,
                 "commission": 0.0,
                 "slippage": 0.0,
+                "signal_confidence_threshold": 0.8,
             },
             "trading": {
+                "symbol": "XAUUSDm",
+                "position_size": 0.01,
+                "confidence_threshold": 0.6,
                 "stop_loss_pips": 50,
                 "take_profit_pips": 100,
             },
@@ -120,6 +124,93 @@ class BacktestingRefactorTests(unittest.TestCase):
         self.assertEqual(result.total_trades, 1)
         self.assertEqual(result.winning_trades, 1)
         self.assertGreater(result.total_pnl, 0)
+
+    def test_run_backtest_uses_configured_backtest_confidence_threshold(self):
+        backtester = Backtester(self.config)
+        prepared_data = pd.DataFrame(
+            {
+                "Open": [100.0, 101.0],
+                "High": [101.0, 102.0],
+                "Low": [99.0, 100.0],
+                "Close": [100.0, 101.0],
+                "Volume": [10.0, 10.0],
+                "feat1": [0.1, 0.2],
+                "feat2": [0.4, 0.5],
+            },
+            index=pd.date_range("2025-01-01", periods=2, freq="5min"),
+        )
+        predictions = pd.DataFrame(
+            {
+                "is_valid": [True, True],
+                "prediction": [1.0, 1.0],
+                "confidence": [0.79, 0.79],
+            },
+            index=prepared_data.index,
+        )
+
+        result = backtester.run_backtest(
+            prepared_data,
+            StubAIManager(predictions),
+            ["feat1", "feat2"],
+        )
+
+        self.assertEqual(result.total_trades, 0)
+
+    def test_run_backtest_does_not_reenter_on_same_candle_after_close(self):
+        config = {
+            "ai_model": {
+                "type": "ensemble",
+                "models": ["random_forest"],
+            },
+            "backtest": {
+                "initial_capital": 10000,
+                "commission": 0.0,
+                "slippage": 0.0,
+                "signal_confidence_threshold": 0.6,
+            },
+            "trading": {
+                "symbol": "XAUUSDm",
+                "position_size": 1.0,
+                "confidence_threshold": 0.6,
+                "stop_loss_pips": 1,
+                "take_profit_pips": 1,
+            },
+        }
+        backtester = Backtester(config)
+        prepared_data = pd.DataFrame(
+            {
+                "Open": [100.0, 102.0, 102.0],
+                "High": [100.0, 102.0, 102.0],
+                "Low": [100.0, 102.0, 102.0],
+                "Close": [100.0, 102.0, 102.0],
+                "Volume": [10.0, 10.0, 10.0],
+                "feat1": [0.1, 0.2, 0.3],
+                "feat2": [0.4, 0.5, 0.6],
+            },
+            index=pd.date_range("2025-01-01", periods=3, freq="5min"),
+        )
+        predictions = pd.DataFrame(
+            {
+                "is_valid": [True, True, True],
+                "prediction": [1.0, 1.0, 1.0],
+                "confidence": [0.8, 0.8, 0.8],
+            },
+            index=prepared_data.index,
+        )
+
+        result = backtester.run_backtest(
+            prepared_data,
+            StubAIManager(predictions),
+            ["feat1", "feat2"],
+        )
+
+        closed_trades = [trade for trade in backtester.trades if trade.status == "closed"]
+        same_candle_reentries = sum(
+            1
+            for previous, current in zip(closed_trades, closed_trades[1:])
+            if previous.exit_time == current.entry_time
+        )
+        self.assertEqual(same_candle_reentries, 0)
 
     def test_run_backtest_requires_selected_features_to_exist(self):
         backtester = Backtester(self.config)
