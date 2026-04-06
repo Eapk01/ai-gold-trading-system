@@ -12,13 +12,10 @@ from gui.components.summaries import (
     render_artifact_summary,
     render_backtest_summary,
     render_diagnostics_summary,
-    render_experiment_summary,
-    render_feature_study_summary,
     render_integrity_summary,
     render_model_test_summary,
     render_search_summary,
     render_training_experiment_summary,
-    render_target_study_summary,
 )
 from src.app_service import ResearchAppService
 from src.research import (
@@ -43,18 +40,15 @@ def _format_elapsed_seconds(value: float | int | None) -> str:
 def render(service: ResearchAppService) -> None:
     render_page_header(
         "Reports",
-        "Search is the primary research workflow now. The other report groups are still available as diagnostics when you need to inspect a target, feature set, or individual candidate.",
+        "Search is the primary research workflow now. Candidate reports remain available because Stage 5 produces them and promotion depends on them.",
     )
     render_section_divider()
-    backtest_tab, model_test_tab, search_tab, training_experiment_tab, experiment_tab, target_study_tab, feature_study_tab = st.tabs(
+    backtest_tab, model_test_tab, search_tab, training_experiment_tab = st.tabs(
         [
             "Backtests",
             "Model Tests",
             "Research Search",
             "Candidate Models",
-            "Single Experiment",
-            "Target Diagnostics",
-            "Feature Diagnostics",
         ]
     )
 
@@ -66,12 +60,6 @@ def render(service: ResearchAppService) -> None:
         _render_search_reports(service)
     with training_experiment_tab:
         _render_training_experiment_reports(service)
-    with experiment_tab:
-        _render_experiment_reports(service)
-    with target_study_tab:
-        _render_target_study_reports(service)
-    with feature_study_tab:
-        _render_feature_study_reports(service)
 
 
 def _render_backtest_reports(service: ResearchAppService) -> None:
@@ -134,215 +122,6 @@ def _render_model_test_reports(service: ResearchAppService) -> None:
             render_subtle_divider()
             st.subheader("Confidence Buckets")
             st.dataframe(pd.DataFrame(bucket_rows), use_container_width=True, hide_index=True)
-
-
-def _render_experiment_reports(service: ResearchAppService) -> None:
-    reports_result = service.list_experiment_reports(limit=20)
-    reports = reports_result.get("data") or []
-    if not reports:
-        st.info("No single-experiment diagnostic reports found.")
-        return
-
-    report_options = {report["name"]: report["path"] for report in reports}
-    selected_report = st.selectbox("Select a single-experiment diagnostic report", list(report_options.keys()))
-
-    if st.button("Load Single-Experiment Report", use_container_width=True):
-        with st.spinner("Loading single-experiment diagnostic report..."):
-            st.session_state.last_experiment_report_result = service.get_experiment_report(report_options[selected_report])
-
-    result = st.session_state.get("last_experiment_report_result")
-    if not result:
-        return
-
-    show_response(result)
-    data = result.get("data") or {}
-    summary = data.get("summary") or {}
-    if summary:
-        render_subtle_divider()
-        st.subheader("Single-Experiment Summary")
-        render_experiment_summary(summary)
-
-    integrity = data.get("integrity") or {}
-    if integrity:
-        render_subtle_divider()
-        st.subheader("Integrity Proof")
-        render_integrity_summary(integrity)
-        integrity_rows = integrity.get("fold_rows") or []
-        if integrity_rows:
-            render_subtle_divider()
-            st.caption("Per-Fold Integrity")
-            st.dataframe(pd.DataFrame(integrity_rows), use_container_width=True, hide_index=True)
-
-    aggregate_metrics = data.get("aggregate_metrics") or {}
-    if aggregate_metrics:
-        render_subtle_divider()
-        st.subheader("Aggregate Metrics")
-        st.json(aggregate_metrics)
-
-    baseline_comparison = data.get("baseline_comparison") or {}
-    if baseline_comparison:
-        render_subtle_divider()
-        st.subheader("Baseline Comparison")
-        st.json(baseline_comparison)
-
-    artifacts = data.get("artifact_paths") or {}
-    if artifacts:
-        render_subtle_divider()
-        st.subheader("Artifacts")
-        render_artifact_summary(artifacts)
-
-
-def _render_target_study_reports(service: ResearchAppService) -> None:
-    reports_result = service.list_target_study_reports(limit=20)
-    reports = reports_result.get("data") or []
-    if not reports:
-        st.info("No target diagnostic reports found.")
-        return
-
-    report_options = {report["name"]: report["path"] for report in reports}
-    selected_report = st.selectbox("Select a target diagnostic report", list(report_options.keys()))
-
-    if st.button("Load Target Diagnostic Report", use_container_width=True):
-        with st.spinner("Loading target diagnostic report..."):
-            st.session_state.last_target_study_report_result = service.get_target_study_report(
-                report_options[selected_report]
-            )
-
-    result = st.session_state.get("last_target_study_report_result")
-    if not result:
-        return
-
-    show_response(result)
-    data = result.get("data") or {}
-    summary = data.get("summary") or {}
-    if summary:
-        render_subtle_divider()
-        st.subheader("Target Diagnostic Summary")
-        render_target_study_summary(summary)
-
-    integrity = data.get("integrity") or {}
-    if integrity:
-        render_subtle_divider()
-        st.subheader("Integrity Proof")
-        render_integrity_summary(integrity)
-        integrity_rows = integrity.get("fold_rows") or []
-        if integrity_rows:
-            render_subtle_divider()
-            st.caption("Target Integrity")
-            st.dataframe(pd.DataFrame(integrity_rows), use_container_width=True, hide_index=True)
-
-    comparison_rows = data.get("comparison_rows") or []
-    if comparison_rows:
-        render_subtle_divider()
-        st.subheader("Target Comparison")
-        st.dataframe(pd.DataFrame(comparison_rows), use_container_width=True, hide_index=True)
-
-    target_results = data.get("target_results") or []
-    if target_results:
-        render_subtle_divider()
-        st.subheader("Target Details")
-        detail_rows = [
-            {
-                "target_id": row.get("target_id"),
-                "display_name": row.get("display_name"),
-                "target_type": row.get("target_type"),
-                "positive_rate": (row.get("summary") or {}).get("positive_rate"),
-                "missing_rate": (row.get("summary") or {}).get("missing_rate"),
-                "proof_status": (row.get("integrity") or {}).get("proof_status"),
-                "integrity_contract_ok": (row.get("integrity") or {}).get("integrity_contract_ok"),
-                "experiment_report_file": row.get("experiment_report_file"),
-                "error": row.get("error"),
-            }
-            for row in target_results
-        ]
-        st.dataframe(pd.DataFrame(detail_rows), use_container_width=True, hide_index=True)
-
-    artifacts = data.get("artifact_paths") or {}
-    if artifacts:
-        render_subtle_divider()
-        st.subheader("Artifacts")
-        render_artifact_summary(artifacts)
-
-
-def _render_feature_study_reports(service: ResearchAppService) -> None:
-    _render_feature_set_glossary()
-    reports_result = service.list_feature_study_reports(limit=20)
-    reports = reports_result.get("data") or []
-    if not reports:
-        st.info("No feature diagnostic reports found.")
-        return
-
-    report_options = {report["name"]: report["path"] for report in reports}
-    selected_report = st.selectbox("Select a feature diagnostic report", list(report_options.keys()))
-
-    if st.button("Load Feature Diagnostic Report", use_container_width=True):
-        with st.spinner("Loading feature diagnostic report..."):
-            st.session_state.last_feature_study_report_result = service.get_feature_study_report(
-                report_options[selected_report]
-            )
-
-    result = st.session_state.get("last_feature_study_report_result")
-    if not result:
-        return
-
-    show_response(result)
-    data = result.get("data") or {}
-    summary = data.get("summary") or {}
-    if summary:
-        render_subtle_divider()
-        st.subheader("Feature Diagnostic Summary")
-        render_feature_study_summary(summary)
-
-    comparison_rows = data.get("comparison_rows") or []
-    if comparison_rows:
-        render_subtle_divider()
-        st.subheader("Feature-Set Comparison")
-        st.dataframe(pd.DataFrame(comparison_rows), use_container_width=True, hide_index=True)
-
-    set_results = data.get("set_results") or []
-    if set_results:
-        render_subtle_divider()
-        st.subheader("Top Stable Features")
-        stability_rows = []
-        for set_result in set_results:
-            for row in set_result.get("stability_rows", [])[:10]:
-                stability_rows.append(
-                    {
-                        "target": set_result.get("target_display_name"),
-                        "feature_set": set_result.get("feature_set_display_name"),
-                        **row,
-                    }
-                )
-        if stability_rows:
-            st.dataframe(pd.DataFrame(stability_rows), use_container_width=True, hide_index=True)
-
-        render_subtle_divider()
-        st.subheader("Feature-Set Details")
-        detail_rows = [
-            {
-                "target": row.get("target_display_name"),
-                "feature_set": row.get("feature_set_display_name"),
-                "candidate_features": row.get("candidate_feature_count"),
-                "mean_test_accuracy": (row.get("aggregate_metrics") or {}).get("mean_test_accuracy"),
-                "fold_selection_count": len(row.get("fold_selections") or []),
-                "experiment_report_file": row.get("experiment_report_file"),
-                "error": row.get("error"),
-            }
-            for row in set_results
-        ]
-        st.dataframe(pd.DataFrame(detail_rows), use_container_width=True, hide_index=True)
-
-    inventory_rows = data.get("inventory_rows") or []
-    if inventory_rows:
-        render_subtle_divider()
-        st.subheader("Feature Inventory")
-        st.dataframe(pd.DataFrame(inventory_rows), use_container_width=True, hide_index=True)
-
-    artifacts = data.get("artifact_paths") or {}
-    if artifacts:
-        render_subtle_divider()
-        st.subheader("Artifacts")
-        render_artifact_summary(artifacts)
 
 
 def _render_training_experiment_reports(service: ResearchAppService) -> None:

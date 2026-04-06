@@ -53,6 +53,7 @@ def get_default_config() -> Dict[str, Any]:
         "ai_model": {
             "type": "ensemble",
             "models": ["random_forest", "xgboost", "logistic_regression"],
+            "models_directory": "models",
             "retrain_interval": 168,
             "lookback_periods": 100,
             "target_column": DEFAULT_TARGET_COLUMN,
@@ -89,6 +90,12 @@ def get_default_config() -> Dict[str, Any]:
             "file_path": "logs/trading_system.log",
             "max_file_size": "10MB",
             "backup_count": 5,
+        },
+        "app": {
+            "startup": {
+                "autoload_latest_model": True,
+                "autoconnect_broker": True,
+            }
         },
         "brokers": {
             "exness": {
@@ -156,6 +163,10 @@ def ensure_runtime_directories(config: Dict[str, Any]) -> List[str]:
     dataset_directory = config.get("data_sources", {}).get("dataset_directory", "")
     if dataset_directory:
         directories.add(str(dataset_directory))
+
+    models_directory = config.get("ai_model", {}).get("models_directory", "")
+    if models_directory:
+        directories.add(str(models_directory))
 
     experiments_directory = config.get("research", {}).get("experiments_directory", "")
     if experiments_directory:

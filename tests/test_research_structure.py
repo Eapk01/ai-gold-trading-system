@@ -1163,6 +1163,7 @@ class ResearchExperimentServiceTests(unittest.TestCase):
                     "ai_model:",
                     "  type: ensemble",
                     "  models: [random_forest]",
+                    f"  models_directory: {str(root / 'models').replace(chr(92), '/')}",
                     "  lookback_periods: 20",
                     "  target_column: Future_Direction_1",
                     "research:",
@@ -1182,6 +1183,10 @@ class ResearchExperimentServiceTests(unittest.TestCase):
                     "logging:",
                     "  level: INFO",
                     f"  file_path: {str(root / 'logs' / 'test.log').replace(chr(92), '/')}",
+                    "app:",
+                    "  startup:",
+                    "    autoload_latest_model: false",
+                    "    autoconnect_broker: false",
                     "brokers:",
                     "  profiles: {}",
                     "  default_profile: ''",
@@ -1217,227 +1222,6 @@ class ResearchExperimentServiceTests(unittest.TestCase):
         )
         frame["Future_Leak"] = list(range(periods))
         return frame
-
-    def test_run_research_experiment_requires_prepared_data(self):
-        with TemporaryDirectory() as temp_dir:
-            service = ResearchAppService(str(self._write_config(Path(temp_dir))))
-
-            result = service.run_research_experiment()
-
-            self.assertFalse(result["success"])
-            self.assertIn("prepare the data first", result["message"].lower())
-
-    def test_run_research_experiment_uses_fixed_baseline_core_feature_set(self):
-        with TemporaryDirectory() as temp_dir:
-            service = ResearchAppService(str(self._write_config(Path(temp_dir))))
-            service.feature_data = self._build_stage12_feature_data(40)
-            service.selected_features = ["Future_Leak"]
-
-            result = service.run_research_experiment("stage1_fixed_feature_set")
-
-            self.assertTrue(result["success"], msg=result)
-            report = service.get_experiment_report((result["artifacts"] or {})["report_file"])
-            self.assertTrue(report["success"], msg=report)
-            self.assertEqual(report["data"]["summary"]["feature_set_name"], "baseline_core")
-            self.assertEqual(report["data"]["metadata"]["research_feature_set_name"], "baseline_core")
-            self.assertEqual(report["data"]["metadata"]["feature_selection_mode"], "fixed_feature_columns")
-            self.assertEqual(report["data"]["integrity"]["proof_status"], "passed")
-            self.assertTrue(report["data"]["integrity"]["integrity_contract_ok"])
-
-    def test_run_research_experiment_saves_artifacts_and_reports(self):
-        with TemporaryDirectory() as temp_dir:
-            root = Path(temp_dir)
-            service = ResearchAppService(str(self._write_config(root)))
-            service.feature_data = self._build_stage12_feature_data(40)
-            service.selected_features = []
-
-            result = service.run_research_experiment("stage1_smoke")
-
-            self.assertTrue(result["success"], msg=result)
-            artifacts = result["artifacts"] or {}
-            self.assertTrue(Path(artifacts["report_file"]).exists())
-            self.assertTrue(Path(artifacts["prediction_rows_file"]).exists())
-            self.assertTrue(Path(artifacts["threshold_metrics_file"]).exists())
-            self.assertTrue(Path(artifacts["calibration_file"]).exists())
-
-            listed = service.list_experiment_reports(limit=5)
-            self.assertTrue(listed["success"])
-            self.assertEqual(len(listed["data"]), 1)
-
-            loaded = service.get_experiment_report(listed["data"][0]["path"])
-            self.assertTrue(loaded["success"], msg=loaded)
-            self.assertEqual(loaded["data"]["summary"]["experiment_name"], "stage1_smoke")
-            self.assertEqual(loaded["data"]["summary"]["feature_set_name"], "baseline_core")
-            self.assertIn("baselines", loaded["data"]["baseline_comparison"])
-            self.assertIn("rows", loaded["data"]["threshold_summary"])
-            self.assertIn("rows", loaded["data"]["calibration_summary"])
-            self.assertEqual(loaded["data"]["integrity"]["proof_status"], "passed")
-            self.assertTrue(Path(loaded["data"]["artifact_paths"]["fold_integrity_file"]).exists())
-            self.assertEqual(
-                loaded["data"]["artifact_paths"]["prediction_rows_file"],
-                artifacts["prediction_rows_file"],
-            )
-
-    def test_run_target_study_saves_reports_and_comparison_artifacts(self):
-        with TemporaryDirectory() as temp_dir:
-            root = Path(temp_dir)
-            service = ResearchAppService(str(self._write_config(root)))
-            service.feature_data = self._build_stage12_feature_data(60)
-            service.selected_features = ["Future_Leak"]
-
-            result = service.run_target_study("stage2_smoke")
-
-            self.assertTrue(result["success"], msg=result)
-            artifacts = result["artifacts"] or {}
-            self.assertTrue(Path(artifacts["report_file"]).exists())
-            self.assertTrue(Path(artifacts["comparison_file"]).exists())
-
-            listed = service.list_target_study_reports(limit=5)
-            self.assertTrue(listed["success"])
-            self.assertEqual(len(listed["data"]), 1)
-
-            loaded = service.get_target_study_report(listed["data"][0]["path"])
-            self.assertTrue(loaded["success"], msg=loaded)
-            self.assertEqual(loaded["data"]["summary"]["study_name"], "stage2_smoke")
-            self.assertEqual(loaded["data"]["summary"]["feature_set_name"], "baseline_core")
-            self.assertEqual(loaded["data"]["integrity"]["proof_status"], "passed")
-            self.assertGreaterEqual(len(loaded["data"]["comparison_rows"]), 1)
-            self.assertGreaterEqual(len(loaded["data"]["target_results"]), 1)
-            self.assertTrue(
-                all(
-                    (target_result.get("experiment_summary") or {}).get("feature_set_name") == "baseline_core"
-                    for target_result in loaded["data"]["target_results"]
-                    if not target_result.get("error")
-                )
-            )
-            self.assertTrue(all("integrity" in target_result for target_result in loaded["data"]["target_results"]))
-            self.assertTrue(Path(loaded["data"]["artifact_paths"]["fold_integrity_file"]).exists())
-            self.assertEqual(
-                loaded["data"]["artifact_paths"]["comparison_file"],
-                artifacts["comparison_file"],
-            )
-
-    def test_run_feature_study_saves_reports_and_stability_artifacts(self):
-        with TemporaryDirectory() as temp_dir:
-            root = Path(temp_dir)
-            service = ResearchAppService(str(self._write_config(root)))
-            index = pd.date_range("2025-01-01", periods=80, freq="5min")
-            close = pd.Series([100.0 + (value * 0.03) + ((-1) ** value) * 0.04 for value in range(80)], index=index)
-            service.feature_data = pd.DataFrame(
-                {
-                    "Open": close - 0.05,
-                    "High": close + 0.10,
-                    "Low": close - 0.10,
-                    "Close": close,
-                    "Volume": [100 + (value % 10) * 5 for value in range(80)],
-                    "SMA_5": close.rolling(5, min_periods=1).mean(),
-                    "EMA_10": close.ewm(span=10, adjust=False).mean(),
-                    "MACD": close.diff().fillna(0.0),
-                    "ATR_14": (close.diff().abs().rolling(14, min_periods=1).mean()).fillna(0.0),
-                    "BB_Width": close.rolling(10, min_periods=1).std().fillna(0.0),
-                    "Volume_Ratio": pd.Series([1.0 + (value % 4) * 0.1 for value in range(80)], index=index),
-                    "Pivot": close,
-                    "Hour": index.hour,
-                    "Close_Lag_1": close.shift(1).bfill(),
-                    "Returns_Mean_5": close.pct_change(fill_method=None).rolling(5, min_periods=1).mean().fillna(0.0),
-                },
-                index=index,
-            )
-            service.selected_features = ["SMA_5", "ATR_14", "Hour"]
-
-            result = service.run_feature_study("stage3_smoke")
-
-            self.assertTrue(result["success"], msg=result)
-            artifacts = result["artifacts"] or {}
-            self.assertTrue(Path(artifacts["report_file"]).exists())
-            self.assertTrue(Path(artifacts["inventory_file"]).exists())
-            self.assertTrue(Path(artifacts["fold_selection_file"]).exists())
-            self.assertTrue(Path(artifacts["stability_file"]).exists())
-            self.assertTrue(Path(artifacts["comparison_file"]).exists())
-
-            listed = service.list_feature_study_reports(limit=5)
-            self.assertTrue(listed["success"])
-            self.assertEqual(len(listed["data"]), 1)
-
-            loaded = service.get_feature_study_report(listed["data"][0]["path"])
-            self.assertTrue(loaded["success"], msg=loaded)
-            self.assertEqual(loaded["data"]["summary"]["study_name"], "stage3_smoke")
-            self.assertGreaterEqual(len(loaded["data"]["comparison_rows"]), 1)
-            self.assertGreaterEqual(len(loaded["data"]["inventory_rows"]), 1)
-            self.assertGreaterEqual(len(loaded["data"]["set_results"]), 1)
-            self.assertTrue(any(result_row.get("fold_selections") for result_row in loaded["data"]["set_results"]))
-            self.assertEqual(
-                loaded["data"]["artifact_paths"]["comparison_file"],
-                artifacts["comparison_file"],
-            )
-
-    def test_run_training_experiment_and_promotion_saves_reports_and_models(self):
-        with TemporaryDirectory() as temp_dir:
-            root = Path(temp_dir)
-            service = ResearchAppService(str(self._write_config(root)))
-            index = pd.date_range("2025-01-01", periods=80, freq="5min")
-            close = pd.Series([100.0 + (value * 0.03) + ((-1) ** value) * 0.04 for value in range(80)], index=index)
-            service.feature_data = pd.DataFrame(
-                {
-                    "Close": close,
-                    "SMA_5": close.rolling(5, min_periods=1).mean(),
-                    "EMA_10": close.ewm(span=10, adjust=False).mean(),
-                    "MACD": close.diff().fillna(0.0),
-                    "ATR_14": close.diff().abs().rolling(14, min_periods=1).mean().fillna(0.0),
-                    "BB_Width": close.rolling(10, min_periods=1).std().fillna(0.0),
-                    "Volume_Ratio": pd.Series([1.0 + (value % 4) * 0.1 for value in range(80)], index=index),
-                    "Pivot": close,
-                    "Hour": index.hour,
-                },
-                index=index,
-            )
-
-            result = service.run_training_experiment("stage4_smoke")
-
-            self.assertTrue(result["success"], msg=result)
-            artifacts = result["artifacts"] or {}
-            self.assertTrue(Path(artifacts["report_file"]).exists())
-            self.assertTrue(Path(artifacts["prediction_rows_file"]).exists())
-            self.assertTrue(Path(artifacts["threshold_metrics_file"]).exists())
-            self.assertTrue(Path(artifacts["calibration_file"]).exists())
-            self.assertTrue(Path(artifacts["resolved_features_file"]).exists())
-            self.assertTrue(Path(artifacts["model_path"]).exists())
-
-            listed = service.list_training_experiment_reports(limit=5)
-            self.assertTrue(listed["success"])
-            self.assertEqual(len(listed["data"]), 1)
-
-            loaded = service.get_training_experiment_report(listed["data"][0]["path"])
-            self.assertTrue(loaded["success"], msg=loaded)
-            self.assertEqual(loaded["data"]["summary"]["experiment_name"], "stage4_smoke")
-            self.assertTrue(loaded["data"]["candidate_artifact"])
-            self.assertIn("selected_threshold", loaded["data"]["summary"])
-            self.assertIn("diagnostics", loaded["data"])
-            self.assertTrue(loaded["data"]["diagnostics"])
-            self.assertIn("integrity", loaded["data"])
-            self.assertEqual(loaded["data"]["integrity"]["proof_status"], "passed")
-            self.assertIsNotNone(loaded["data"]["summary"]["selected_threshold_test_mean_f1"])
-            self.assertIsNotNone(loaded["data"]["summary"]["selected_threshold_test_mean_coverage"])
-            self.assertTrue(loaded["data"]["diagnostics"].get("prediction_health_rows"))
-            self.assertTrue(Path(loaded["data"]["artifact_paths"]["fold_integrity_file"]).exists())
-            self.assertTrue(Path(loaded["data"]["artifact_paths"]["fold_diagnostics_file"]).exists())
-            self.assertTrue(Path(loaded["data"]["artifact_paths"]["threshold_coverage_diagnostics_file"]).exists())
-            self.assertTrue(Path(loaded["data"]["artifact_paths"]["feature_health_diagnostics_file"]).exists())
-
-            promotion = service.promote_training_experiment(listed["data"][0]["path"])
-            self.assertTrue(promotion["success"], msg=promotion)
-            promoted_artifacts = promotion["artifacts"] or {}
-            self.assertTrue(Path(promoted_artifacts["report_file"]).exists())
-            self.assertTrue(Path(promoted_artifacts["model_path"]).exists())
-
-            promotion_reports = service.list_promotion_reports(limit=5)
-            self.assertTrue(promotion_reports["success"])
-            self.assertEqual(len(promotion_reports["data"]), 1)
-
-            promotion_loaded = service.get_promotion_report(promotion_reports["data"][0]["path"])
-            self.assertTrue(promotion_loaded["success"], msg=promotion_loaded)
-            self.assertEqual(promotion_loaded["data"]["summary"]["experiment_name"], "stage4_smoke")
-            self.assertEqual(promotion_loaded["data"]["integrity"]["proof_status"], "passed")
 
     def test_run_automated_search_saves_reports_and_recommended_candidate_can_be_promoted(self):
         with TemporaryDirectory() as temp_dir:

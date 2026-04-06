@@ -75,14 +75,6 @@ class ResearchAppService:
         self.latest_backtest_artifacts: Dict[str, str] = {}
         self.latest_model_test_summary: Dict[str, Any] = {}
         self.latest_model_test_artifacts: Dict[str, str] = {}
-        self.latest_research_experiment_summary: Dict[str, Any] = {}
-        self.latest_research_experiment_artifacts: Dict[str, str] = {}
-        self.latest_target_study_summary: Dict[str, Any] = {}
-        self.latest_target_study_artifacts: Dict[str, str] = {}
-        self.latest_feature_study_summary: Dict[str, Any] = {}
-        self.latest_feature_study_artifacts: Dict[str, str] = {}
-        self.latest_training_experiment_summary: Dict[str, Any] = {}
-        self.latest_training_experiment_artifacts: Dict[str, str] = {}
         self.latest_promotion_summary: Dict[str, Any] = {}
         self.latest_promotion_artifacts: Dict[str, str] = {}
         self.latest_search_summary: Dict[str, Any] = {}
@@ -99,8 +91,11 @@ class ResearchAppService:
         self.trading_workflows = TradingWorkflowService(self)
 
         self._load_saved_broker_profiles()
-        self._autoconnect_saved_broker()
-        self._autoload_latest_model()
+        startup_config = dict(self.config.get("app", {}).get("startup", {}) or {})
+        if bool(startup_config.get("autoconnect_broker", True)):
+            self._autoconnect_saved_broker()
+        if bool(startup_config.get("autoload_latest_model", True)):
+            self._autoload_latest_model()
         logger.info("Research system initialization complete")
 
     def _response(
@@ -263,8 +258,12 @@ class ResearchAppService:
         cleaned = re.sub(r"[^A-Za-z0-9_-]+", "_", model_name.strip())
         return cleaned.strip("_") or "default"
 
+    def _get_models_directory(self) -> Path:
+        configured_directory = str(self.config.get("ai_model", {}).get("models_directory", "models") or "models")
+        return Path(configured_directory)
+
     def _get_saved_model_files(self) -> List[Path]:
-        return sorted(Path("models").glob("*.joblib"), key=lambda path: path.stat().st_mtime, reverse=True)
+        return sorted(self._get_models_directory().glob("*.joblib"), key=lambda path: path.stat().st_mtime, reverse=True)
 
     def _serialize_backtest_result(self, result: BacktestResult) -> Dict[str, Any]:
         return {
@@ -364,22 +363,6 @@ class ResearchAppService:
         self._ensure_workflow_services()
         return self.research_workflows.run_model_test()
 
-    def run_research_experiment(self, experiment_name: str = "diagnostic_single_experiment") -> Dict[str, Any]:
-        self._ensure_workflow_services()
-        return self.research_workflows.run_research_experiment(experiment_name)
-
-    def run_target_study(self, study_name: str = "diagnostic_target_comparison") -> Dict[str, Any]:
-        self._ensure_workflow_services()
-        return self.research_workflows.run_target_study(study_name)
-
-    def run_feature_study(self, study_name: str = "diagnostic_feature_comparison") -> Dict[str, Any]:
-        self._ensure_workflow_services()
-        return self.research_workflows.run_feature_study(study_name)
-
-    def run_training_experiment(self, experiment_name: str = "diagnostic_candidate_training") -> Dict[str, Any]:
-        self._ensure_workflow_services()
-        return self.research_workflows.run_training_experiment(experiment_name)
-
     def promote_training_experiment(self, experiment_path_or_id: str) -> Dict[str, Any]:
         self._ensure_workflow_services()
         return self.research_workflows.promote_training_experiment(experiment_path_or_id)
@@ -412,30 +395,6 @@ class ResearchAppService:
     def get_model_test_report(self, report_path: str) -> Dict[str, Any]:
         self._ensure_workflow_services()
         return self.report_workflows.get_model_test_report(report_path)
-
-    def list_experiment_reports(self, limit: int = 10) -> Dict[str, Any]:
-        self._ensure_workflow_services()
-        return self.report_workflows.list_experiment_reports(limit)
-
-    def get_experiment_report(self, report_path: str) -> Dict[str, Any]:
-        self._ensure_workflow_services()
-        return self.report_workflows.get_experiment_report(report_path)
-
-    def list_target_study_reports(self, limit: int = 10) -> Dict[str, Any]:
-        self._ensure_workflow_services()
-        return self.report_workflows.list_target_study_reports(limit)
-
-    def get_target_study_report(self, report_path: str) -> Dict[str, Any]:
-        self._ensure_workflow_services()
-        return self.report_workflows.get_target_study_report(report_path)
-
-    def list_feature_study_reports(self, limit: int = 10) -> Dict[str, Any]:
-        self._ensure_workflow_services()
-        return self.report_workflows.list_feature_study_reports(limit)
-
-    def get_feature_study_report(self, report_path: str) -> Dict[str, Any]:
-        self._ensure_workflow_services()
-        return self.report_workflows.get_feature_study_report(report_path)
 
     def list_training_experiment_reports(self, limit: int = 10) -> Dict[str, Any]:
         self._ensure_workflow_services()
@@ -480,14 +439,6 @@ class ResearchAppService:
             "latest_backtest_artifacts": self.latest_backtest_artifacts,
             "latest_model_test_summary": self.latest_model_test_summary,
             "latest_model_test_artifacts": self.latest_model_test_artifacts,
-            "latest_research_experiment_summary": self.latest_research_experiment_summary,
-            "latest_research_experiment_artifacts": self.latest_research_experiment_artifacts,
-            "latest_target_study_summary": self.latest_target_study_summary,
-            "latest_target_study_artifacts": self.latest_target_study_artifacts,
-            "latest_feature_study_summary": self.latest_feature_study_summary,
-            "latest_feature_study_artifacts": self.latest_feature_study_artifacts,
-            "latest_training_experiment_summary": self.latest_training_experiment_summary,
-            "latest_training_experiment_artifacts": self.latest_training_experiment_artifacts,
             "latest_promotion_summary": self.latest_promotion_summary,
             "latest_promotion_artifacts": self.latest_promotion_artifacts,
             "latest_search_summary": self.latest_search_summary,
@@ -565,14 +516,6 @@ class ResearchAppService:
                 "latest_backtest_artifacts": system_status.get("latest_backtest_artifacts") or {},
                 "latest_model_test_summary": system_status.get("latest_model_test_summary") or {},
                 "latest_model_test_artifacts": system_status.get("latest_model_test_artifacts") or {},
-                "latest_research_experiment_summary": system_status.get("latest_research_experiment_summary") or {},
-                "latest_research_experiment_artifacts": system_status.get("latest_research_experiment_artifacts") or {},
-                "latest_target_study_summary": system_status.get("latest_target_study_summary") or {},
-                "latest_target_study_artifacts": system_status.get("latest_target_study_artifacts") or {},
-                "latest_feature_study_summary": system_status.get("latest_feature_study_summary") or {},
-                "latest_feature_study_artifacts": system_status.get("latest_feature_study_artifacts") or {},
-                "latest_training_experiment_summary": system_status.get("latest_training_experiment_summary") or {},
-                "latest_training_experiment_artifacts": system_status.get("latest_training_experiment_artifacts") or {},
                 "latest_promotion_summary": system_status.get("latest_promotion_summary") or {},
                 "latest_promotion_artifacts": system_status.get("latest_promotion_artifacts") or {},
                 "latest_search_summary": system_status.get("latest_search_summary") or {},

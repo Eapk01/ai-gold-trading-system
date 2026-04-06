@@ -18,9 +18,6 @@ from src.research import (
     CandidateArtifact,
     EvaluationPipeline,
     ExperimentRunner,
-    FeatureStudyRequest,
-    FeatureStudyResult,
-    FeatureStudyRunner,
     FixedHorizonDirectionSpec,
     LegacyRuntimeDirectionSpec,
     NeutralBandLabelSpec,
@@ -34,15 +31,11 @@ from src.research import (
     TrainingExperimentRequest,
     TrainingExperimentResult,
     TrainerRegistry,
-    TargetStudyRequest,
-    TargetStudyResult,
-    TargetStudyRunner,
     TrainingPipeline,
     VolatilityAdjustedMoveSpec,
     WalkForwardSplitter,
     build_binary_target_labels,
     build_experiment_integrity_proof,
-    build_target_result_stub,
     build_feature_selector,
     resolve_integrity_payload,
     build_search_diagnostics,
@@ -66,7 +59,7 @@ class ResearchWorkflowService:
 
     def __init__(self, service: "ResearchAppService") -> None:
         self.service = service
-        self.research_defaults = resolve_research_defaults(self.service.config)
+        self.research_defaults = resolve_research_defaults(getattr(self.service, "config", {}))
 
     def _resolved_research_defaults_snapshot(self) -> Dict[str, Any]:
         return self.research_defaults.to_dict()
@@ -204,7 +197,8 @@ class ResearchWorkflowService:
             return self.service._response(False, "Model training failed")
 
         safe_name = self.service._sanitize_model_name(model_name or "default")
-        model_path = Path("models") / f"{safe_name}.joblib"
+        model_path = self.service._get_models_directory() / f"{safe_name}.joblib"
+        model_path.parent.mkdir(parents=True, exist_ok=True)
         self.service.ai_model_manager.save_models(model_path)
         self.service.loaded_model_path = str(model_path)
         self.service.selected_features = list(self.service.ai_model_manager.feature_columns)
@@ -353,417 +347,6 @@ class ResearchWorkflowService:
             logger.error(f"Model test failed: {exc}")
             return self.service._response(False, f"Model test failed: {exc}", errors=[str(exc)])
 
-    def run_research_experiment(self, experiment_name: str = "diagnostic_single_experiment") -> Dict[str, Any]:
-        logger.info("Starting diagnostic single-experiment run...")
-        self.service._reload_runtime_from_disk()
-
-        if self.service.feature_data is None or self.service.feature_data.empty:
-            logger.error("Please prepare the data first")
-            return self.service._response(False, "Please prepare the data first")
-
-        target_column = self.service.get_target_column()
-        if target_column not in self.service.feature_data.columns:
-            message = f"Prepared feature data is missing target column: {target_column}"
-            logger.error(message)
-            return self.service._response(False, message)
-
-        try:
-            feature_set = self._resolve_stage12_feature_set()
-        except Exception as exc:
-            logger.error(f"Failed to resolve Stage 1 feature set: {exc}")
-            return self.service._response(False, f"Diagnostic single-experiment run failed: {exc}", errors=[str(exc)])
-        feature_columns = list(feature_set.columns)
-
-        try:
-            runtime_horizon = int(str(target_column).rsplit("_", 1)[-1])
-        except ValueError:
-            runtime_horizon = 1
-        runtime_target_spec = LegacyRuntimeDirectionSpec(
-            spec_id=f"legacy_{target_column.lower()}",
-            display_name=f"Legacy Runtime Target ({target_column})",
-            horizon_bars=runtime_horizon,
-        )
-        target_series = build_binary_target_labels(self.service.feature_data, runtime_target_spec)
-        try:
-            execution = self._execute_fixed_feature_research_diagnostic(
-                run_name=experiment_name,
-                target_series=target_series,
-                artifact_prefix=f"research_experiment_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-                target_spec=runtime_target_spec,
-                feature_columns=feature_columns,
-                feature_set=feature_set,
-                feature_selection_note=(
-                    f"Stage 1 uses the fixed research feature set '{feature_set.name}' to avoid full-dataset feature-selection leakage."
-                ),
-            )
-            result = execution["result"]
-            summary = execution["summary"]
-            artifacts = execution["artifacts"]
-            self.service.latest_research_experiment_summary = summary
-            self.service.latest_research_experiment_artifacts = artifacts
-
-            return self.service._response(
-                True,
-                "Diagnostic single-experiment run completed successfully",
-                data={
-                    "summary": summary,
-                    "aggregate_metrics": result.aggregate_metrics,
-                    "baseline_comparison": result.baseline_comparison,
-                    "calibration_summary": result.calibration_summary,
-                    "threshold_summary": result.threshold_summary,
-                    "folds": [fold.__dict__ for fold in result.folds],
-                },
-                artifacts=artifacts,
-            )
-        except Exception as exc:
-            logger.error(f"Diagnostic single-experiment run failed: {exc}")
-            return self.service._response(False, f"Diagnostic single-experiment run failed: {exc}", errors=[str(exc)])
-
-    def run_target_study(self, study_name: str = "diagnostic_target_comparison") -> Dict[str, Any]:
-        logger.info("Starting diagnostic target-comparison study...")
-        self.service._reload_runtime_from_disk()
-
-        if self.service.feature_data is None or self.service.feature_data.empty:
-            logger.error("Please prepare the data first")
-            return self.service._response(False, "Please prepare the data first")
-
-        try:
-            feature_set = self._resolve_stage12_feature_set()
-        except Exception as exc:
-            logger.error(f"Failed to resolve Stage 2 feature set: {exc}")
-            return self.service._response(False, f"Diagnostic target-comparison study failed: {exc}", errors=[str(exc)])
-        feature_columns = list(feature_set.columns)
-
-        target_specs = self._build_default_target_specs()
-        request = self._build_default_target_study_request(
-            study_name=study_name,
-            feature_columns=feature_columns,
-            target_specs=target_specs,
-            total_rows=len(self.service.feature_data),
-        )
-        target_runner = TargetStudyRunner()
-        materialized_targets = target_runner.materialize_targets(self.service.feature_data, target_specs)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        target_results = []
-        study_slug = self.service._sanitize_model_name(study_name)
-
-        for materialized in materialized_targets:
-            target_result = build_target_result_stub(materialized)
-            try:
-                execution = self._execute_fixed_feature_research_diagnostic(
-                    run_name=f"{study_name}_{target_result.target_id}",
-                    target_series=materialized.target,
-                    artifact_prefix=f"research_experiment_{timestamp}_{study_slug}_{target_result.target_id}",
-                    target_spec=materialized.spec,
-                    feature_columns=feature_columns,
-                    feature_set=feature_set,
-                    feature_selection_note=(
-                        f"Stage 2 uses the fixed research feature set '{feature_set.name}' to keep target comparisons leakage-safe and apples-to-apples."
-                    ),
-                )
-                target_result.experiment_report_file = execution["artifacts"]["report_file"]
-                target_result.experiment_summary = execution["summary"]
-                target_result.aggregate_metrics = execution["result"].aggregate_metrics
-                target_result.baseline_comparison = execution["result"].baseline_comparison
-                target_result.integrity = execution["integrity"]
-            except Exception as exc:
-                logger.error(f"Target study evaluation failed for {target_result.target_id}: {exc}")
-                target_result.error = str(exc)
-            target_results.append(target_result)
-
-        comparison_rows = target_runner.build_comparison_rows(target_results)
-        comparison_file = self.service.experiment_store.resolve_path(f"target_study_{timestamp}_{study_slug}_comparison.csv")
-        pd.DataFrame(comparison_rows).to_csv(comparison_file, index=False, encoding="utf-8-sig")
-        integrity_rows = [
-            {
-                "target_id": result.target_id,
-                "display_name": result.display_name,
-                "proof_status": (result.integrity or {}).get("proof_status", "missing"),
-                "integrity_contract_ok": bool((result.integrity or {}).get("integrity_contract_ok")),
-                "invalid_fold_count": ((result.integrity or {}).get("overview") or {}).get("invalid_fold_count"),
-                "total_purged_train_rows": ((result.integrity or {}).get("overview") or {}).get("total_purged_train_rows"),
-                "total_purged_validation_rows": ((result.integrity or {}).get("overview") or {}).get("total_purged_validation_rows"),
-                "failure_reasons": ", ".join(((result.integrity or {}).get("overview") or {}).get("contract_failure_reasons") or []),
-            }
-            for result in target_results
-        ]
-        target_integrity = self._aggregate_integrity_payloads(integrity_rows, scope_label="target")
-        target_integrity_file = self.service.experiment_store.resolve_path(f"target_study_{timestamp}_{study_slug}_integrity.csv")
-        pd.DataFrame(target_integrity.get("fold_rows") or []).to_csv(target_integrity_file, index=False, encoding="utf-8-sig")
-
-        target_study_result = TargetStudyResult(
-            study_name=study_name,
-            feature_columns=list(feature_columns),
-            request={
-                "trainer_name": request.trainer_name,
-                "baseline_names": list(request.baseline_names),
-                "train_size": request.train_size,
-                "validation_size": request.validation_size,
-                "test_size": request.test_size,
-                "step_size": request.step_size,
-                "threshold_list": list(request.threshold_list),
-                "expanding_window": request.expanding_window,
-                "target_specs": list(request.target_specs),
-            },
-            target_results=target_results,
-            comparison_rows=comparison_rows,
-            artifact_paths={"comparison_file": str(comparison_file)},
-            integrity=target_integrity,
-            integrity_artifact_paths={"fold_integrity_file": str(target_integrity_file)},
-            metadata={
-                "runtime_target_column": self.service.get_target_column(),
-                "research_feature_set_name": feature_set.name,
-                "research_feature_set_display_name": feature_set.display_name,
-                "runtime_target_unchanged": True,
-                "deferred_items": ["true_multiclass_support", "triple_barrier_labels"],
-                "resolved_research_defaults": self._resolved_research_defaults_snapshot(),
-            },
-        )
-        report_file = self.service.experiment_store.resolve_path(f"target_study_{timestamp}_{study_slug}.json")
-        self.service.experiment_store.save_result(target_study_result, report_file)
-
-        successful_rows = [row for row in comparison_rows if not row.get("error")]
-        best_row = max(
-            successful_rows,
-            key=lambda row: row.get("model_mean_test_accuracy") or float("-inf"),
-            default=None,
-        )
-        summary = {
-            "study_name": study_name,
-            "target_count": len(target_results),
-            "successful_targets": len(successful_rows),
-            "feature_set_name": feature_set.name,
-            "feature_set_display_name": feature_set.display_name,
-            "best_target_name": (best_row or {}).get("display_name"),
-            "best_mean_test_accuracy": (best_row or {}).get("model_mean_test_accuracy"),
-        }
-        artifacts = {
-            "report_file": str(report_file),
-            "comparison_file": str(comparison_file),
-            "fold_integrity_file": str(target_integrity_file),
-        }
-        self.service.latest_target_study_summary = summary
-        self.service.latest_target_study_artifacts = artifacts
-
-        if not successful_rows:
-            return self.service._response(
-                False,
-                    "Diagnostic target-comparison study completed with no successful target evaluations",
-                data={
-                    "summary": summary,
-                    "comparison_rows": comparison_rows,
-                    "target_results": [asdict(result) for result in target_results],
-                },
-                artifacts=artifacts,
-                errors=[result.error for result in target_results if result.error],
-            )
-
-        return self.service._response(
-            True,
-            "Diagnostic target-comparison study completed successfully",
-            data={
-                "summary": summary,
-                "comparison_rows": comparison_rows,
-                "target_results": [asdict(result) for result in target_results],
-            },
-            artifacts=artifacts,
-        )
-
-    def run_feature_study(self, study_name: str = "diagnostic_feature_comparison") -> Dict[str, Any]:
-        logger.info("Starting diagnostic feature-comparison study...")
-        bootstrap_feature_columns = list(self.service.selected_features)
-        self.service._reload_runtime_from_disk()
-        if bootstrap_feature_columns:
-            self.service.selected_features = list(bootstrap_feature_columns)
-
-        if self.service.feature_data is None or self.service.feature_data.empty:
-            logger.error("Please prepare the data first")
-            return self.service._response(False, "Please prepare the data first")
-
-        target_specs = self._build_default_feature_study_target_specs()
-        request = self._build_default_feature_study_request(
-            study_name=study_name,
-            target_specs=target_specs,
-            total_rows=len(self.service.feature_data),
-        )
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        study_slug = self.service._sanitize_model_name(study_name)
-        runner = FeatureStudyRunner()
-
-        try:
-            result = runner.run(
-                request=request,
-                feature_frame=self.service.feature_data,
-                target_specs=target_specs,
-                experiment_executor=self._execute_feature_study_experiment,
-                artifact_timestamp=timestamp,
-            )
-            inventory_file = self.service.experiment_store.resolve_path(f"feature_study_{timestamp}_{study_slug}_inventory.csv")
-            fold_selection_file = self.service.experiment_store.resolve_path(f"feature_study_{timestamp}_{study_slug}_folds.csv")
-            stability_file = self.service.experiment_store.resolve_path(f"feature_study_{timestamp}_{study_slug}_stability.csv")
-            comparison_file = self.service.experiment_store.resolve_path(f"feature_study_{timestamp}_{study_slug}_comparison.csv")
-            report_file = self.service.experiment_store.resolve_path(f"feature_study_{timestamp}_{study_slug}.json")
-
-            runner.build_inventory_frame(result).to_csv(inventory_file, index=False, encoding="utf-8-sig")
-            runner.build_fold_selection_frame(result).to_csv(fold_selection_file, index=False, encoding="utf-8-sig")
-            runner.build_stability_frame(result).to_csv(stability_file, index=False, encoding="utf-8-sig")
-            pd.DataFrame(result.comparison_rows).to_csv(comparison_file, index=False, encoding="utf-8-sig")
-
-            result.artifact_paths = {
-                "inventory_file": str(inventory_file),
-                "fold_selection_file": str(fold_selection_file),
-                "stability_file": str(stability_file),
-                "comparison_file": str(comparison_file),
-            }
-            result.metadata = {
-                **dict(result.metadata or {}),
-                "resolved_research_defaults": self._resolved_research_defaults_snapshot(),
-            }
-            self.service.experiment_store.save_result(result, report_file)
-
-            successful_rows = [row for row in result.comparison_rows if not row.get("error")]
-            best_row = max(
-                successful_rows,
-                key=lambda row: row.get("mean_test_accuracy") or float("-inf"),
-                default=None,
-            )
-            summary = {
-                "study_name": study_name,
-                "feature_set_count": len(request.feature_set_names),
-                "target_count": len(request.target_specs),
-                "successful_runs": len(successful_rows),
-                "working_target_id": result.working_target_id,
-                "best_feature_set_name": (best_row or {}).get("feature_set_display_name"),
-                "best_mean_test_accuracy": (best_row or {}).get("mean_test_accuracy"),
-            }
-            artifacts = {
-                "report_file": str(report_file),
-                **result.artifact_paths,
-            }
-            self.service.latest_feature_study_summary = summary
-            self.service.latest_feature_study_artifacts = artifacts
-
-            if not successful_rows:
-                return self.service._response(
-                    False,
-                    "Diagnostic feature-comparison study completed with no successful feature-set evaluations",
-                    data={
-                        "summary": summary,
-                        "comparison_rows": result.comparison_rows,
-                        "set_results": [asdict(set_result) for set_result in result.set_results],
-                        "inventory_rows": [asdict(row) for row in result.inventory_rows],
-                    },
-                    artifacts=artifacts,
-                    errors=[set_result.error for set_result in result.set_results if set_result.error],
-                )
-
-            return self.service._response(
-                True,
-                "Diagnostic feature-comparison study completed successfully",
-                data={
-                    "summary": summary,
-                    "comparison_rows": result.comparison_rows,
-                    "set_results": [asdict(set_result) for set_result in result.set_results],
-                    "inventory_rows": [asdict(row) for row in result.inventory_rows],
-                },
-                artifacts=artifacts,
-            )
-        except Exception as exc:
-            logger.error(f"Diagnostic feature-comparison study failed: {exc}")
-            return self.service._response(False, f"Diagnostic feature-comparison study failed: {exc}", errors=[str(exc)])
-
-    def run_training_experiment(self, experiment_name: str = "diagnostic_candidate_training") -> Dict[str, Any]:
-        logger.info("Starting diagnostic candidate-training run...")
-        self.service._reload_runtime_from_disk()
-
-        if self.service.feature_data is None or self.service.feature_data.empty:
-            logger.error("Please prepare the data first")
-            return self.service._response(False, "Please prepare the data first")
-
-        try:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            experiment_slug = self.service._sanitize_model_name(experiment_name)
-            target_spec = self._build_stage4_working_target_spec()
-            request = self._build_default_training_experiment_request(
-                experiment_name=experiment_name,
-                target_spec=target_spec,
-                total_rows=len(self.service.feature_data),
-                timestamp=timestamp,
-            )
-            target_series = build_binary_target_labels(self.service.feature_data, target_spec)
-            feature_sets = {
-                feature_set.name: feature_set
-                for feature_set in resolve_feature_sets(
-                    self.service.feature_data.columns,
-                    [request.feature_set_name, request.comparison_feature_set_name],
-                )
-            }
-            primary_feature_set = feature_sets[request.feature_set_name]
-            comparison_feature_set = feature_sets.get(request.comparison_feature_set_name)
-
-            trainer_registry = self._build_trainer_registry()
-            trainer = trainer_registry.build(
-                request.trainer_name,
-                model_params=dict(request.trainer_params),
-            )
-
-            primary_execution = self._run_training_experiment_candidate(
-                request=request,
-                target_series=target_series,
-                target_spec=target_spec,
-                feature_set=primary_feature_set,
-                trainer=trainer,
-                artifact_prefix=f"training_experiment_{timestamp}_{experiment_slug}_{request.feature_set_name}",
-            )
-
-            comparison_runs = []
-            if comparison_feature_set is not None:
-                comparison_execution = self._run_training_experiment_evaluation_only(
-                    request=request,
-                    target_series=target_series,
-                    target_spec=target_spec,
-                    feature_set=comparison_feature_set,
-                    trainer=trainer,
-                )
-                comparison_runs.append(comparison_execution)
-
-            finalized = self._finalize_training_experiment_workflow(
-                request=request,
-                target_series=target_series,
-                target_spec=target_spec,
-                candidate_execution=primary_execution,
-                comparison_runs=comparison_runs,
-                artifact_prefix=f"training_experiment_{timestamp}_{experiment_slug}_{request.feature_set_name}",
-                metadata={
-                    "out_of_sample_note": "Walk-forward metrics come from out-of-sample folds; the candidate artifact was retrained afterward on the full eligible dataset.",
-                    "comparison_feature_set_name": request.comparison_feature_set_name,
-                    "selected_threshold_summary": primary_execution["selected_threshold_summary"],
-                },
-            )
-            result = finalized["training_result"]
-            summary = finalized["summary"]
-            artifacts = finalized["artifacts"]
-            self.service.latest_training_experiment_summary = summary
-            self.service.latest_training_experiment_artifacts = artifacts
-
-            return self.service._response(
-                True,
-                "Diagnostic candidate-training run completed successfully",
-                data={
-                    "summary": summary,
-                    "aggregate_metrics": result.aggregate_metrics,
-                    "baseline_comparison": result.baseline_comparison,
-                    "comparison_runs": result.comparison_runs,
-                    "selected_threshold": result.selected_threshold,
-                    "candidate_artifact": asdict(result.candidate_artifact) if result.candidate_artifact else None,
-                    "diagnostics": result.diagnostics,
-                },
-                artifacts=artifacts,
-            )
-        except Exception as exc:
-            logger.error(f"Diagnostic candidate-training run failed: {exc}")
-            return self.service._response(False, f"Diagnostic candidate-training run failed: {exc}", errors=[str(exc)])
-
     def promote_training_experiment(self, experiment_path_or_id: str) -> Dict[str, Any]:
         logger.info("Starting Stage 4 promotion...")
         try:
@@ -791,7 +374,10 @@ class ResearchWorkflowService:
             if not candidate_path.exists():
                 raise FileNotFoundError(f"Candidate artifact is missing: {candidate_path}")
 
-            promoted_path = get_default_promoted_model_path("models", payload.get("experiment_name", "promoted_model"))
+            promoted_path = get_default_promoted_model_path(
+                str(self.service._get_models_directory()),
+                payload.get("experiment_name", "promoted_model"),
+            )
             promoted_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(candidate_path, promoted_path)
 
@@ -1233,89 +819,6 @@ class ResearchWorkflowService:
             expanding_window=bool(common_defaults.expanding_window),
         )
 
-    def _resolve_stage12_feature_set(self):
-        if self.service.feature_data is None or self.service.feature_data.empty:
-            raise ValueError("Prepared feature data is required before resolving Stage 1/2 feature sets")
-
-        feature_set_name = self.research_defaults.stage12.fixed_feature_set_name
-        feature_set = resolve_feature_sets(self.service.feature_data.columns, [feature_set_name])[0]
-        feature_columns = list(feature_set.columns)
-        if not feature_columns:
-            raise ValueError(
-                f"Resolved Stage 1/2 {feature_set_name} feature set is empty for the current prepared matrix"
-            )
-
-        target_column = self.service.get_target_column()
-        leakage_columns = [
-            column for column in feature_columns
-            if str(column) == target_column or str(column).startswith("Future_")
-        ]
-        if leakage_columns:
-            raise ValueError(f"Resolved Stage 1/2 feature set includes target/future leakage columns: {leakage_columns}")
-        return feature_set
-
-    def _build_default_target_study_request(
-        self,
-        *,
-        study_name: str,
-        feature_columns: list[str],
-        target_specs: list[object],
-        total_rows: int,
-    ) -> TargetStudyRequest:
-        experiment_request = self._build_default_experiment_request(
-            experiment_name=study_name,
-            target_column="stage2_target_study",
-            feature_columns=feature_columns,
-            total_rows=total_rows,
-        )
-        return TargetStudyRequest(
-            study_name=study_name,
-            feature_columns=list(feature_columns),
-            target_specs=[serialize_target_spec(spec) for spec in target_specs],
-            trainer_name=experiment_request.trainer_name,
-            baseline_names=list(experiment_request.baseline_names),
-            train_size=experiment_request.train_size,
-            validation_size=experiment_request.validation_size,
-            test_size=experiment_request.test_size,
-            step_size=experiment_request.step_size,
-            threshold_list=list(experiment_request.threshold_list),
-            expanding_window=experiment_request.expanding_window,
-        )
-
-    def _execute_fixed_feature_research_diagnostic(
-        self,
-        *,
-        run_name: str,
-        artifact_prefix: str,
-        feature_columns: list[str],
-        target_series: pd.Series,
-        target_spec: object,
-        feature_set: Any,
-        feature_selection_note: str,
-    ) -> Dict[str, Any]:
-        experiment_request = self._build_default_experiment_request(
-            experiment_name=run_name,
-            target_column=str(getattr(target_spec, "spec_id", run_name) or run_name),
-            feature_columns=list(feature_columns),
-            total_rows=len(self.service.feature_data),
-        )
-        return self._execute_research_experiment(
-            request=experiment_request,
-            target_series=target_series,
-            artifact_prefix=artifact_prefix,
-            target_spec=target_spec,
-            experiment_metadata={
-                "research_feature_set_name": feature_set.name,
-                "research_feature_set_display_name": feature_set.display_name,
-                "feature_selection_mode": "fixed_feature_columns",
-                "feature_selection_note": feature_selection_note,
-            },
-            summary_updates={
-                "feature_set_name": feature_set.name,
-                "feature_set_display_name": feature_set.display_name,
-            },
-        )
-
     def _build_default_target_specs(self) -> list[object]:
         runtime_target_column = self.service.get_target_column()
         try:
@@ -1354,59 +857,6 @@ class ResearchWorkflowService:
                 neutral_band_pct=0.05,
             ),
         ]
-
-    def _build_default_feature_study_target_specs(self) -> list[object]:
-        default_target_specs = self._build_default_target_specs()
-        available_target_specs = {
-            str(getattr(spec, "spec_id", "") or "").strip(): spec
-            for spec in default_target_specs
-        }
-        unknown_target_ids = [
-            target_id
-            for target_id in self.research_defaults.stage3.target_ids
-            if target_id not in available_target_specs
-        ]
-        if unknown_target_ids:
-            raise ValueError(
-                "Unsupported research.defaults.stage3.target_ids values: "
-                + ", ".join(sorted(unknown_target_ids))
-            )
-        return [
-            available_target_specs[target_id]
-            for target_id in self.research_defaults.stage3.target_ids
-        ]
-
-    def _build_default_feature_study_request(
-        self,
-        *,
-        study_name: str,
-        target_specs: list[object],
-        total_rows: int,
-    ) -> FeatureStudyRequest:
-        experiment_request = self._build_default_experiment_request(
-            experiment_name=study_name,
-            target_column="stage3_feature_study",
-            feature_columns=[],
-            total_rows=total_rows,
-        )
-        common_defaults = self.research_defaults.common
-        stage3_defaults = self.research_defaults.stage3
-        return FeatureStudyRequest(
-            study_name=study_name,
-            target_specs=[serialize_target_spec(spec) for spec in target_specs],
-            feature_set_names=list(stage3_defaults.feature_set_names),
-            selector_name=common_defaults.selector_name,
-            selector_max_features=common_defaults.selector_max_features,
-            trainer_name=experiment_request.trainer_name,
-            baseline_names=list(experiment_request.baseline_names),
-            train_size=experiment_request.train_size,
-            validation_size=experiment_request.validation_size,
-            test_size=experiment_request.test_size,
-            step_size=experiment_request.step_size,
-            threshold_list=list(experiment_request.threshold_list),
-            expanding_window=experiment_request.expanding_window,
-            compare_legacy_target=bool(stage3_defaults.compare_legacy_target),
-        )
 
     def _build_stage4_working_target_spec(self) -> object:
         available_target_specs = {
@@ -1770,89 +1220,6 @@ class ResearchWorkflowService:
             "prediction_rows": prediction_rows,
             "threshold_rows": threshold_rows,
             "calibration_rows": calibration_rows,
-        }
-
-    def _execute_research_experiment(
-        self,
-        *,
-        request: ResearchExperimentRequest,
-        target_series: pd.Series,
-        artifact_prefix: str,
-        feature_selector: Any = None,
-        trainer: Any = None,
-        target_spec: object | None = None,
-        experiment_metadata: Dict[str, Any] | None = None,
-        summary_updates: Dict[str, Any] | None = None,
-    ) -> Dict[str, Any]:
-        execution = self._run_research_experiment_core(
-            request=request,
-            target_series=target_series,
-            feature_selector=feature_selector,
-            trainer=trainer,
-            target_spec=target_spec,
-        )
-        result = execution["result"]
-        splits = execution["splits"]
-        prediction_rows = execution["prediction_rows"]
-        threshold_rows = execution["threshold_rows"]
-        calibration_rows = execution["calibration_rows"]
-
-        prediction_file = self.service.experiment_store.resolve_path(f"{artifact_prefix}_predictions.csv")
-        threshold_file = self.service.experiment_store.resolve_path(f"{artifact_prefix}_thresholds.csv")
-        calibration_file = self.service.experiment_store.resolve_path(f"{artifact_prefix}_calibration.csv")
-        report_file = self.service.experiment_store.resolve_path(f"{artifact_prefix}.json")
-
-        pd.DataFrame(prediction_rows).to_csv(prediction_file, index=False, encoding="utf-8-sig")
-        pd.DataFrame(threshold_rows).to_csv(threshold_file, index=False, encoding="utf-8-sig")
-        pd.DataFrame(calibration_rows).to_csv(calibration_file, index=False, encoding="utf-8-sig")
-
-        result.metadata = {
-            **dict(result.metadata or {}),
-            **dict(experiment_metadata or {}),
-            "resolved_research_defaults": self._resolved_research_defaults_snapshot(),
-        }
-
-        integrity_bundle = self._build_experiment_integrity_bundle(
-            artifact_prefix=artifact_prefix,
-            experiment_result=result,
-            expected_feature_set_name=(experiment_metadata or {}).get("research_feature_set_name"),
-            expected_feature_selection_mode=(experiment_metadata or {}).get("feature_selection_mode"),
-            expected_target_spec_id=str(getattr(target_spec, "spec_id", request.target_column) or request.target_column),
-        )
-        result.integrity = integrity_bundle["integrity"]
-        result.integrity_artifact_paths = integrity_bundle["artifact_paths"]
-
-        if result.prediction_artifacts:
-            result.prediction_artifacts[0].predictions_file = str(prediction_file)
-            result.prediction_artifacts[0].threshold_metrics_file = str(threshold_file)
-            result.prediction_artifacts[0].calibration_file = str(calibration_file)
-
-        self.service.experiment_store.save_result(result, report_file)
-
-        summary = {
-            "experiment_name": result.experiment_name,
-            "target_column": result.target_column,
-            "trainer_name": request.trainer_name,
-            "feature_count": len(result.feature_columns),
-            "fold_count": len(splits),
-            "mean_test_accuracy": result.aggregate_metrics.get("mean_test_accuracy"),
-            "baseline_comparison": result.baseline_comparison,
-        }
-        if summary_updates:
-            summary.update(dict(summary_updates))
-        artifacts = {
-            "report_file": str(report_file),
-            "prediction_rows_file": str(prediction_file),
-            "threshold_metrics_file": str(threshold_file),
-            "calibration_file": str(calibration_file),
-            **dict(result.integrity_artifact_paths or {}),
-        }
-        return {
-            "result": result,
-            "summary": summary,
-            "artifacts": artifacts,
-            "folds": [fold.__dict__ for fold in result.folds],
-            "integrity": result.integrity,
         }
 
     def _run_training_experiment_candidate(
@@ -2466,39 +1833,3 @@ class ResearchWorkflowService:
             normalized_rows.append(normalized_row)
         return normalized_rows
 
-    def _execute_feature_study_experiment(
-        self,
-        *,
-        target_id: str,
-        target_series: pd.Series,
-        target_spec: object,
-        feature_set: Any,
-        artifact_prefix: str,
-        selector_name: str,
-        selector_max_features: int,
-        request: FeatureStudyRequest,
-    ) -> Dict[str, Any]:
-        experiment_request = ResearchExperimentRequest(
-            experiment_name=f"{request.study_name}_{target_id}_{feature_set.name}",
-            target_column=target_id,
-            feature_columns=list(feature_set.columns),
-            trainer_name=request.trainer_name,
-            baseline_names=list(request.baseline_names),
-            train_size=request.train_size,
-            validation_size=request.validation_size,
-            test_size=request.test_size,
-            step_size=request.step_size,
-            threshold_list=list(request.threshold_list),
-            expanding_window=request.expanding_window,
-        )
-        selector = build_feature_selector(
-            selector_name,
-            max_features=min(int(selector_max_features), max(len(feature_set.columns), 1)),
-        )
-        return self._execute_research_experiment(
-            request=experiment_request,
-            target_series=target_series,
-            artifact_prefix=artifact_prefix,
-            feature_selector=selector,
-            target_spec=target_spec,
-        )
