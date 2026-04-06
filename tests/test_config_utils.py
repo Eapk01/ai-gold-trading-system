@@ -70,6 +70,24 @@ class ConfigUtilsTests(unittest.TestCase):
         self.assertEqual(get_effective_confidence_threshold(config, "backtest"), 0.72)
         self.assertEqual(get_effective_confidence_threshold(config, "live_trading"), 0.67)
 
+    def test_validate_config_rejects_invalid_stage5_defaults(self):
+        config = get_default_config()
+        config["research"]["stage5_defaults"] = {
+            "target_ids": [],
+            "feature_sets": [],
+            "presets": ["conservative"],
+        }
+
+        with self.assertRaises(ConfigValidationError):
+            validate_config(config)
+
+    def test_validate_config_rejects_invalid_research_defaults(self):
+        config = get_default_config()
+        config["research"]["defaults"]["common"]["threshold_list"] = []
+
+        with self.assertRaises(ConfigValidationError):
+            validate_config(config)
+
 
 if __name__ == "__main__":
     unittest.main()

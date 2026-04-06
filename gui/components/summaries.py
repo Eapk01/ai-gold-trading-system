@@ -110,6 +110,209 @@ def render_model_test_summary(summary: dict) -> None:
     render_raw_expander("Raw details", summary)
 
 
+def render_experiment_summary(summary: dict) -> None:
+    if not summary:
+        return
+
+    cols = st.columns(4)
+    cols[0].metric("Experiment", format_value(summary.get("experiment_name"), "auto"))
+    cols[1].metric("Target", format_value(summary.get("target_column"), "auto"))
+    cols[2].metric("Features", format_value(summary.get("feature_count", 0), "integer"))
+    cols[3].metric("Mean Test Accuracy", format_value(summary.get("mean_test_accuracy", 0), "percent"))
+
+    detail_items = [
+        ("Trainer", summary.get("trainer_name"), "auto"),
+        ("Fold Count", summary.get("fold_count"), "integer"),
+        ("Integrity Proof", summary.get("proof_status"), "auto"),
+        ("Invalid Folds", summary.get("invalid_fold_count"), "integer"),
+    ]
+    render_key_value_summary(detail_items)
+    render_raw_expander("Raw details", summary)
+
+
+def render_target_study_summary(summary: dict) -> None:
+    if not summary:
+        return
+
+    cols = st.columns(4)
+    cols[0].metric("Study", format_value(summary.get("study_name"), "auto"))
+    cols[1].metric("Targets", format_value(summary.get("target_count", 0), "integer"))
+    cols[2].metric("Successful", format_value(summary.get("successful_targets", 0), "integer"))
+    cols[3].metric(
+        "Best Mean Accuracy",
+        format_value(summary.get("best_mean_test_accuracy", 0), "percent"),
+    )
+
+    detail_items = [
+        ("Best Target", summary.get("best_target_name"), "auto"),
+        ("Integrity Proof", summary.get("proof_status"), "auto"),
+    ]
+    render_key_value_summary(detail_items)
+    render_raw_expander("Raw details", summary)
+
+
+def render_feature_study_summary(summary: dict) -> None:
+    if not summary:
+        return
+
+    cols = st.columns(4)
+    cols[0].metric("Study", format_value(summary.get("study_name"), "auto"))
+    cols[1].metric("Feature Sets", format_value(summary.get("feature_set_count", 0), "integer"))
+    cols[2].metric("Successful Runs", format_value(summary.get("successful_runs", 0), "integer"))
+    cols[3].metric(
+        "Best Mean Accuracy",
+        format_value(summary.get("best_mean_test_accuracy", 0), "percent"),
+    )
+
+    detail_items = [
+        ("Working Target", summary.get("working_target_id"), "auto"),
+        ("Best Feature Set", summary.get("best_feature_set_name"), "auto"),
+        ("Target Count", summary.get("target_count"), "integer"),
+    ]
+    render_key_value_summary(detail_items)
+    render_raw_expander("Raw details", summary)
+
+
+def render_training_experiment_summary(summary: dict) -> None:
+    if not summary:
+        return
+
+    cols = st.columns(4)
+    cols[0].metric("Experiment", format_value(summary.get("experiment_name"), "auto"))
+    cols[1].metric("Feature Set", format_value(summary.get("feature_set_display_name") or summary.get("feature_set_name"), "auto"))
+    cols[2].metric("Threshold", format_value(summary.get("selected_threshold"), "float"))
+    cols[3].metric("Mean Test Accuracy", format_value(summary.get("mean_test_accuracy", 0), "percent"))
+
+    detail_items = [
+        ("Experiment ID", summary.get("experiment_id"), "auto"),
+        ("Target Spec", summary.get("target_spec_id"), "auto"),
+        ("Feature Set Meaning", summary.get("feature_set_description"), "auto"),
+        ("Comparison Set", summary.get("comparison_feature_set_display_name") or summary.get("comparison_feature_set_name"), "auto"),
+        ("Trainer", summary.get("trainer_name"), "auto"),
+        ("Features", summary.get("feature_count"), "integer"),
+        ("Fold Count", summary.get("fold_count"), "integer"),
+        ("Integrity Proof", summary.get("proof_status"), "auto"),
+        ("Invalid Folds", summary.get("invalid_fold_count"), "integer"),
+        ("One-Class Fold Segments", summary.get("one_class_fold_count"), "integer"),
+        ("Constant-Feature Folds", summary.get("constant_feature_fold_count"), "integer"),
+    ]
+    render_key_value_summary(detail_items)
+    render_raw_expander("Raw details", summary)
+
+
+def render_promotion_summary(summary: dict) -> None:
+    if not summary:
+        return
+
+    cols = st.columns(3)
+    cols[0].metric("Experiment", format_value(summary.get("experiment_name"), "auto"))
+    cols[1].metric("Feature Set", format_value(summary.get("feature_set_name"), "auto"))
+    cols[2].metric("Threshold", format_value(summary.get("selected_threshold"), "float"))
+
+    detail_items = [
+        ("Experiment ID", summary.get("experiment_id"), "auto"),
+        ("Promoted Model Path", summary.get("promoted_model_path"), "auto"),
+        ("Integrity Proof", summary.get("proof_status"), "auto"),
+    ]
+    render_key_value_summary(detail_items)
+    render_raw_expander("Raw details", summary)
+
+
+def render_search_summary(summary: dict) -> None:
+    if not summary:
+        return
+
+    cols = st.columns(4)
+    cols[0].metric("Search", format_value(summary.get("search_name"), "auto"))
+    cols[1].metric("Candidates", format_value(summary.get("candidate_count", 0), "integer"))
+    cols[2].metric("Targets", format_value(summary.get("target_count", 0), "integer"))
+    cols[3].metric("Winner Status", format_value(summary.get("winner_status"), "auto"))
+
+    detail_items = [
+        ("Search ID", summary.get("search_id"), "auto"),
+        ("Target Spec", summary.get("target_spec_id"), "auto"),
+        ("Searched Targets", ", ".join(summary.get("searched_target_display_names") or []), "auto"),
+        ("Trainer", summary.get("trainer_name"), "auto"),
+        ("Execution Mode", summary.get("execution_mode"), "auto"),
+        ("Workers", summary.get("resolved_max_workers"), "integer"),
+        ("Feature Sets", summary.get("feature_set_count"), "integer"),
+        ("Successful Candidates", summary.get("successful_candidate_count"), "integer"),
+        ("Failed Candidates", summary.get("failed_candidate_count"), "integer"),
+        ("Recommended Experiment", summary.get("recommended_experiment_id"), "auto"),
+        ("Recommended Target", summary.get("recommended_target_display_name") or summary.get("recommended_target_spec_id"), "auto"),
+        ("Recommended Feature Set", summary.get("recommended_feature_set_display_name") or summary.get("recommended_feature_set_name"), "auto"),
+        ("Feature Set Meaning", summary.get("recommended_feature_set_description"), "auto"),
+        ("Recommended Preset", summary.get("recommended_preset_display_name") or summary.get("recommended_preset_name"), "auto"),
+        ("Preset Meaning", summary.get("recommended_preset_description"), "auto"),
+        ("Recommended Threshold", summary.get("recommended_selected_threshold"), "float"),
+        ("Winner Reason", summary.get("winner_reason"), "auto"),
+        ("Elapsed Seconds", summary.get("elapsed_seconds"), "float"),
+        ("Truth-Gate Passes", summary.get("truth_gate_pass_count"), "integer"),
+        ("Test-Guardrail Passes", summary.get("test_guardrail_pass_count"), "integer"),
+        ("Truth-Gate Failure Counts", summary.get("truth_gate_failures"), "auto"),
+        ("Integrity-Failed Candidates", summary.get("integrity_failure_candidate_count"), "integer"),
+        ("Low-Coverage Candidates", summary.get("low_coverage_candidate_count"), "integer"),
+        ("Below-Majority Candidates", summary.get("majority_dominance_candidate_count"), "integer"),
+        ("One-Class Candidates", summary.get("one_class_candidate_count"), "integer"),
+    ]
+    render_key_value_summary(detail_items)
+    render_raw_expander("Raw details", summary)
+
+
+def render_integrity_summary(integrity: dict) -> None:
+    if not integrity:
+        return
+
+    proof_status = str(integrity.get("proof_status") or "missing").lower()
+    warnings = integrity.get("warnings") or []
+    if proof_status == "passed":
+        st.success("Integrity proof passed.")
+    elif proof_status == "missing":
+        st.warning("Integrity proof is missing for this saved report.")
+    else:
+        st.error("Integrity proof failed for this saved report.")
+
+    if warnings:
+        for warning in warnings:
+            severity = str(warning.get("severity") or "info").lower()
+            message = str(warning.get("message") or warning.get("code") or "Integrity warning")
+            if severity == "critical":
+                st.error(message)
+            elif severity == "warning":
+                st.warning(message)
+            else:
+                st.info(message)
+
+    overview = integrity.get("overview") or {}
+    if overview:
+        render_key_value_summary([(key.replace("_", " ").title(), value, "auto") for key, value in overview.items()])
+
+    render_raw_expander("Integrity details", integrity)
+
+
+def render_diagnostics_summary(diagnostics: dict) -> None:
+    if not diagnostics:
+        return
+
+    warnings = diagnostics.get("warnings") or []
+    if warnings:
+        for warning in warnings:
+            severity = str(warning.get("severity") or "info").lower()
+            message = str(warning.get("message") or warning.get("code") or "Diagnostics warning")
+            if severity == "critical":
+                st.error(message)
+            elif severity == "warning":
+                st.warning(message)
+            else:
+                st.info(message)
+
+    overview = diagnostics.get("overview") or diagnostics.get("summary") or {}
+    if overview:
+        render_key_value_summary([(key.replace("_", " ").title(), value, "auto") for key, value in overview.items()])
+
+    render_raw_expander("Diagnostics details", diagnostics)
+
+
 def render_artifact_summary(artifacts: dict, *, saved_model_name: str | None = None) -> None:
     if not artifacts and not saved_model_name:
         return
@@ -124,6 +327,20 @@ def render_artifact_summary(artifacts: dict, *, saved_model_name: str | None = N
         ("Chart File", artifacts.get("chart_file"), "auto"),
         ("Trade Summary File", artifacts.get("trade_summary_file"), "auto"),
         ("Evaluation Rows File", artifacts.get("evaluation_rows_file"), "auto"),
+        ("Prediction Rows File", artifacts.get("prediction_rows_file"), "auto"),
+        ("Threshold Metrics File", artifacts.get("threshold_metrics_file"), "auto"),
+        ("Calibration File", artifacts.get("calibration_file"), "auto"),
+        ("Inventory File", artifacts.get("inventory_file"), "auto"),
+        ("Fold Selection File", artifacts.get("fold_selection_file"), "auto"),
+        ("Stability File", artifacts.get("stability_file"), "auto"),
+        ("Comparison File", artifacts.get("comparison_file"), "auto"),
+        ("Resolved Features File", artifacts.get("resolved_features_file"), "auto"),
+        ("Fold Integrity File", artifacts.get("fold_integrity_file"), "auto"),
+        ("Fold Diagnostics File", artifacts.get("fold_diagnostics_file"), "auto"),
+        ("Threshold Coverage Diagnostics File", artifacts.get("threshold_coverage_diagnostics_file"), "auto"),
+        ("Feature Health Diagnostics File", artifacts.get("feature_health_diagnostics_file"), "auto"),
+        ("Leaderboard File", artifacts.get("leaderboard_file"), "auto"),
+        ("Candidates File", artifacts.get("candidates_file"), "auto"),
     ]
     items.extend([item for item in artifact_fields if item[1]])
 

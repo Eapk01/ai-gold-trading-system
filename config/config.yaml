@@ -1,6 +1,6 @@
 trading:
   symbol: XAUUSDm
-  timeframe: 5m
+  timeframe: 30m
   position_size: 0.01
   stop_loss_pips: 50
   take_profit_pips: 100
@@ -30,6 +30,41 @@ features:
   market_sentiment:
   - vix
   - dxy
+research:
+  experiments_directory: reports/experiments
+  candidate_models_directory: models/candidates
+  defaults:
+    common:
+      baseline_names:
+      - majority_class
+      - persistence
+      threshold_list:
+      - 0.5
+      - 0.51
+      - 0.52
+      - 0.53
+      selector_name: correlation
+      selector_max_features: 20
+      train_fraction: 0.5
+      validation_fraction: 0.1
+      test_fraction: 0.1
+      expanding_window: true
+    stage5:
+      target_ids:
+      - return_threshold_h3_0_05pct
+      - legacy_future_direction_1
+      - vol_adjusted_h3_x1_0
+      feature_set_names:
+      - baseline_core
+      - all_eligible
+      preset_names:
+      - conservative
+      - balanced
+      max_worker_cap: 8
+      min_auto_workers: 2
+    truth_gate:
+      minimum_test_coverage: 0.2
+      max_validation_test_f1_drift: 0.1
 risk_management:
   max_daily_loss: 30
   max_positions: 3

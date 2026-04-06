@@ -9,6 +9,7 @@ sys.modules.setdefault("pandas_ta", types.SimpleNamespace())
 
 from src.app_service import ResearchAppService
 from src.secret_store import BrokerSecretStore
+from src.services.research_service import ResearchWorkflowService
 
 
 class DashboardSnapshotTests(unittest.TestCase):
@@ -337,6 +338,104 @@ class RuntimeReloadTests(unittest.TestCase):
             self.assertAlmostEqual(service.backtester.signal_confidence_threshold, 0.75)
             self.assertAlmostEqual(service.auto_trader.confidence_threshold, 0.79)
             self.assertEqual(service.ai_model_manager.target_column, "Future_Direction_1")
+
+
+class RuntimeFeatureSelectionTests(unittest.TestCase):
+    def test_get_runtime_prediction_features_prefers_loaded_model_features(self):
+        service = ResearchAppService.__new__(ResearchAppService)
+        service.selected_features = ["research_feature_a", "research_feature_b"]
+        service.ai_model_manager = type(
+            "Manager",
+            (),
+            {
+                "models": {"random_forest": object()},
+                "feature_columns": ["trained_feature_a", "trained_feature_b"],
+            },
+        )()
+
+        self.assertEqual(
+            service.get_runtime_prediction_features(),
+            ["trained_feature_a", "trained_feature_b"],
+        )
+
+    def test_get_runtime_prediction_features_falls_back_to_selected_features(self):
+        service = ResearchAppService.__new__(ResearchAppService)
+        service.selected_features = ["research_feature_a", "research_feature_b"]
+        service.ai_model_manager = type("Manager", (), {"models": {}, "feature_columns": []})()
+
+        self.assertEqual(
+            service.get_runtime_prediction_features(),
+            ["research_feature_a", "research_feature_b"],
+        )
+
+    def test_run_model_test_uses_loaded_model_feature_columns(self):
+        import pandas as pd
+
+        runtime_columns = ["trained_feature_a", "trained_feature_b"]
+        feature_data = pd.DataFrame(
+            {
+                "trained_feature_a": [1.0, 2.0],
+                "trained_feature_b": [3.0, 4.0],
+                "research_only_feature": [9.0, 9.0],
+                "Future_Direction_1": [0, 1],
+            }
+        )
+
+        class FakeModelManager:
+            def __init__(self):
+                self.models = {"random_forest": object()}
+                self.feature_columns = list(runtime_columns)
+                self.target_column = "Future_Direction_1"
+                self.last_feature_columns = []
+
+            def predict_ensemble_batch(self, feature_data, feature_columns=None, method="voting"):
+                self.last_feature_columns = list(feature_columns or [])
+                return pd.DataFrame(
+                    {
+                        "is_valid": [True, True],
+                        "prediction": [0.0, 1.0],
+                        "confidence": [0.8, 0.9],
+                    },
+                    index=feature_data.index,
+                )
+
+        class FakeResult:
+            def __init__(self):
+                self.summary = {"accuracy": 1.0}
+                self.threshold_performance = pd.DataFrame([])
+                self.confidence_buckets = pd.DataFrame([])
+                self.row_evaluations = pd.DataFrame([])
+
+        class FakeModelTester:
+            def evaluate(self, feature_data, prediction_frame, target_series):
+                return FakeResult()
+
+        service = ResearchAppService.__new__(ResearchAppService)
+        service.feature_data = feature_data
+        service.selected_features = ["research_only_feature"]
+        service.ai_model_manager = FakeModelManager()
+        service.model_tester = FakeModelTester()
+        service.loaded_model_path = "models/test.joblib"
+        service.latest_model_test_summary = {}
+        service.latest_model_test_artifacts = {}
+        service._reload_runtime_from_disk = lambda: None
+        service.get_runtime_prediction_features = ResearchAppService.get_runtime_prediction_features.__get__(
+            service,
+            ResearchAppService,
+        )
+        service.get_target_column = lambda: "Future_Direction_1"
+        service._serialize_model_test_result = lambda result: dict(result.summary)
+        service._response = lambda success, message, **kwargs: {
+            "success": success,
+            "message": message,
+            **kwargs,
+        }
+
+        workflow = ResearchWorkflowService(service)
+        result = workflow.run_model_test()
+
+        self.assertTrue(result["success"])
+        self.assertEqual(service.ai_model_manager.last_feature_columns, runtime_columns)
 
 
 if __name__ == "__main__":

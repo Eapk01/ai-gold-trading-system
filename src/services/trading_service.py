@@ -6,6 +6,7 @@ from typing import Any, Dict, TYPE_CHECKING
 
 from src.broker_interface import broker_config_to_dict, create_broker_config
 from src.config_utils import get_target_column
+from src.research import resolve_research_defaults
 
 if TYPE_CHECKING:
     from src.app_service import ResearchAppService
@@ -19,6 +20,7 @@ class TradingWorkflowService:
 
     def get_configuration_summary(self) -> Dict[str, Any]:
         self.service._reload_runtime_from_disk()
+        research_defaults = resolve_research_defaults(self.service.config)
         summary = {
             "trading_symbol": self.service.config["trading"]["symbol"],
             "timeframe": self.service.config["trading"]["timeframe"],
@@ -28,6 +30,17 @@ class TradingWorkflowService:
             "enabled_models": list(self.service.config["ai_model"]["models"]),
             "database_path": self.service.config["database"]["path"],
             "target_column": get_target_column(self.service.config),
+            "research_primary_workflow": "search",
+            "research_diagnostic_workflows": [
+                "single_experiment",
+                "target_comparison",
+                "feature_comparison",
+                "candidate_training",
+            ],
+            "research_defaults": research_defaults.to_dict(),
+            "research_stage5_default_target_ids": list(research_defaults.stage5.target_ids),
+            "research_stage5_default_feature_sets": list(research_defaults.stage5.feature_set_names),
+            "research_stage5_default_presets": list(research_defaults.stage5.preset_names),
         }
         return self.service._response(True, "Configuration loaded", data=summary)
 

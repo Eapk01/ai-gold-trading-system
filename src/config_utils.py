@@ -33,6 +33,9 @@ def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any
 
 def get_default_config() -> Dict[str, Any]:
     """Return a baseline configuration used to fill optional values."""
+    from src.research.defaults import get_builtin_research_defaults
+
+    research_defaults = get_builtin_research_defaults(DEFAULT_TARGET_COLUMN).to_dict()
     return {
         "trading": {
             "symbol": "XAUUSD",
@@ -57,6 +60,11 @@ def get_default_config() -> Dict[str, Any]:
         "features": {
             "technical_indicators": ["sma_5", "sma_20", "rsi_14", "macd", "atr_14"],
             "market_sentiment": ["vix", "dxy"],
+        },
+        "research": {
+            "experiments_directory": "reports/experiments",
+            "candidate_models_directory": "models/candidates",
+            "defaults": {key: value for key, value in research_defaults.items() if key != "runtime_target_column"},
         },
         "risk_management": {
             "max_daily_loss": 30.0,
@@ -149,6 +157,14 @@ def ensure_runtime_directories(config: Dict[str, Any]) -> List[str]:
     if dataset_directory:
         directories.add(str(dataset_directory))
 
+    experiments_directory = config.get("research", {}).get("experiments_directory", "")
+    if experiments_directory:
+        directories.add(str(experiments_directory))
+
+    candidate_models_directory = config.get("research", {}).get("candidate_models_directory", "")
+    if candidate_models_directory:
+        directories.add(str(candidate_models_directory))
+
     created = []
     for directory in sorted(directories):
         Path(directory).mkdir(parents=True, exist_ok=True)
@@ -218,7 +234,6 @@ def validate_config(config: Dict[str, Any]) -> None:
     _validate_numeric(config, "backtest.commission", min_value=0, errors=errors)
     _validate_numeric(config, "backtest.slippage", min_value=0, errors=errors)
     _validate_numeric(config, "backtest.signal_confidence_threshold", min_value=0, max_value=1, errors=errors)
-
     models = config.get("ai_model", {}).get("models", [])
     if not isinstance(models, list) or not models:
         errors.append("ai_model.models must be a non-empty list")
@@ -236,6 +251,13 @@ def validate_config(config: Dict[str, Any]) -> None:
 
     if config.get("brokers", {}).get("exness", {}).get("enabled"):
         _validate_exness_settings(config["brokers"]["exness"], errors)
+
+    try:
+        from src.research.defaults import resolve_research_defaults
+
+        resolve_research_defaults(config)
+    except ValueError as exc:
+        errors.append(str(exc))
 
     if errors:
         raise ConfigValidationError("Configuration validation failed:\n- " + "\n- ".join(errors))
@@ -290,6 +312,27 @@ def _validate_numeric(
 
     if max_value is not None and value > max_value:
         errors.append(f"{dotted_key} must be <= {max_value}")
+
+
+def _validate_string_list(
+    config: Dict[str, Any],
+    dotted_key: str,
+    *,
+    errors: List[str],
+    allow_empty: bool,
+) -> None:
+    found, value = _resolve(config, dotted_key)
+    if not found:
+        return
+
+    if not isinstance(value, list):
+        errors.append(f"{dotted_key} must be a list")
+        return
+    if not allow_empty and not value:
+        errors.append(f"{dotted_key} must be a non-empty list")
+        return
+    if any(not isinstance(item, str) or not item.strip() for item in value):
+        errors.append(f"{dotted_key} must contain only non-empty strings")
 
 
 def _resolve(config: Dict[str, Any], dotted_key: str) -> Tuple[bool, Any]:

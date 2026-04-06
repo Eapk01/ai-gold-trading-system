@@ -50,6 +50,7 @@ class AIModelManager:
         # 模型存储
         self.models = {}
         self.scalers = {}
+        self.preprocessors = {}
         self.feature_columns = []
         self.target_column = get_target_column(config)
         
@@ -70,9 +71,13 @@ class AIModelManager:
         if missing_columns:
             raise ValueError(f"Missing required feature columns: {missing_columns}")
 
-        return feature_data.loc[:, columns].apply(pd.to_numeric, errors='coerce')
+        feature_frame = feature_data.loc[:, columns].apply(pd.to_numeric, errors='coerce')
+        fill_values = self.preprocessors.get(self.target_column, {})
+        if fill_values:
+            feature_frame = feature_frame.fillna(fill_values).fillna(0.0)
+        return feature_frame
     
-    def _get_model_instance(self, model_name: str, task_type: str = 'classification'):
+    def _get_model_instance(self, model_name: str, task_type: str = 'classification', model_params: Optional[Dict] = None):
         """
         获取模型实例
         
@@ -84,84 +89,94 @@ class AIModelManager:
             模型实例
         """
         try:
+            params = dict(model_params or {})
             if task_type == 'classification':
                 if model_name == 'random_forest':
-                    return RandomForestClassifier(
-                        n_estimators=100,
-                        max_depth=10,
-                        min_samples_split=5,
-                        min_samples_leaf=2,
-                        random_state=42
-                    )
+                    default_params = {
+                        'n_estimators': 100,
+                        'max_depth': 10,
+                        'min_samples_split': 5,
+                        'min_samples_leaf': 2,
+                        'random_state': 42
+                    }
+                    return RandomForestClassifier(**(default_params | params))
                 elif model_name == 'logistic_regression':
-                    return LogisticRegression(
-                        random_state=42,
-                        max_iter=1000
-                    )
+                    default_params = {
+                        'random_state': 42,
+                        'max_iter': 1000
+                    }
+                    return LogisticRegression(**(default_params | params))
                 elif model_name == 'xgboost':
                     if xgb is None:
                         logger.warning("xgboost is not installed; skipping xgboost model")
                         return None
-                    return xgb.XGBClassifier(
-                        n_estimators=100,
-                        max_depth=6,
-                        learning_rate=0.1,
-                        random_state=42
-                    )
+                    default_params = {
+                        'n_estimators': 100,
+                        'max_depth': 6,
+                        'learning_rate': 0.1,
+                        'random_state': 42
+                    }
+                    return xgb.XGBClassifier(**(default_params | params))
                 elif model_name == 'lightgbm':
                     if lgb is None:
                         logger.warning("lightgbm is not installed; skipping lightgbm model")
                         return None
-                    return lgb.LGBMClassifier(
-                        n_estimators=100,
-                        max_depth=6,
-                        learning_rate=0.1,
-                        random_state=42,
-                        verbose=-1
-                    )
+                    default_params = {
+                        'n_estimators': 100,
+                        'max_depth': 6,
+                        'learning_rate': 0.1,
+                        'random_state': 42,
+                        'verbose': -1
+                    }
+                    return lgb.LGBMClassifier(**(default_params | params))
                 elif model_name == 'svm':
-                    return SVC(
-                        kernel='rbf',
-                        probability=True,
-                        random_state=42
-                    )
+                    default_params = {
+                        'kernel': 'rbf',
+                        'probability': True,
+                        'random_state': 42
+                    }
+                    return SVC(**(default_params | params))
                 elif model_name == 'naive_bayes':
-                    return GaussianNB()
+                    return GaussianNB(**params)
             
             else:  # regression
                 if model_name == 'random_forest':
-                    return RandomForestRegressor(
-                        n_estimators=100,
-                        max_depth=10,
-                        min_samples_split=5,
-                        min_samples_leaf=2,
-                        random_state=42
-                    )
+                    default_params = {
+                        'n_estimators': 100,
+                        'max_depth': 10,
+                        'min_samples_split': 5,
+                        'min_samples_leaf': 2,
+                        'random_state': 42
+                    }
+                    return RandomForestRegressor(**(default_params | params))
                 elif model_name == 'linear_regression':
-                    return LinearRegression()
+                    return LinearRegression(**params)
                 elif model_name == 'xgboost':
                     if xgb is None:
                         logger.warning("xgboost is not installed; skipping xgboost model")
                         return None
-                    return xgb.XGBRegressor(
-                        n_estimators=100,
-                        max_depth=6,
-                        learning_rate=0.1,
-                        random_state=42
-                    )
+                    default_params = {
+                        'n_estimators': 100,
+                        'max_depth': 6,
+                        'learning_rate': 0.1,
+                        'random_state': 42
+                    }
+                    return xgb.XGBRegressor(**(default_params | params))
                 elif model_name == 'lightgbm':
                     if lgb is None:
                         logger.warning("lightgbm is not installed; skipping lightgbm model")
                         return None
-                    return lgb.LGBMRegressor(
-                        n_estimators=100,
-                        max_depth=6,
-                        learning_rate=0.1,
-                        random_state=42,
-                        verbose=-1
-                    )
+                    default_params = {
+                        'n_estimators': 100,
+                        'max_depth': 6,
+                        'learning_rate': 0.1,
+                        'random_state': 42,
+                        'verbose': -1
+                    }
+                    return lgb.LGBMRegressor(**(default_params | params))
                 elif model_name == 'svr':
-                    return SVR(kernel='rbf')
+                    default_params = {'kernel': 'rbf'}
+                    return SVR(**(default_params | params))
             
             logger.warning(f"未知模型名称: {model_name}")
             return None
@@ -397,6 +412,9 @@ class AIModelManager:
             scaler = self.scalers.get(self.target_column)
             features = np.asarray(features, dtype=np.float64)
             feature_frame = pd.DataFrame([features], columns=self.feature_columns)
+            fill_values = self.preprocessors.get(self.target_column, {})
+            if fill_values:
+                feature_frame = feature_frame.fillna(fill_values).fillna(0.0)
             
             # 特征标准化
             if scaler:
@@ -602,6 +620,7 @@ class AIModelManager:
             model_data = {
                 'models': self.models,
                 'scalers': self.scalers,
+                'preprocessors': self.preprocessors,
                 'feature_columns': self.feature_columns,
                 'target_column': self.target_column,
                 'model_performance': self.model_performance,
@@ -630,6 +649,7 @@ class AIModelManager:
             
             self.models = model_data['models']
             self.scalers = model_data['scalers']
+            self.preprocessors = model_data.get('preprocessors', {})
             self.feature_columns = model_data['feature_columns']
             self.target_column = model_data['target_column']
             self.model_performance = model_data['model_performance']

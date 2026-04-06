@@ -17,6 +17,7 @@ from src.broker_interface import BrokerManager
 from src.config_utils import (
     ConfigValidationError,
     ensure_runtime_directories,
+    get_default_config,
     get_target_column,
     load_config as load_validated_config,
     save_config,
@@ -25,6 +26,7 @@ from src.data_collector import DataCollector
 from src.feature_engineer import FeatureEngineer
 from src.live_demo_trader import LiveDemoTrader
 from src.model_tester import ModelTestResult, ModelTester
+from src.research import ExperimentStore
 from src.report_store import ReportStore
 from src.secret_store import BrokerSecretStore
 from src.services import ReportWorkflowService, ResearchWorkflowService, TradingWorkflowService
@@ -53,7 +55,7 @@ def load_app_config(config_path: str = CONFIG_PATH) -> Dict[str, Any]:
 class ResearchAppService:
     """Shared service layer for the research workflow."""
 
-    API_COMPATIBILITY_VERSION = "2026.04.config-sanity-v1"
+    API_COMPATIBILITY_VERSION = "2026.04.stage5-automated-search-v1"
 
     def __init__(self, config_path: str = CONFIG_PATH):
         logger.info("=== AI Gold Research System Startup ===")
@@ -73,14 +75,27 @@ class ResearchAppService:
         self.latest_backtest_artifacts: Dict[str, str] = {}
         self.latest_model_test_summary: Dict[str, Any] = {}
         self.latest_model_test_artifacts: Dict[str, str] = {}
+        self.latest_research_experiment_summary: Dict[str, Any] = {}
+        self.latest_research_experiment_artifacts: Dict[str, str] = {}
+        self.latest_target_study_summary: Dict[str, Any] = {}
+        self.latest_target_study_artifacts: Dict[str, str] = {}
+        self.latest_feature_study_summary: Dict[str, Any] = {}
+        self.latest_feature_study_artifacts: Dict[str, str] = {}
+        self.latest_training_experiment_summary: Dict[str, Any] = {}
+        self.latest_training_experiment_artifacts: Dict[str, str] = {}
+        self.latest_promotion_summary: Dict[str, Any] = {}
+        self.latest_promotion_artifacts: Dict[str, str] = {}
+        self.latest_search_summary: Dict[str, Any] = {}
+        self.latest_search_artifacts: Dict[str, str] = {}
         self.latest_data_preview: List[Dict[str, Any]] = []
         self.latest_model_analysis: Dict[str, Any] = {}
         self.report_store = ReportStore()
+        self.experiment_store = ExperimentStore.from_config(self.config)
 
         self._migrate_plaintext_broker_secrets()
         self._build_runtime_components()
         self.research_workflows = ResearchWorkflowService(self)
-        self.report_workflows = ReportWorkflowService(self, self.report_store)
+        self.report_workflows = ReportWorkflowService(self, self.report_store, self.experiment_store)
         self.trading_workflows = TradingWorkflowService(self)
 
         self._load_saved_broker_profiles()
@@ -109,10 +124,19 @@ class ResearchAppService:
         """Lazily attach delegated workflow helpers for lightweight test fixtures."""
         if not hasattr(self, "report_store"):
             self.report_store = ReportStore()
+        if not hasattr(self, "experiment_store"):
+            config = getattr(self, "config", None)
+            if config is None:
+                config_path = getattr(self, "config_path", CONFIG_PATH)
+                if config_path and Path(config_path).exists():
+                    config = load_app_config(config_path)
+                else:
+                    config = get_default_config()
+            self.experiment_store = ExperimentStore.from_config(config)
         if not hasattr(self, "research_workflows"):
             self.research_workflows = ResearchWorkflowService(self)
         if not hasattr(self, "report_workflows"):
-            self.report_workflows = ReportWorkflowService(self, self.report_store)
+            self.report_workflows = ReportWorkflowService(self, self.report_store, self.experiment_store)
         if not hasattr(self, "trading_workflows"):
             self.trading_workflows = TradingWorkflowService(self)
 
@@ -204,13 +228,17 @@ class ResearchAppService:
 
         self.config = load_app_config(self.config_path)
         ensure_runtime_directories(self.config)
+        self.experiment_store = ExperimentStore.from_config(self.config)
         self._build_runtime_components()
         self._load_saved_broker_profiles()
+        self.research_workflows = ResearchWorkflowService(self)
+        self.report_workflows = ReportWorkflowService(self, self.report_store, self.experiment_store)
+        self.trading_workflows = TradingWorkflowService(self)
 
         if previous_model_path and Path(previous_model_path).exists():
             if self.ai_model_manager.load_models(str(previous_model_path)):
                 self.loaded_model_path = str(previous_model_path)
-                self.selected_features = list(self.ai_model_manager.feature_columns) or previous_selected_features
+                self.selected_features = previous_selected_features or list(self.ai_model_manager.feature_columns)
             else:
                 self.loaded_model_path = None
                 self.selected_features = previous_selected_features
@@ -222,6 +250,14 @@ class ResearchAppService:
         if hasattr(self, "ai_model_manager") and getattr(self.ai_model_manager, "target_column", ""):
             return str(self.ai_model_manager.target_column)
         return get_target_column(self.config)
+
+    def get_runtime_prediction_features(self) -> List[str]:
+        """Return the feature columns required by the currently loaded runtime model."""
+        if hasattr(self, "ai_model_manager") and getattr(self.ai_model_manager, "models", {}):
+            runtime_features = list(getattr(self.ai_model_manager, "feature_columns", []) or [])
+            if runtime_features:
+                return runtime_features
+        return list(getattr(self, "selected_features", []) or [])
 
     def _sanitize_model_name(self, model_name: str) -> str:
         cleaned = re.sub(r"[^A-Za-z0-9_-]+", "_", model_name.strip())
@@ -328,6 +364,39 @@ class ResearchAppService:
         self._ensure_workflow_services()
         return self.research_workflows.run_model_test()
 
+    def run_research_experiment(self, experiment_name: str = "diagnostic_single_experiment") -> Dict[str, Any]:
+        self._ensure_workflow_services()
+        return self.research_workflows.run_research_experiment(experiment_name)
+
+    def run_target_study(self, study_name: str = "diagnostic_target_comparison") -> Dict[str, Any]:
+        self._ensure_workflow_services()
+        return self.research_workflows.run_target_study(study_name)
+
+    def run_feature_study(self, study_name: str = "diagnostic_feature_comparison") -> Dict[str, Any]:
+        self._ensure_workflow_services()
+        return self.research_workflows.run_feature_study(study_name)
+
+    def run_training_experiment(self, experiment_name: str = "diagnostic_candidate_training") -> Dict[str, Any]:
+        self._ensure_workflow_services()
+        return self.research_workflows.run_training_experiment(experiment_name)
+
+    def promote_training_experiment(self, experiment_path_or_id: str) -> Dict[str, Any]:
+        self._ensure_workflow_services()
+        return self.research_workflows.promote_training_experiment(experiment_path_or_id)
+
+    def run_automated_search(
+        self,
+        search_name: str = "research_search",
+        progress_callback=None,
+        max_workers: int | None = None,
+    ) -> Dict[str, Any]:
+        self._ensure_workflow_services()
+        return self.research_workflows.run_automated_search(
+            search_name,
+            progress_callback=progress_callback,
+            max_workers=max_workers,
+        )
+
     def list_backtest_reports(self, limit: int = 10) -> Dict[str, Any]:
         self._ensure_workflow_services()
         return self.report_workflows.list_backtest_reports(limit)
@@ -343,6 +412,54 @@ class ResearchAppService:
     def get_model_test_report(self, report_path: str) -> Dict[str, Any]:
         self._ensure_workflow_services()
         return self.report_workflows.get_model_test_report(report_path)
+
+    def list_experiment_reports(self, limit: int = 10) -> Dict[str, Any]:
+        self._ensure_workflow_services()
+        return self.report_workflows.list_experiment_reports(limit)
+
+    def get_experiment_report(self, report_path: str) -> Dict[str, Any]:
+        self._ensure_workflow_services()
+        return self.report_workflows.get_experiment_report(report_path)
+
+    def list_target_study_reports(self, limit: int = 10) -> Dict[str, Any]:
+        self._ensure_workflow_services()
+        return self.report_workflows.list_target_study_reports(limit)
+
+    def get_target_study_report(self, report_path: str) -> Dict[str, Any]:
+        self._ensure_workflow_services()
+        return self.report_workflows.get_target_study_report(report_path)
+
+    def list_feature_study_reports(self, limit: int = 10) -> Dict[str, Any]:
+        self._ensure_workflow_services()
+        return self.report_workflows.list_feature_study_reports(limit)
+
+    def get_feature_study_report(self, report_path: str) -> Dict[str, Any]:
+        self._ensure_workflow_services()
+        return self.report_workflows.get_feature_study_report(report_path)
+
+    def list_training_experiment_reports(self, limit: int = 10) -> Dict[str, Any]:
+        self._ensure_workflow_services()
+        return self.report_workflows.list_training_experiment_reports(limit)
+
+    def get_training_experiment_report(self, report_path: str) -> Dict[str, Any]:
+        self._ensure_workflow_services()
+        return self.report_workflows.get_training_experiment_report(report_path)
+
+    def list_promotion_reports(self, limit: int = 10) -> Dict[str, Any]:
+        self._ensure_workflow_services()
+        return self.report_workflows.list_promotion_reports(limit)
+
+    def get_promotion_report(self, report_path: str) -> Dict[str, Any]:
+        self._ensure_workflow_services()
+        return self.report_workflows.get_promotion_report(report_path)
+
+    def list_search_reports(self, limit: int = 10) -> Dict[str, Any]:
+        self._ensure_workflow_services()
+        return self.report_workflows.list_search_reports(limit)
+
+    def get_search_report(self, report_path: str) -> Dict[str, Any]:
+        self._ensure_workflow_services()
+        return self.report_workflows.get_search_report(report_path)
 
     def get_model_analysis(self) -> Dict[str, Any]:
         self._ensure_workflow_services()
@@ -363,6 +480,18 @@ class ResearchAppService:
             "latest_backtest_artifacts": self.latest_backtest_artifacts,
             "latest_model_test_summary": self.latest_model_test_summary,
             "latest_model_test_artifacts": self.latest_model_test_artifacts,
+            "latest_research_experiment_summary": self.latest_research_experiment_summary,
+            "latest_research_experiment_artifacts": self.latest_research_experiment_artifacts,
+            "latest_target_study_summary": self.latest_target_study_summary,
+            "latest_target_study_artifacts": self.latest_target_study_artifacts,
+            "latest_feature_study_summary": self.latest_feature_study_summary,
+            "latest_feature_study_artifacts": self.latest_feature_study_artifacts,
+            "latest_training_experiment_summary": self.latest_training_experiment_summary,
+            "latest_training_experiment_artifacts": self.latest_training_experiment_artifacts,
+            "latest_promotion_summary": self.latest_promotion_summary,
+            "latest_promotion_artifacts": self.latest_promotion_artifacts,
+            "latest_search_summary": self.latest_search_summary,
+            "latest_search_artifacts": self.latest_search_artifacts,
             "auto_trader": self.auto_trader.get_status(),
         }
         return self._response(True, "System status loaded", data=status)
@@ -436,6 +565,18 @@ class ResearchAppService:
                 "latest_backtest_artifacts": system_status.get("latest_backtest_artifacts") or {},
                 "latest_model_test_summary": system_status.get("latest_model_test_summary") or {},
                 "latest_model_test_artifacts": system_status.get("latest_model_test_artifacts") or {},
+                "latest_research_experiment_summary": system_status.get("latest_research_experiment_summary") or {},
+                "latest_research_experiment_artifacts": system_status.get("latest_research_experiment_artifacts") or {},
+                "latest_target_study_summary": system_status.get("latest_target_study_summary") or {},
+                "latest_target_study_artifacts": system_status.get("latest_target_study_artifacts") or {},
+                "latest_feature_study_summary": system_status.get("latest_feature_study_summary") or {},
+                "latest_feature_study_artifacts": system_status.get("latest_feature_study_artifacts") or {},
+                "latest_training_experiment_summary": system_status.get("latest_training_experiment_summary") or {},
+                "latest_training_experiment_artifacts": system_status.get("latest_training_experiment_artifacts") or {},
+                "latest_promotion_summary": system_status.get("latest_promotion_summary") or {},
+                "latest_promotion_artifacts": system_status.get("latest_promotion_artifacts") or {},
+                "latest_search_summary": system_status.get("latest_search_summary") or {},
+                "latest_search_artifacts": system_status.get("latest_search_artifacts") or {},
             },
         }
         return self._response(True, "Dashboard snapshot loaded", data=payload)
