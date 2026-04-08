@@ -48,6 +48,8 @@ class Stage4Defaults:
     working_target_id: str = "return_threshold_h3_0_05pct"
     feature_set_name: str = "volatility"
     comparison_feature_set_name: str = "baseline_core"
+    trainer_name: str = "current_ensemble"
+    trainer_params: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -56,6 +58,7 @@ class Stage5Defaults:
 
     target_ids: List[str] = field(default_factory=list)
     feature_set_names: List[str] = field(default_factory=list)
+    trainer_name: str = "current_ensemble"
     preset_names: List[str] = field(default_factory=list)
     max_worker_cap: int = 4
     min_auto_workers: int = 2
@@ -134,6 +137,8 @@ def get_builtin_research_defaults(
             working_target_id="return_threshold_h3_0_05pct",
             feature_set_name="volatility",
             comparison_feature_set_name="baseline_core",
+            trainer_name="current_ensemble",
+            trainer_params={},
         ),
         stage5=Stage5Defaults(
             target_ids=[
@@ -142,6 +147,7 @@ def get_builtin_research_defaults(
                 "vol_adjusted_h3_x1_0",
             ],
             feature_set_names=["baseline_core", "all_eligible"],
+            trainer_name="current_ensemble",
             preset_names=["conservative", "balanced"],
             max_worker_cap=4,
             min_auto_workers=2,
@@ -275,6 +281,16 @@ def resolve_research_defaults(config: Dict[str, Any] | None) -> ResearchDefaults
                 defaults.stage4.comparison_feature_set_name,
                 dotted_key="research.defaults.stage4.comparison_feature_set_name",
             ),
+            trainer_name=_resolve_strict_string(
+                stage4_override.get("trainer_name"),
+                defaults.stage4.trainer_name,
+                dotted_key="research.defaults.stage4.trainer_name",
+            ),
+            trainer_params=_resolve_dict(
+                stage4_override.get("trainer_params"),
+                defaults.stage4.trainer_params,
+                dotted_key="research.defaults.stage4.trainer_params",
+            ),
         ),
         stage5=Stage5Defaults(
             target_ids=_resolve_string_list(
@@ -288,6 +304,11 @@ def resolve_research_defaults(config: Dict[str, Any] | None) -> ResearchDefaults
                 defaults.stage5.feature_set_names,
                 allow_empty=False,
                 dotted_key="research.defaults.stage5.feature_set_names",
+            ),
+            trainer_name=_resolve_strict_string(
+                stage5_override.get("trainer_name"),
+                defaults.stage5.trainer_name,
+                dotted_key="research.defaults.stage5.trainer_name",
             ),
             preset_names=_resolve_string_list(
                 stage5_override.get("preset_names"),
@@ -339,6 +360,17 @@ def _resolve_string(value: Any, default: str, *, dotted_key: str) -> str:
     return candidate
 
 
+def _resolve_strict_string(value: Any, default: str, *, dotted_key: str) -> str:
+    if value is None:
+        return str(default)
+    if not isinstance(value, str):
+        raise ValueError(f"{dotted_key} must be a non-empty string")
+    candidate = value.strip()
+    if not candidate:
+        raise ValueError(f"{dotted_key} must be a non-empty string")
+    return candidate
+
+
 def _resolve_string_list(
     value: Any,
     default: Iterable[str],
@@ -375,6 +407,14 @@ def _resolve_threshold_list(value: Any, default: Iterable[float], *, dotted_key:
             raise ValueError(f"{dotted_key} values must be between 0 and 1")
         resolved.append(float(numeric))
     return resolved
+
+
+def _resolve_dict(value: Any, default: Dict[str, Any], *, dotted_key: str) -> Dict[str, Any]:
+    if value is None:
+        return dict(default)
+    if not isinstance(value, dict):
+        raise ValueError(f"{dotted_key} must be a mapping")
+    return dict(value)
 
 
 def _resolve_positive_int(value: Any, default: int, *, dotted_key: str) -> int:

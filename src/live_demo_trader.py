@@ -19,11 +19,12 @@ from src.config_utils import get_effective_confidence_threshold
 class LiveDemoTrader:
     """Small Exness-first demo trading runtime for the GUI/service app."""
 
-    def __init__(self, config: Dict[str, Any], broker_manager, feature_engineer, ai_model_manager):
+    def __init__(self, config: Dict[str, Any], broker_manager, feature_engineer, ai_model_manager, runtime_predictor_getter=None):
         self.config = config
         self.broker_manager = broker_manager
         self.feature_engineer = feature_engineer
         self.ai_model_manager = ai_model_manager
+        self.runtime_predictor_getter = runtime_predictor_getter
 
         live_config = config.get("live_trading", {})
         self.symbol = config["trading"]["symbol"]
@@ -73,7 +74,8 @@ class LiveDemoTrader:
         if not self.broker_manager.active_broker:
             return False, "Connect an Exness broker before starting the auto trader"
 
-        if not self.ai_model_manager.models or not self.ai_model_manager.feature_columns:
+        predictor = self._get_runtime_predictor()
+        if predictor is None or not predictor.required_feature_columns:
             return False, "Load a saved model before starting the auto trader"
 
         success, message = self._initialize_history()
@@ -144,7 +146,7 @@ class LiveDemoTrader:
                 "latest_action": self._latest_action,
                 "latest_error": self._latest_error,
                 "managed_positions": len(current_positions),
-                "loaded_feature_count": len(self.ai_model_manager.feature_columns),
+                "loaded_feature_count": len((self._get_runtime_predictor().required_feature_columns if self._get_runtime_predictor() else [])),
                 "history_rows": len(self._price_history),
                 "confidence_threshold": self.confidence_threshold,
                 "active_poll_interval_seconds": self.poll_interval_seconds,
@@ -166,7 +168,9 @@ class LiveDemoTrader:
             self.run_once()
 
     def _initialize_history(self) -> Tuple[bool, str]:
-        bars_needed = max(self.lookback_periods, self.startup_candle_buffer)
+        predictor = self._get_runtime_predictor()
+        min_history_rows = predictor.min_history_rows if predictor is not None else 1
+        bars_needed = max(self.lookback_periods, min_history_rows, self.startup_candle_buffer)
         candles = self.broker_manager.get_historical_data(self.symbol, self.timeframe, bars_needed + 2)
         if not candles or len(candles) < bars_needed:
             return False, f"Unable to load enough MT5 candle history for {self.symbol} {self.timeframe}"
@@ -330,17 +334,16 @@ class LiveDemoTrader:
         if feature_history.empty:
             return False, "Feature matrix is empty for the current MT5 history", None, None
 
-        selected_features = list(self.ai_model_manager.feature_columns)
+        predictor = self._get_runtime_predictor()
+        if predictor is None:
+            return False, "No runtime predictor is loaded", None, feature_history
+
+        selected_features = list(predictor.required_feature_columns)
         missing = [feature for feature in selected_features if feature not in feature_history.columns]
         if missing:
             return False, f"Live feature matrix is missing model features: {missing}", None, feature_history
 
-        latest_frame = feature_history.tail(1)
-        prediction_frame = self.ai_model_manager.predict_ensemble_batch(
-            latest_frame,
-            feature_columns=selected_features,
-            method="voting",
-        )
+        prediction_frame = predictor.predict_batch(feature_history)
         latest_prediction = prediction_frame.iloc[-1]
         if not bool(latest_prediction["is_valid"]):
             return False, "Latest live feature row is invalid and cannot be scored", None, feature_history
@@ -361,6 +364,15 @@ class LiveDemoTrader:
             "take_profit": take_profit,
         }
         return True, "Live signal generated", signal, feature_history
+
+    def _get_runtime_predictor(self):
+        if callable(self.runtime_predictor_getter):
+            try:
+                return self.runtime_predictor_getter()
+            except Exception as exc:
+                logger.warning(f"Failed to resolve runtime predictor: {exc}")
+                return None
+        return None
 
     def _apply_signal(self, signal: Dict[str, Any]) -> str:
         confidence = float(signal["confidence"])

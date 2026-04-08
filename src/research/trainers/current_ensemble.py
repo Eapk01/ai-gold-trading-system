@@ -110,11 +110,14 @@ class CurrentEnsembleTrainer(ResearchTrainer):
             selected_features=list(train_features.columns),
             trainer_name="current_ensemble",
             metadata={
+                "artifact_type": "legacy_ensemble",
+                "runtime_loader": "ensemble",
                 "trained_model_names": list(manager.models.keys()),
                 "model_count": len(manager.models),
                 "preprocessing": "median_imputation_then_standard_scaling",
                 "fill_value_columns": sorted(preprocessor.fill_values.keys()),
                 "model_params": dict(self.model_params or {}),
+                "target_column": str(manager.target_column or ""),
                 **dict(metadata or {}),
             },
         )

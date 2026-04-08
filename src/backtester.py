@@ -314,7 +314,7 @@ class Backtester:
             drawdown = (self.peak_capital - total_equity) / self.peak_capital
             self.max_drawdown = max(self.max_drawdown, drawdown)
     
-    def run_backtest(self, prepared_data: pd.DataFrame, ai_model_manager,
+    def run_backtest(self, prepared_data: pd.DataFrame, runtime_predictor,
                     selected_features: List[str]) -> BacktestResult:
         """
         运行回测
@@ -343,11 +343,7 @@ class Backtester:
         if missing_features:
             raise ValueError(f"Prepared feature data is missing selected features: {missing_features}")
 
-        prediction_frame = ai_model_manager.predict_ensemble_batch(
-            feature_data,
-            feature_columns=selected_features,
-            method='voting'
-        )
+        prediction_frame = runtime_predictor.predict_batch(feature_data)
 
         if int(prediction_frame['is_valid'].sum()) == 0:
             raise ValueError("No valid rows remain for backtesting after feature filtering")

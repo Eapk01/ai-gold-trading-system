@@ -13,21 +13,30 @@ class ResearchDefaultsTests(unittest.TestCase):
 
         self.assertEqual(resolved.stage12.fixed_feature_set_name, "baseline_core")
         self.assertEqual(resolved.stage4.working_target_id, "return_threshold_h3_0_05pct")
+        self.assertEqual(resolved.stage4.trainer_name, "current_ensemble")
+        self.assertEqual(resolved.stage4.trainer_params, {})
         self.assertEqual(list(resolved.common.threshold_list), default_threshold_list())
         self.assertEqual(list(resolved.stage5.feature_set_names), ["baseline_core", "all_eligible"])
+        self.assertEqual(resolved.stage5.trainer_name, "current_ensemble")
         self.assertEqual(list(resolved.stage5.preset_names), ["conservative", "balanced"])
 
     def test_resolve_research_defaults_honors_overrides(self):
         config = get_default_config()
         config["research"]["defaults"]["common"]["threshold_list"] = [0.50, 0.51, 0.52]
+        config["research"]["defaults"]["stage4"]["trainer_name"] = "lstm"
+        config["research"]["defaults"]["stage4"]["trainer_params"] = {"epochs": 12, "lookback_window": 32}
         config["research"]["defaults"]["stage5"]["feature_set_names"] = ["baseline_core"]
+        config["research"]["defaults"]["stage5"]["trainer_name"] = "lstm"
         config["research"]["defaults"]["stage5"]["preset_names"] = ["conservative"]
         config["research"]["defaults"]["truth_gate"]["minimum_test_coverage"] = 0.15
 
         resolved = resolve_research_defaults(config)
 
         self.assertEqual(resolved.common.threshold_list, [0.50, 0.51, 0.52])
+        self.assertEqual(resolved.stage4.trainer_name, "lstm")
+        self.assertEqual(resolved.stage4.trainer_params, {"epochs": 12, "lookback_window": 32})
         self.assertEqual(resolved.stage5.feature_set_names, ["baseline_core"])
+        self.assertEqual(resolved.stage5.trainer_name, "lstm")
         self.assertEqual(resolved.stage5.preset_names, ["conservative"])
         self.assertEqual(resolved.truth_gate.minimum_test_coverage, 0.15)
 
@@ -52,6 +61,26 @@ class ResearchDefaultsTests(unittest.TestCase):
         config["research"]["defaults"]["stage5"]["min_auto_workers"] = 2
 
         with self.assertRaisesRegex(ValueError, "min_auto_workers"):
+            resolve_research_defaults(config)
+
+    def test_resolve_research_defaults_rejects_invalid_trainer_types(self):
+        config = get_default_config()
+        config["research"]["defaults"]["stage4"]["trainer_name"] = 123
+
+        with self.assertRaisesRegex(ValueError, "stage4.trainer_name"):
+            resolve_research_defaults(config)
+
+        config = get_default_config()
+        config["research"]["defaults"]["stage5"]["trainer_name"] = []
+
+        with self.assertRaisesRegex(ValueError, "stage5.trainer_name"):
+            resolve_research_defaults(config)
+
+    def test_resolve_research_defaults_rejects_invalid_stage4_trainer_params_type(self):
+        config = get_default_config()
+        config["research"]["defaults"]["stage4"]["trainer_params"] = ["not", "a", "mapping"]
+
+        with self.assertRaisesRegex(ValueError, "stage4.trainer_params"):
             resolve_research_defaults(config)
 
     def test_evaluation_pipeline_fallback_uses_shared_thresholds(self):

@@ -14,8 +14,7 @@ from .defaults import (
     get_builtin_research_defaults,
     resolve_research_defaults,
 )
-from .evaluation_pipeline import EvaluationPipeline
-from .experiment_runner import ExperimentRunner
+from .execution import EvaluationPipeline, ExperimentRunner, SearchCandidateConfig, SearchRunner, TrainingPipeline, WalkForwardSplitter
 from .experiment_store import ExperimentStore
 from .feature_selection import (
     CorrelationFeatureSelector,
@@ -57,12 +56,16 @@ from .labels import (
 )
 from .preprocessing import ResearchPreprocessor
 from .promotion import PromotionManifest, get_default_promoted_model_path
-from .search_presets import (
+from .catalog import (
+    build_stage5_preset_catalog,
+    build_stage5_target_catalog_rows,
+    build_stage5_target_specs,
+    describe_stage5_target,
     get_stage5_preset_description,
     get_stage5_preset_display_name,
+    list_stage5_preset_names,
     resolve_stage5_preset_definitions,
 )
-from .search_runner import SearchCandidateConfig, SearchRunner
 from .schemas import (
     CandidateArtifact,
     ExperimentResult,
@@ -86,21 +89,20 @@ from .schemas import (
     TargetSummary,
     TrainerOutput,
 )
-from .splitters import WalkForwardSplitter
 from .target_study import MaterializedTarget, TargetStudyRunner, build_target_result_stub
 from .training_experiment import (
     build_threshold_summary_rows,
     select_best_threshold,
     summarize_selected_threshold_metrics,
 )
-from .training_pipeline import TrainingPipeline
-from .trainers import ResearchTrainer, TrainerRegistry
+from .trainers import CurrentEnsembleTrainer, LSTMTrainer, ResearchTrainer, TrainerRegistry
 
 __all__ = [
     "BaselinePrediction",
     "BinaryTargetSpec",
     "CandidateArtifact",
     "CorrelationFeatureSelector",
+    "CurrentEnsembleTrainer",
     "default_baseline_names",
     "default_threshold_list",
     "EvaluationPipeline",
@@ -119,6 +121,7 @@ __all__ = [
     "FoldMetrics",
     "FullSetFeatureSelector",
     "LegacyRuntimeDirectionSpec",
+    "LSTMTrainer",
     "MajorityClassBaseline",
     "MaterializedTarget",
     "NeutralBandLabelSpec",
@@ -177,8 +180,13 @@ __all__ = [
     "resolve_integrity_payload",
     "get_builtin_research_defaults",
     "build_threshold_summary_rows",
+    "build_stage5_preset_catalog",
+    "build_stage5_target_catalog_rows",
+    "build_stage5_target_specs",
     "get_stage5_preset_description",
     "get_stage5_preset_display_name",
+    "describe_stage5_target",
+    "list_stage5_preset_names",
     "resolve_stage5_preset_definitions",
     "select_best_threshold",
     "serialize_target_spec",

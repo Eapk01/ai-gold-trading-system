@@ -28,6 +28,7 @@ from src.live_demo_trader import LiveDemoTrader
 from src.model_tester import ModelTestResult, ModelTester
 from src.research import ExperimentStore
 from src.report_store import ReportStore
+from src.runtime_predictor import EnsemblePredictor, RuntimePredictor, load_runtime_predictor
 from src.secret_store import BrokerSecretStore
 from src.services import ReportWorkflowService, ResearchWorkflowService, TradingWorkflowService
 
@@ -70,6 +71,7 @@ class ResearchAppService:
         self.selected_features: List[str] = []
         self.last_import_summary: Dict[str, Any] = {}
         self.loaded_model_path: Optional[str] = None
+        self.loaded_predictor: Optional[RuntimePredictor] = None
         self.latest_training_results: Dict[str, Any] = {}
         self.latest_backtest_summary: Dict[str, Any] = {}
         self.latest_backtest_artifacts: Dict[str, str] = {}
@@ -208,6 +210,7 @@ class ResearchAppService:
             self.broker_manager,
             self.feature_engineer,
             self.ai_model_manager,
+            runtime_predictor_getter=self.get_runtime_predictor,
         )
 
     def _reload_runtime_from_disk(self) -> None:
@@ -229,11 +232,11 @@ class ResearchAppService:
         self.research_workflows = ResearchWorkflowService(self)
         self.report_workflows = ReportWorkflowService(self, self.report_store, self.experiment_store)
         self.trading_workflows = TradingWorkflowService(self)
+        self.loaded_predictor = None
 
         if previous_model_path and Path(previous_model_path).exists():
-            if self.ai_model_manager.load_models(str(previous_model_path)):
-                self.loaded_model_path = str(previous_model_path)
-                self.selected_features = previous_selected_features or list(self.ai_model_manager.feature_columns)
+            if self._load_runtime_model(previous_model_path):
+                self.selected_features = previous_selected_features or self.get_runtime_prediction_features()
             else:
                 self.loaded_model_path = None
                 self.selected_features = previous_selected_features
@@ -242,17 +245,53 @@ class ResearchAppService:
 
     def get_target_column(self) -> str:
         """Return the canonical target column used for train/eval workflows."""
+        predictor = self.get_runtime_predictor()
+        if predictor is not None and predictor.target_column:
+            return str(predictor.target_column)
         if hasattr(self, "ai_model_manager") and getattr(self.ai_model_manager, "target_column", ""):
             return str(self.ai_model_manager.target_column)
         return get_target_column(self.config)
 
+    def get_runtime_predictor(self) -> Optional[RuntimePredictor]:
+        """Return the currently loaded runtime predictor, building a legacy wrapper when needed."""
+        predictor = getattr(self, "loaded_predictor", None)
+        if predictor is not None:
+            return predictor
+        if hasattr(self, "ai_model_manager") and getattr(self.ai_model_manager, "models", {}):
+            predictor = EnsemblePredictor.from_manager(
+                self.ai_model_manager,
+                artifact_path=str(getattr(self, "loaded_model_path", "") or ""),
+            )
+            self.loaded_predictor = predictor
+            return predictor
+        return None
+
     def get_runtime_prediction_features(self) -> List[str]:
         """Return the feature columns required by the currently loaded runtime model."""
-        if hasattr(self, "ai_model_manager") and getattr(self.ai_model_manager, "models", {}):
-            runtime_features = list(getattr(self.ai_model_manager, "feature_columns", []) or [])
+        predictor = self.get_runtime_predictor()
+        if predictor is not None:
+            runtime_features = list(getattr(predictor, "required_feature_columns", []) or [])
             if runtime_features:
                 return runtime_features
         return list(getattr(self, "selected_features", []) or [])
+
+    def _load_runtime_model(self, artifact_path: str | Path) -> bool:
+        """Load any supported runtime artifact into the shared predictor path."""
+        try:
+            predictor = load_runtime_predictor(
+                self.config,
+                str(artifact_path),
+                manager=self.ai_model_manager,
+            )
+        except Exception as exc:
+            logger.warning(f"Failed to load runtime artifact '{artifact_path}': {exc}")
+            self.loaded_predictor = None
+            return False
+
+        self.loaded_predictor = predictor
+        self.loaded_model_path = str(artifact_path)
+        self.selected_features = list(predictor.required_feature_columns)
+        return True
 
     def _sanitize_model_name(self, model_name: str) -> str:
         cleaned = re.sub(r"[^A-Za-z0-9_-]+", "_", model_name.strip())
@@ -295,9 +334,7 @@ class ResearchAppService:
             return
 
         latest_model = saved_models[0]
-        if self.ai_model_manager.load_models(str(latest_model)):
-            self.loaded_model_path = str(latest_model)
-            self.selected_features = list(self.ai_model_manager.feature_columns)
+        if self._load_runtime_model(str(latest_model)):
             logger.info(f"Auto-loaded latest saved model: {latest_model.name}")
 
     def import_and_prepare_data(self) -> Dict[str, Any]:
@@ -336,9 +373,7 @@ class ResearchAppService:
         if selected_model is None:
             return self._response(False, f"Model not found: {model_path_or_name}")
 
-        if self.ai_model_manager.load_models(str(selected_model)):
-            self.loaded_model_path = str(selected_model)
-            self.selected_features = list(self.ai_model_manager.feature_columns)
+        if self._load_runtime_model(str(selected_model)):
             return self._response(
                 True,
                 f"Loaded model: {selected_model.name}",
@@ -372,13 +407,21 @@ class ResearchAppService:
         search_name: str = "research_search",
         progress_callback=None,
         max_workers: int | None = None,
+        search_overrides: Dict[str, Any] | None = None,
     ) -> Dict[str, Any]:
         self._ensure_workflow_services()
         return self.research_workflows.run_automated_search(
             search_name,
             progress_callback=progress_callback,
             max_workers=max_workers,
+            search_overrides=search_overrides,
         )
+
+    def get_search_catalog(self, search_overrides: Dict[str, Any] | None = None) -> Dict[str, Any]:
+        self._ensure_workflow_services()
+        if search_overrides is None:
+            return self.research_workflows.get_search_catalog()
+        return self.research_workflows.get_search_catalog(search_overrides)
 
     def list_backtest_reports(self, limit: int = 10) -> Dict[str, Any]:
         self._ensure_workflow_services()

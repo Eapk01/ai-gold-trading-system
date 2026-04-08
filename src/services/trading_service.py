@@ -38,6 +38,8 @@ class TradingWorkflowService:
                 "candidate_training",
             ],
             "research_defaults": research_defaults.to_dict(),
+            "research_stage4_default_trainer_name": research_defaults.stage4.trainer_name,
+            "research_stage5_default_trainer_name": research_defaults.stage5.trainer_name,
             "research_stage5_default_target_ids": list(research_defaults.stage5.target_ids),
             "research_stage5_default_feature_sets": list(research_defaults.stage5.feature_set_names),
             "research_stage5_default_presets": list(research_defaults.stage5.preset_names),

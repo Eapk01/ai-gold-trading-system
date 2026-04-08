@@ -37,10 +37,16 @@ from src.research import (
     build_binary_target_labels,
     build_experiment_integrity_proof,
     build_feature_selector,
-    resolve_integrity_payload,
+    build_named_feature_sets,
     build_search_diagnostics,
+    build_stage5_preset_catalog,
+    build_stage5_target_catalog_rows,
+    build_stage5_target_specs,
     build_training_experiment_diagnostics,
+    get_feature_set_description,
+    get_feature_set_display_name,
     get_default_promoted_model_path,
+    resolve_integrity_payload,
     resolve_stage5_preset_definitions,
     resolve_feature_sets,
     resolve_research_defaults,
@@ -48,7 +54,7 @@ from src.research import (
     summarize_selected_threshold_metrics,
 )
 from src.research.training_experiment import build_threshold_summary_rows, select_best_threshold
-from src.research.trainers import CurrentEnsembleTrainer
+from src.research.trainers import CurrentEnsembleTrainer, LSTMTrainer
 
 if TYPE_CHECKING:
     from src.app_service import ResearchAppService
@@ -56,6 +62,25 @@ if TYPE_CHECKING:
 
 class ResearchWorkflowService:
     """Research/model orchestration delegated from the app facade."""
+
+    STAGE5_TRAINER_NAMES = ("current_ensemble", "lstm")
+    STAGE5_SELECTOR_OPTIONS = (
+        {
+            "id": "correlation",
+            "display_name": "Correlation",
+            "description": "Select the strongest numeric features by absolute correlation to the fold-local target.",
+        },
+        {
+            "id": "variance",
+            "display_name": "Variance",
+            "description": "Select the highest-variance numeric features from the fold-local training slice.",
+        },
+        {
+            "id": "full_set",
+            "display_name": "Full Set",
+            "description": "Keep the full candidate feature set without fold-local pruning.",
+        },
+    )
 
     def __init__(self, service: "ResearchAppService") -> None:
         self.service = service
@@ -66,9 +91,23 @@ class ResearchWorkflowService:
 
     def _compute_split_sizes(self, total_rows: int) -> tuple[int, int, int]:
         common_defaults = self.research_defaults.common
-        train_size = max(int(total_rows * common_defaults.train_fraction), 1)
-        validation_size = max(int(total_rows * common_defaults.validation_fraction), 1)
-        test_size = max(int(total_rows * common_defaults.test_fraction), 1)
+        return self._compute_split_sizes_from_fractions(
+            total_rows,
+            common_defaults.train_fraction,
+            common_defaults.validation_fraction,
+            common_defaults.test_fraction,
+        )
+
+    def _compute_split_sizes_from_fractions(
+        self,
+        total_rows: int,
+        train_fraction: float,
+        validation_fraction: float,
+        test_fraction: float,
+    ) -> tuple[int, int, int]:
+        train_size = max(int(total_rows * train_fraction), 1)
+        validation_size = max(int(total_rows * validation_fraction), 1)
+        test_size = max(int(total_rows * test_fraction), 1)
 
         while train_size + validation_size + test_size > total_rows and train_size > 1:
             train_size -= 1
@@ -100,6 +139,22 @@ class ResearchWorkflowService:
             raise ValueError(f"{config_key} resolved zero targets")
         return selected_specs
 
+    def _resolve_catalog_feature_set_names(
+        self,
+        available_feature_set_names: list[str],
+        requested_feature_set_names: list[str],
+        *,
+        config_key: str,
+    ) -> list[str]:
+        unknown_feature_sets = [
+            feature_set_name
+            for feature_set_name in requested_feature_set_names
+            if feature_set_name not in available_feature_set_names
+        ]
+        if unknown_feature_sets:
+            raise ValueError(f"Unsupported {config_key} values: " + ", ".join(sorted(unknown_feature_sets)))
+        return list(requested_feature_set_names)
+
     def _resolve_feature_set_names(
         self,
         available_feature_columns: list[str],
@@ -117,6 +172,244 @@ class ResearchWorkflowService:
         if unknown_feature_sets:
             raise ValueError(f"Unsupported {config_key} values: " + ", ".join(sorted(unknown_feature_sets)))
         return list(requested_feature_set_names)
+
+    def _normalize_stage5_trainer_name(self, trainer_name: object, *, config_key: str) -> str:
+        normalized_trainer = str(trainer_name or self.research_defaults.stage5.trainer_name).strip().lower()
+        if normalized_trainer not in self.STAGE5_TRAINER_NAMES:
+            raise ValueError(f"Unsupported {config_key} value: {trainer_name}")
+        return normalized_trainer
+
+    def _normalize_string_list(self, values: object, *, config_key: str) -> list[str]:
+        if values is None:
+            raise ValueError(f"{config_key} is required")
+        normalized_values = [str(value).strip() for value in list(values or []) if str(value).strip()]
+        if not normalized_values:
+            raise ValueError(f"{config_key} must include at least one value")
+        return normalized_values
+
+    def _normalize_threshold_list(self, values: object, *, config_key: str) -> list[float]:
+        if values is None:
+            raise ValueError(f"{config_key} is required")
+        thresholds = [float(value) for value in list(values or [])]
+        if not thresholds:
+            raise ValueError(f"{config_key} must include at least one threshold")
+        invalid_thresholds = [value for value in thresholds if value < 0.0 or value > 1.0]
+        if invalid_thresholds:
+            raise ValueError(f"{config_key} must stay between 0 and 1")
+        return thresholds
+
+    def _normalize_positive_int(self, value: object, *, config_key: str) -> int:
+        normalized_value = int(value)
+        if normalized_value <= 0:
+            raise ValueError(f"{config_key} must be positive")
+        return normalized_value
+
+    def _normalize_split_fractions(
+        self,
+        *,
+        train_fraction: object,
+        validation_fraction: object,
+        test_fraction: object,
+        config_key_prefix: str,
+    ) -> tuple[float, float, float]:
+        normalized_train = float(train_fraction)
+        normalized_validation = float(validation_fraction)
+        normalized_test = float(test_fraction)
+        if normalized_train <= 0.0:
+            raise ValueError(f"{config_key_prefix}.train_fraction must be positive")
+        if normalized_validation <= 0.0:
+            raise ValueError(f"{config_key_prefix}.validation_fraction must be positive")
+        if normalized_test <= 0.0:
+            raise ValueError(f"{config_key_prefix}.test_fraction must be positive")
+        if (normalized_train + normalized_validation + normalized_test) > 1.0:
+            raise ValueError(f"{config_key_prefix} fractions must sum to 1.0 or less")
+        return normalized_train, normalized_validation, normalized_test
+
+    def _build_stage5_available_trainers(self, *, selected_trainer_name: str) -> list[Dict[str, Any]]:
+        return [
+            {
+                "id": trainer_name,
+                "display_name": trainer_name.replace("_", " ").title(),
+                "selected": trainer_name == selected_trainer_name,
+            }
+            for trainer_name in self.STAGE5_TRAINER_NAMES
+        ]
+
+    def _resolve_effective_search_inputs(
+        self,
+        *,
+        target_specs: list[object],
+        available_feature_columns: list[str],
+        total_rows: int,
+        search_overrides: Dict[str, Any] | None = None,
+        max_workers: int | None = None,
+    ) -> Dict[str, Any]:
+        overrides = dict(search_overrides or {})
+        common_defaults = self.research_defaults.common
+        stage5_defaults = self.research_defaults.stage5
+        configured_models = list((self.service.config.get("ai_model", {}) or {}).get("models") or [])
+
+        trainer_name = self._normalize_stage5_trainer_name(
+            overrides.get("trainer_name", stage5_defaults.trainer_name),
+            config_key="search_overrides.trainer_name",
+        )
+        serialized_target_specs = [serialize_target_spec(target_spec) for target_spec in target_specs]
+        selected_target_ids = self._normalize_string_list(
+            overrides.get("target_ids", stage5_defaults.target_ids),
+            config_key="search_overrides.target_ids",
+        )
+        resolved_target_specs = self._resolve_target_specs_by_ids(
+            serialized_target_specs,
+            selected_target_ids,
+            config_key="search_overrides.target_ids",
+        )
+        selected_feature_set_names = self._normalize_string_list(
+            overrides.get("feature_set_names", stage5_defaults.feature_set_names),
+            config_key="search_overrides.feature_set_names",
+        )
+        resolved_feature_set_names = self._resolve_feature_set_names(
+            available_feature_columns,
+            selected_feature_set_names,
+            config_key="search_overrides.feature_set_names",
+        )
+        selected_preset_names = self._normalize_string_list(
+            overrides.get("preset_names", stage5_defaults.preset_names),
+            config_key="search_overrides.preset_names",
+        )
+        resolve_stage5_preset_definitions(
+            trainer_name,
+            configured_models,
+            selected_preset_names,
+        )
+        selector_max_features = self._normalize_positive_int(
+            overrides.get("selector_max_features", common_defaults.selector_max_features),
+            config_key="search_overrides.selector_max_features",
+        )
+        selector_name = str(overrides.get("selector_name", common_defaults.selector_name) or "").strip().lower()
+        build_feature_selector(selector_name, max_features=selector_max_features)
+        threshold_list = self._normalize_threshold_list(
+            overrides.get("threshold_list", common_defaults.threshold_list),
+            config_key="search_overrides.threshold_list",
+        )
+        train_fraction, validation_fraction, test_fraction = self._normalize_split_fractions(
+            train_fraction=overrides.get("train_fraction", common_defaults.train_fraction),
+            validation_fraction=overrides.get("validation_fraction", common_defaults.validation_fraction),
+            test_fraction=overrides.get("test_fraction", common_defaults.test_fraction),
+            config_key_prefix="search_overrides",
+        )
+        train_size, validation_size, test_size = self._compute_split_sizes_from_fractions(
+            total_rows,
+            train_fraction,
+            validation_fraction,
+            test_fraction,
+        )
+        effective_max_workers = overrides.get("max_workers", max_workers)
+        if effective_max_workers is not None:
+            effective_max_workers = self._normalize_positive_int(
+                effective_max_workers,
+                config_key="search_overrides.max_workers",
+            )
+
+        return {
+            "trainer_name": trainer_name,
+            "target_ids": selected_target_ids,
+            "target_specs": resolved_target_specs,
+            "feature_set_names": resolved_feature_set_names,
+            "preset_names": selected_preset_names,
+            "threshold_list": threshold_list,
+            "selector_name": selector_name,
+            "selector_max_features": selector_max_features,
+            "train_fraction": train_fraction,
+            "validation_fraction": validation_fraction,
+            "test_fraction": test_fraction,
+            "train_size": train_size,
+            "validation_size": validation_size,
+            "test_size": test_size,
+            "step_size": max(test_size, 1),
+            "expanding_window": bool(overrides.get("expanding_window", common_defaults.expanding_window)),
+            "max_workers": effective_max_workers,
+        }
+
+    def _resolve_catalog_search_inputs(self, search_overrides: Dict[str, Any] | None = None) -> Dict[str, Any]:
+        overrides = dict(search_overrides or {})
+        common_defaults = self.research_defaults.common
+        stage5_defaults = self.research_defaults.stage5
+        configured_models = list((self.service.config.get("ai_model", {}) or {}).get("models") or [])
+        target_specs = self._build_stage5_search_target_specs()
+        serialized_target_specs = [serialize_target_spec(target_spec) for target_spec in target_specs]
+        selected_target_ids = self._normalize_string_list(
+            overrides.get("target_ids", stage5_defaults.target_ids),
+            config_key="search_overrides.target_ids",
+        )
+        resolved_target_specs = self._resolve_target_specs_by_ids(
+            serialized_target_specs,
+            selected_target_ids,
+            config_key="search_overrides.target_ids",
+        )
+        raw_feature_columns = getattr(self.service.feature_data, "columns", None)
+        available_feature_columns = list(raw_feature_columns) if raw_feature_columns is not None else []
+        feature_set_map = build_named_feature_sets(available_feature_columns)
+        available_feature_set_names = list(feature_set_map.keys())
+        selected_feature_set_names = self._normalize_string_list(
+            overrides.get("feature_set_names", stage5_defaults.feature_set_names),
+            config_key="search_overrides.feature_set_names",
+        )
+        resolved_feature_set_names = self._resolve_catalog_feature_set_names(
+            available_feature_set_names,
+            selected_feature_set_names,
+            config_key="search_overrides.feature_set_names",
+        )
+        trainer_name = self._normalize_stage5_trainer_name(
+            overrides.get("trainer_name", stage5_defaults.trainer_name),
+            config_key="search_overrides.trainer_name",
+        )
+        selected_preset_names = self._normalize_string_list(
+            overrides.get("preset_names", stage5_defaults.preset_names),
+            config_key="search_overrides.preset_names",
+        )
+        build_feature_selector(
+            str(overrides.get("selector_name", common_defaults.selector_name) or "").strip().lower(),
+            max_features=self._normalize_positive_int(
+                overrides.get("selector_max_features", common_defaults.selector_max_features),
+                config_key="search_overrides.selector_max_features",
+            ),
+        )
+        resolve_stage5_preset_definitions(trainer_name, configured_models, selected_preset_names)
+        train_fraction, validation_fraction, test_fraction = self._normalize_split_fractions(
+            train_fraction=overrides.get("train_fraction", common_defaults.train_fraction),
+            validation_fraction=overrides.get("validation_fraction", common_defaults.validation_fraction),
+            test_fraction=overrides.get("test_fraction", common_defaults.test_fraction),
+            config_key_prefix="search_overrides",
+        )
+        threshold_list = self._normalize_threshold_list(
+            overrides.get("threshold_list", common_defaults.threshold_list),
+            config_key="search_overrides.threshold_list",
+        )
+        max_workers_override = overrides.get("max_workers")
+        if max_workers_override is not None:
+            max_workers_override = self._normalize_positive_int(
+                max_workers_override,
+                config_key="search_overrides.max_workers",
+            )
+        return {
+            "trainer_name": trainer_name,
+            "target_ids": selected_target_ids,
+            "target_specs": resolved_target_specs,
+            "feature_set_names": resolved_feature_set_names,
+            "feature_set_map": feature_set_map,
+            "preset_names": selected_preset_names,
+            "threshold_list": threshold_list,
+            "selector_name": str(overrides.get("selector_name", common_defaults.selector_name) or "").strip().lower(),
+            "selector_max_features": self._normalize_positive_int(
+                overrides.get("selector_max_features", common_defaults.selector_max_features),
+                config_key="search_overrides.selector_max_features",
+            ),
+            "train_fraction": train_fraction,
+            "validation_fraction": validation_fraction,
+            "test_fraction": test_fraction,
+            "expanding_window": bool(overrides.get("expanding_window", common_defaults.expanding_window)),
+            "max_workers": max_workers_override,
+        }
 
     def import_and_prepare_data(self) -> Dict[str, Any]:
         logger.info("Starting local dataset import and preparation...")
@@ -200,8 +493,7 @@ class ResearchWorkflowService:
         model_path = self.service._get_models_directory() / f"{safe_name}.joblib"
         model_path.parent.mkdir(parents=True, exist_ok=True)
         self.service.ai_model_manager.save_models(model_path)
-        self.service.loaded_model_path = str(model_path)
-        self.service.selected_features = list(self.service.ai_model_manager.feature_columns)
+        self.service._load_runtime_model(str(model_path))
         self.service.latest_training_results = training_results
 
         return self.service._response(
@@ -219,9 +511,10 @@ class ResearchWorkflowService:
     def run_backtest(self) -> Dict[str, Any]:
         logger.info("Starting professional backtest...")
         self.service._reload_runtime_from_disk()
+        runtime_predictor = self.service.get_runtime_predictor()
         runtime_feature_columns = self.service.get_runtime_prediction_features()
 
-        if not self.service.ai_model_manager.models:
+        if runtime_predictor is None:
             logger.error("Please train or load the models first")
             return self.service._response(False, "Please train or load the models first")
         if self.service.feature_data is None or not runtime_feature_columns:
@@ -231,7 +524,7 @@ class ResearchWorkflowService:
         try:
             result = self.service.backtester.run_backtest(
                 self.service.feature_data,
-                self.service.ai_model_manager,
+                runtime_predictor,
                 runtime_feature_columns,
             )
 
@@ -276,27 +569,24 @@ class ResearchWorkflowService:
     def run_model_test(self) -> Dict[str, Any]:
         logger.info("Starting model test...")
         self.service._reload_runtime_from_disk()
+        runtime_predictor = self.service.get_runtime_predictor()
         runtime_feature_columns = self.service.get_runtime_prediction_features()
 
-        if not self.service.ai_model_manager.models:
+        if runtime_predictor is None:
             logger.error("Please train or load the models first")
             return self.service._response(False, "Please train or load the models first")
         if self.service.feature_data is None or not runtime_feature_columns:
             logger.error("Please prepare the data first")
             return self.service._response(False, "Please prepare the data first")
 
-        target_column = self.service.ai_model_manager.target_column or self.service.get_target_column()
+        target_column = runtime_predictor.target_column or self.service.get_target_column()
         if target_column not in self.service.feature_data.columns:
             message = f"Prepared feature data is missing target column: {target_column}"
             logger.error(message)
             return self.service._response(False, message)
 
         try:
-            prediction_frame = self.service.ai_model_manager.predict_ensemble_batch(
-                self.service.feature_data,
-                feature_columns=runtime_feature_columns,
-                method="voting",
-            )
+            prediction_frame = runtime_predictor.predict_batch(self.service.feature_data)
             result = self.service.model_tester.evaluate(
                 self.service.feature_data,
                 prediction_frame,
@@ -346,6 +636,70 @@ class ResearchWorkflowService:
         except Exception as exc:
             logger.error(f"Model test failed: {exc}")
             return self.service._response(False, f"Model test failed: {exc}", errors=[str(exc)])
+
+    def get_search_catalog(self, search_overrides: Dict[str, Any] | None = None) -> Dict[str, Any]:
+        """Return a GUI-ready catalog for the bounded Stage 5 search space."""
+        catalog_inputs = self._resolve_catalog_search_inputs(search_overrides=search_overrides)
+        feature_set_map = dict(catalog_inputs.get("feature_set_map") or {})
+        available_targets = build_stage5_target_catalog_rows(
+            target_specs=self._build_stage5_search_target_specs(),
+            selected_target_ids=list(catalog_inputs.get("target_ids") or []),
+        )
+        available_feature_sets = [
+            {
+                "id": feature_set_name,
+                "display_name": get_feature_set_display_name(feature_set_name),
+                "description": get_feature_set_description(feature_set_name),
+                "selected": feature_set_name in (catalog_inputs.get("feature_set_names") or []),
+                "feature_count": len(feature_set.columns),
+            }
+            for feature_set_name, feature_set in feature_set_map.items()
+        ]
+        available_trainers = self._build_stage5_available_trainers(
+            selected_trainer_name=str(catalog_inputs.get("trainer_name") or "")
+        )
+        available_presets = build_stage5_preset_catalog(
+            str(catalog_inputs.get("trainer_name") or ""),
+            list((self.service.config.get("ai_model", {}) or {}).get("models") or []),
+            selected_preset_names=list(catalog_inputs.get("preset_names") or []),
+        )
+
+        candidate_count = (
+            len([row for row in available_targets if row.get("selected")])
+            * len([row for row in available_feature_sets if row.get("selected")])
+            * len([row for row in available_presets if row.get("selected")])
+        )
+
+        return self.service._response(
+            True,
+            "Search catalog loaded",
+            data={
+                "defaults": {
+                    "trainer_name": catalog_inputs.get("trainer_name"),
+                    "target_ids": list(catalog_inputs.get("target_ids") or []),
+                    "feature_set_names": list(catalog_inputs.get("feature_set_names") or []),
+                    "preset_names": list(catalog_inputs.get("preset_names") or []),
+                    "threshold_list": list(catalog_inputs.get("threshold_list") or []),
+                    "selector_name": catalog_inputs.get("selector_name"),
+                    "selector_max_features": catalog_inputs.get("selector_max_features"),
+                    "train_fraction": catalog_inputs.get("train_fraction"),
+                    "validation_fraction": catalog_inputs.get("validation_fraction"),
+                    "test_fraction": catalog_inputs.get("test_fraction"),
+                    "expanding_window": catalog_inputs.get("expanding_window"),
+                    "max_workers": catalog_inputs.get("max_workers"),
+                    "worker_policy": {
+                        "min_auto_workers": self.research_defaults.stage5.min_auto_workers,
+                        "max_worker_cap": self.research_defaults.stage5.max_worker_cap,
+                    },
+                },
+                "available_targets": available_targets,
+                "available_feature_sets": available_feature_sets,
+                "available_trainers": available_trainers,
+                "available_presets": available_presets,
+                "available_selectors": list(self.STAGE5_SELECTOR_OPTIONS),
+                "candidate_count": candidate_count,
+            },
+        )
 
     def promote_training_experiment(self, experiment_path_or_id: str) -> Dict[str, Any]:
         logger.info("Starting Stage 4 promotion...")
@@ -438,6 +792,7 @@ class ResearchWorkflowService:
         search_name: str = "research_search",
         progress_callback: Callable[[Dict[str, Any]], None] | None = None,
         max_workers: int | None = None,
+        search_overrides: Dict[str, Any] | None = None,
     ) -> Dict[str, Any]:
         logger.info("Starting primary research search...")
         self.service._reload_runtime_from_disk()
@@ -466,6 +821,7 @@ class ResearchWorkflowService:
                 available_feature_columns=list(self.service.feature_data.columns),
                 timestamp=timestamp,
                 max_workers=max_workers,
+                search_overrides=search_overrides,
             )
             target_specs_by_id = {
                 str(serialize_target_spec(target_spec).get("spec_id")): target_spec
@@ -493,6 +849,7 @@ class ResearchWorkflowService:
                 },
             )
             preset_definitions = resolve_stage5_preset_definitions(
+                request.trainer_name,
                 self.service.ai_model_manager.model_names,
                 request.preset_names,
             )
@@ -892,8 +1249,8 @@ class ResearchWorkflowService:
             comparison_feature_set_name=stage4_defaults.comparison_feature_set_name,
             selector_name=common_defaults.selector_name,
             selector_max_features=common_defaults.selector_max_features,
-            trainer_name=experiment_request.trainer_name,
-            trainer_params={},
+            trainer_name=stage4_defaults.trainer_name,
+            trainer_params=dict(stage4_defaults.trainer_params),
             baseline_names=list(experiment_request.baseline_names),
             train_size=experiment_request.train_size,
             validation_size=experiment_request.validation_size,
@@ -912,6 +1269,7 @@ class ResearchWorkflowService:
         available_feature_columns: list[str],
         timestamp: str,
         max_workers: int | None = None,
+        search_overrides: Dict[str, Any] | None = None,
     ) -> SearchRequest:
         experiment_request = self._build_default_experiment_request(
             experiment_name=search_name,
@@ -919,29 +1277,31 @@ class ResearchWorkflowService:
             feature_columns=[],
             total_rows=total_rows,
         )
-        serialized_target_specs = [serialize_target_spec(target_spec) for target_spec in target_specs]
-        serialized_target_specs = self._resolve_stage5_target_specs(serialized_target_specs)
-        feature_set_names = self._resolve_stage5_feature_set_names(available_feature_columns)
-        preset_names = self._resolve_stage5_preset_names()
-        common_defaults = self.research_defaults.common
+        effective_inputs = self._resolve_effective_search_inputs(
+            target_specs=target_specs,
+            available_feature_columns=available_feature_columns,
+            total_rows=total_rows,
+            search_overrides=search_overrides,
+            max_workers=max_workers,
+        )
         return SearchRequest(
             search_id=f"search_run_{timestamp}",
             search_name=search_name,
-            target_spec=dict(serialized_target_specs[0]),
-            target_specs=serialized_target_specs,
-            feature_set_names=feature_set_names,
-            trainer_name=experiment_request.trainer_name,
-            preset_names=preset_names,
+            target_spec=dict((effective_inputs.get("target_specs") or [{}])[0]),
+            target_specs=list(effective_inputs.get("target_specs") or []),
+            feature_set_names=list(effective_inputs.get("feature_set_names") or []),
+            trainer_name=str(effective_inputs.get("trainer_name") or ""),
+            preset_names=list(effective_inputs.get("preset_names") or []),
             baseline_names=list(experiment_request.baseline_names),
-            selector_name=common_defaults.selector_name,
-            selector_max_features=common_defaults.selector_max_features,
-            train_size=experiment_request.train_size,
-            validation_size=experiment_request.validation_size,
-            test_size=experiment_request.test_size,
-            step_size=experiment_request.step_size,
-            threshold_list=list(experiment_request.threshold_list),
-            expanding_window=experiment_request.expanding_window,
-            max_workers=max_workers,
+            selector_name=str(effective_inputs.get("selector_name") or ""),
+            selector_max_features=int(effective_inputs.get("selector_max_features") or 0),
+            train_size=int(effective_inputs.get("train_size") or experiment_request.train_size),
+            validation_size=int(effective_inputs.get("validation_size") or experiment_request.validation_size),
+            test_size=int(effective_inputs.get("test_size") or experiment_request.test_size),
+            step_size=int(effective_inputs.get("step_size") or experiment_request.step_size),
+            threshold_list=list(effective_inputs.get("threshold_list") or []),
+            expanding_window=bool(effective_inputs.get("expanding_window")),
+            max_workers=effective_inputs.get("max_workers"),
             execution_mode="parallel_candidate_threads",
         )
 
@@ -962,7 +1322,11 @@ class ResearchWorkflowService:
     def _resolve_stage5_preset_names(self) -> list[str]:
         configured_preset_names = list(self.research_defaults.stage5.preset_names)
         configured_models = list((self.service.config.get("ai_model", {}) or {}).get("models") or [])
-        resolve_stage5_preset_definitions(configured_models, configured_preset_names)
+        resolve_stage5_preset_definitions(
+            self.research_defaults.stage5.trainer_name,
+            configured_models,
+            configured_preset_names,
+        )
         return configured_preset_names
 
     def _resolve_search_worker_count(self, requested_max_workers: int | None) -> int:
@@ -1132,33 +1496,23 @@ class ResearchWorkflowService:
         }
 
     def _build_stage5_search_target_specs(self) -> list[object]:
-        runtime_target_column = self.service.get_target_column()
-        try:
-            legacy_horizon = int(str(runtime_target_column).rsplit("_", 1)[-1])
-        except ValueError:
-            legacy_horizon = 1
-
-        return [
-            self._build_stage4_working_target_spec(),
-            LegacyRuntimeDirectionSpec(
-                spec_id=f"legacy_{runtime_target_column.lower()}",
-                display_name=f"Legacy Runtime Target ({runtime_target_column})",
-                horizon_bars=legacy_horizon,
-            ),
-            VolatilityAdjustedMoveSpec(
-                spec_id="vol_adjusted_h3_x1_0",
-                display_name="Volatility Adjusted (3 bars, 1.0x vol)",
-                horizon_bars=3,
-                volatility_window=20,
-                volatility_multiplier=1.0,
-            ),
-        ]
+        return build_stage5_target_specs(
+            runtime_target_column=self.service.get_target_column(),
+            working_target_spec=self._build_stage4_working_target_spec(),
+        )
 
     def _build_trainer_registry(self) -> TrainerRegistry:
         registry = TrainerRegistry()
         registry.register(
             "current_ensemble",
             CurrentEnsembleTrainer(
+                self.service.config,
+                target_column=self.service.get_target_column(),
+            ),
+        )
+        registry.register(
+            "lstm",
+            LSTMTrainer(
                 self.service.config,
                 target_column=self.service.get_target_column(),
             ),
@@ -1185,7 +1539,10 @@ class ResearchWorkflowService:
         if not splits:
             raise ValueError("Prepared data does not contain enough rows for walk-forward evaluation")
 
-        resolved_trainer = trainer or CurrentEnsembleTrainer(self.service.config, target_column=request.target_column)
+        resolved_trainer = trainer or self._build_trainer_registry().build(
+            request.trainer_name,
+            target_column=request.target_column,
+        )
         runner = ExperimentRunner(
             training_pipeline=TrainingPipeline(resolved_trainer.fit_predict),
             evaluation_pipeline=EvaluationPipeline(request.normalized_thresholds()),

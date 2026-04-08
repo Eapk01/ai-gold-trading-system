@@ -1,8 +1,3 @@
-# Main market/runtime settings.
-# Affects:
-# - Data import defaults in `src/data_collector.py`
-# - Live/demo trading execution in `src/live_demo_trader.py`
-# - Trading snapshot/config summary in `src/services/trading_service.py`
 trading:
   symbol: XAUUSDm
   timeframe: 30m
@@ -11,21 +6,10 @@ trading:
   take_profit_pips: 100
   confidence_threshold: 0.6
   max_risk: 30
-
-# Local dataset ingestion settings.
-# Affects:
-# - Where CSV imports are read from in `src/data_collector.py`
-# - Minimum dataset-size checks during import/prepare
 data_sources:
   primary: local_csv
   dataset_directory: data/imports
   min_rows: 100
-
-# Model-family and saved-model settings.
-# Affects:
-# - Which estimators `CurrentEnsembleTrainer`/`AIModelManager` build
-# - Runtime target-column selection
-# - Where promoted/manual saved runtime models are discovered and stored
 ai_model:
   type: ensemble
   models:
@@ -36,11 +20,6 @@ ai_model:
   retrain_interval: 168
   lookback_periods: 100
   target_column: Future_Direction_1
-
-# Feature menu metadata only.
-# Current effect:
-# - Mostly descriptive/backward-compatible right now
-# - Does not drive the research feature-set registry directly
 features:
   technical_indicators:
   - sma_5
@@ -52,22 +31,10 @@ features:
   market_sentiment:
   - vix
   - dxy
-
-# Research/search storage and defaults.
-# Affects:
-# - Experiment/search report storage in `src/research/experiment_store.py`
-# - Candidate artifact storage in `src/services/research_service.py`
-# - Stage 5 request construction and truth-gate defaults via `src/research/defaults.py`
 research:
   experiments_directory: reports/experiments
   candidate_models_directory: models/candidates
   defaults:
-    # Shared walk-forward evaluation defaults used by research workflows.
-    # Affects:
-    # - Threshold grid
-    # - Baseline comparison set
-    # - Fold-local selector settings
-    # - Default train/validation/test sizing
     common:
       baseline_names:
       - majority_class
@@ -83,14 +50,26 @@ research:
       validation_fraction: 0.1
       test_fraction: 0.1
       expanding_window: true
-
-    # Main Stage 5 search scope.
-    # This is the primary exposed research workflow.
-    # Affects:
-    # - Which targets are searched
-    # - Which feature sets are tried
-    # - Which trainer presets are included
-    # - Parallel worker limits during search
+    stage12:
+      fixed_feature_set_name: baseline_core
+    stage3:
+      target_ids:
+      - return_threshold_h3_0_05pct
+      - legacy_future_direction_1
+      feature_set_names:
+      - baseline_core
+      - momentum
+      - volatility
+      - context
+      - lag_statistical
+      - all_eligible
+      compare_legacy_target: true
+    stage4:
+      working_target_id: return_threshold_h3_0_05pct
+      feature_set_name: volatility
+      comparison_feature_set_name: baseline_core
+      trainer_name: current_ensemble
+      trainer_params: {}
     stage5:
       target_ids:
       - return_threshold_h3_0_05pct
@@ -99,34 +78,20 @@ research:
       feature_set_names:
       - baseline_core
       - all_eligible
+      trainer_name: current_ensemble
       preset_names:
       - conservative
       - balanced
       max_worker_cap: 8
       min_auto_workers: 2
-
-    # Winner-eligibility rules after evaluation.
-    # Affects:
-    # - Stage 5 truth-gate disqualification logic
-    # - Search report warnings / no-winner outcomes
     truth_gate:
       minimum_test_coverage: 0.2
       max_validation_test_f1_drift: 0.1
-
-# Trading risk guardrails.
-# Affects:
-# - Live/demo trade sizing and limits in runtime trading workflows
-# - Risk summaries surfaced in the app
 risk_management:
   max_daily_loss: 30
   max_positions: 3
   risk_per_trade: 0.02
   drawdown_limit: 0.15
-
-# Historical simulation settings.
-# Affects:
-# - Backtest execution assumptions in `src/backtester.py`
-# - Backtest confidence threshold override via `signal_confidence_threshold`
 backtest:
   start_date: '2023-01-01'
   end_date: '2024-12-31'
@@ -134,37 +99,18 @@ backtest:
   commission: 0.0001
   slippage: 0.0002
   signal_confidence_threshold: 0.6
-
-# Persistence layer.
-# Affects:
-# - SQLite storage used by data import/runtime services
 database:
   type: sqlite
   path: data/trading_system.db
-
-# Application logging output.
-# Affects:
-# - Loguru/file logging destinations and retention
 logging:
   level: INFO
   file_path: logs/trading_system.log
   max_file_size: 10MB
   backup_count: 5
-
-# App boot behavior.
-# Affects:
-# - Whether startup auto-connects the saved broker profile
-# - Whether startup auto-loads the latest saved runtime model
-# Useful for tests and lightweight research sessions where boot should stay quiet
 app:
   startup:
     autoload_latest_model: true
     autoconnect_broker: true
-
-# Broker connection profiles and defaults.
-# Affects:
-# - Saved broker profile management in `src/services/trading_service.py`
-# - Startup auto-connect in `src/app_service.py`
 brokers:
   exness:
     enabled: false
@@ -173,14 +119,18 @@ brokers:
     terminal_path: ''
     timeout: 30
     max_retries: 3
-  profiles: {}
-  default_profile: ''
-
-# Live/demo polling and runtime execution settings.
-# Affects:
-# - `LiveDemoTrader` polling cadence
-# - Live-trading confidence threshold override
-# - Candle freshness / startup buffer checks
+  profiles:
+    Main:
+      broker_type: exness
+      login: '262589312'
+      password: ''
+      server: Exness-MT5Trial16
+      terminal_path: ''
+      sandbox: false
+      account_id: ''
+      timeout: 30
+      max_retries: 3
+  default_profile: Main
 live_trading:
   enabled_demo_only: true
   poll_interval_seconds: 5

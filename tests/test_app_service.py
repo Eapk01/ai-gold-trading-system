@@ -442,5 +442,68 @@ class RuntimeFeatureSelectionTests(unittest.TestCase):
         self.assertEqual(service.ai_model_manager.last_feature_columns, runtime_columns)
 
 
+class SearchCatalogServiceTests(unittest.TestCase):
+    def test_get_search_catalog_delegates_to_research_workflows(self):
+        service = ResearchAppService.__new__(ResearchAppService)
+        expected = {"success": True, "data": {"candidate_count": 12}}
+        service._ensure_workflow_services = lambda: None
+        service.research_workflows = type(
+            "Workflows",
+            (),
+            {"get_search_catalog": staticmethod(lambda: expected)},
+        )()
+
+        result = ResearchAppService.get_search_catalog(service)
+
+        self.assertIs(result, expected)
+
+    def test_get_search_catalog_passes_search_overrides_to_research_workflows(self):
+        service = ResearchAppService.__new__(ResearchAppService)
+        captured = {}
+        expected = {"success": True, "data": {"candidate_count": 1}}
+        service._ensure_workflow_services = lambda: None
+
+        class Workflows:
+            @staticmethod
+            def get_search_catalog(search_overrides=None):
+                captured["search_overrides"] = search_overrides
+                return expected
+
+        service.research_workflows = Workflows()
+
+        result = ResearchAppService.get_search_catalog(service, {"trainer_name": "lstm"})
+
+        self.assertIs(result, expected)
+        self.assertEqual(captured["search_overrides"], {"trainer_name": "lstm"})
+
+    def test_run_automated_search_passes_search_overrides_to_research_workflows(self):
+        service = ResearchAppService.__new__(ResearchAppService)
+        captured = {}
+        expected = {"success": True}
+        service._ensure_workflow_services = lambda: None
+
+        class Workflows:
+            @staticmethod
+            def run_automated_search(search_name, progress_callback=None, max_workers=None, search_overrides=None):
+                captured["search_name"] = search_name
+                captured["max_workers"] = max_workers
+                captured["search_overrides"] = search_overrides
+                return expected
+
+        service.research_workflows = Workflows()
+
+        result = ResearchAppService.run_automated_search(
+            service,
+            "stage5_gui",
+            max_workers=2,
+            search_overrides={"preset_names": ["capacity"]},
+        )
+
+        self.assertIs(result, expected)
+        self.assertEqual(captured["search_name"], "stage5_gui")
+        self.assertEqual(captured["max_workers"], 2)
+        self.assertEqual(captured["search_overrides"], {"preset_names": ["capacity"]})
+
+
 if __name__ == "__main__":
     unittest.main()
