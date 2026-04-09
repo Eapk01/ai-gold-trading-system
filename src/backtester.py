@@ -37,6 +37,9 @@ class Trade:
     take_profit: Optional[float] = None
     pnl: float = 0.0
     status: str = 'open'  # 'open', 'closed', 'stopped'
+    exit_trigger_price: Optional[float] = None
+    managed_stop_loss: Optional[float] = None
+    protection_updated_on_exit_bar: bool = False
     reason: str = ''  # 平仓原因
 
 
@@ -79,6 +82,7 @@ class Backtester:
         self.commission = self.backtest_config['commission']
         self.slippage = self.backtest_config['slippage']
         self.signal_confidence_threshold = get_effective_confidence_threshold(config, "backtest")
+        self.exit_management = self._load_exit_management_config()
         
         # Trade tracking
         self.trades: List[Trade] = []
@@ -139,7 +143,7 @@ class Backtester:
             stop_loss = signal.get('stop_loss')
             take_profit = signal.get('take_profit')
             
-            if not stop_loss:
+            if stop_loss is None:
                 # 默认止损设置
                 stop_loss_pips = self.config['trading']['stop_loss_pips']
                 if side == 'buy':
@@ -147,7 +151,7 @@ class Backtester:
                 else:
                     stop_loss = entry_price + stop_loss_pips
             
-            if not take_profit:
+            if take_profit is None:
                 # 默认止盈设置
                 take_profit_pips = self.config['trading']['take_profit_pips']
                 if side == 'buy':
@@ -204,6 +208,13 @@ class Backtester:
         try:
             if trade_id not in self.current_positions:
                 return False
+
+            return self._close_position_at_price(
+                trade_id,
+                timestamp=current_data.get('timestamp'),
+                exit_price=float(current_data.get('close', 0) or 0.0),
+                reason=reason,
+            )
             
             trade = self.current_positions[trade_id]
             exit_price = current_data.get('close', 0)
@@ -242,6 +253,52 @@ class Backtester:
             
         except Exception as e:
             logger.error(f"Failed to close position: {e}")
+            return False
+
+    def _close_position_at_price(
+        self,
+        trade_id: str,
+        *,
+        timestamp: Any,
+        exit_price: float,
+        reason: str,
+        managed_stop_loss: Optional[float] = None,
+        protection_updated_on_exit_bar: bool = False,
+    ) -> bool:
+        try:
+            if trade_id not in self.current_positions:
+                return False
+
+            trade = self.current_positions[trade_id]
+            raw_exit_price = float(exit_price)
+            adjusted_exit_price = raw_exit_price
+
+            if trade.side == 'buy':
+                adjusted_exit_price -= adjusted_exit_price * self.slippage
+                pnl = (adjusted_exit_price - trade.entry_price) * trade.size
+            else:
+                adjusted_exit_price += adjusted_exit_price * self.slippage
+                pnl = (trade.entry_price - adjusted_exit_price) * trade.size
+
+            commission_cost = adjusted_exit_price * trade.size * self.commission
+            pnl -= commission_cost
+
+            trade.exit_time = timestamp
+            trade.exit_price = adjusted_exit_price
+            trade.exit_trigger_price = raw_exit_price
+            trade.pnl = pnl
+            trade.status = 'closed'
+            trade.reason = reason
+            trade.managed_stop_loss = managed_stop_loss
+            trade.protection_updated_on_exit_bar = protection_updated_on_exit_bar
+
+            self.current_capital += pnl
+            del self.current_positions[trade_id]
+
+            logger.debug(f"Position closed: {trade_id} @ {adjusted_exit_price:.2f}, PnL: ${pnl:.2f}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to close position at price: {e}")
             return False
     
     def check_stop_conditions(self, current_data: Dict) -> bool:
@@ -284,6 +341,117 @@ class Backtester:
             closed_any = self.close_position(trade_id, current_data, reason) or closed_any
 
         return closed_any
+
+    def manage_open_positions(self, current_data: Dict) -> bool:
+        """Tighten open-position stop losses using the configured exit-management rules."""
+        if not bool(self.exit_management.get("enabled")):
+            return False
+
+        updated_any = False
+        for trade in self.current_positions.values():
+            favorable_price = self._get_favorable_price(current_data, trade.side)
+            updated_stop_loss = self._calculate_managed_stop_loss(trade, favorable_price)
+            if updated_stop_loss is None:
+                continue
+            if trade.stop_loss is None or not np.isclose(float(trade.stop_loss), float(updated_stop_loss)):
+                trade.stop_loss = float(updated_stop_loss)
+                updated_any = True
+
+        return updated_any
+
+    def _simulate_open_positions_on_bar(self, current_data: Dict) -> bool:
+        closed_any = False
+        for trade_id in list(self.current_positions.keys()):
+            trade = self.current_positions.get(trade_id)
+            if trade is None:
+                continue
+
+            pre_update_hit = self._resolve_intrabar_exit(trade, current_data)
+            if pre_update_hit is not None:
+                closed_any = self._close_position_at_price(
+                    trade_id,
+                    timestamp=current_data.get("timestamp"),
+                    exit_price=float(pre_update_hit["exit_price"]),
+                    reason=str(pre_update_hit["reason"]),
+                    managed_stop_loss=float(trade.stop_loss) if trade.stop_loss is not None else None,
+                    protection_updated_on_exit_bar=False,
+                ) or closed_any
+                continue
+
+            updated_stop_loss = None
+            if bool(self.exit_management.get("enabled")):
+                favorable_price = self._get_favorable_price(current_data, trade.side)
+                updated_stop_loss = self._calculate_managed_stop_loss(trade, favorable_price)
+                if updated_stop_loss is not None:
+                    trade.stop_loss = float(updated_stop_loss)
+
+            post_update_hit = self._resolve_intrabar_exit(trade, current_data)
+            if post_update_hit is not None:
+                closed_any = self._close_position_at_price(
+                    trade_id,
+                    timestamp=current_data.get("timestamp"),
+                    exit_price=float(post_update_hit["exit_price"]),
+                    reason=str(post_update_hit["reason"]),
+                    managed_stop_loss=float(trade.stop_loss) if trade.stop_loss is not None else None,
+                    protection_updated_on_exit_bar=updated_stop_loss is not None,
+                ) or closed_any
+
+        return closed_any
+
+    def _resolve_intrabar_exit(self, trade: Trade, current_data: Dict[str, Any]) -> Optional[Dict[str, float | str]]:
+        high_price = self._safe_price(current_data.get("high"))
+        low_price = self._safe_price(current_data.get("low"))
+        stop_loss = self._safe_price(trade.stop_loss)
+        take_profit = self._safe_price(trade.take_profit)
+        if high_price is None or low_price is None:
+            return None
+
+        stop_hit = False
+        take_profit_hit = False
+        if trade.side == "buy":
+            stop_hit = stop_loss is not None and low_price <= stop_loss
+            take_profit_hit = take_profit is not None and high_price >= take_profit
+        else:
+            stop_hit = stop_loss is not None and high_price >= stop_loss
+            take_profit_hit = take_profit is not None and low_price <= take_profit
+
+        if stop_hit and take_profit_hit:
+            stop_exit = float(stop_loss if stop_loss is not None else current_data.get("close", 0.0))
+            take_profit_exit = float(take_profit if take_profit is not None else current_data.get("close", 0.0))
+            return self._pick_conservative_intrabar_exit(trade, stop_exit, take_profit_exit)
+        if stop_hit:
+            return {"reason": "stop_loss", "exit_price": float(stop_loss)}
+        if take_profit_hit:
+            return {"reason": "take_profit", "exit_price": float(take_profit)}
+        return None
+
+    def _pick_conservative_intrabar_exit(self, trade: Trade, stop_exit: float, take_profit_exit: float) -> Dict[str, float | str]:
+        if trade.side == "buy":
+            stop_pnl = (stop_exit - trade.entry_price) * trade.size
+            take_profit_pnl = (take_profit_exit - trade.entry_price) * trade.size
+        else:
+            stop_pnl = (trade.entry_price - stop_exit) * trade.size
+            take_profit_pnl = (trade.entry_price - take_profit_exit) * trade.size
+        if stop_pnl <= take_profit_pnl:
+            return {"reason": "stop_loss", "exit_price": float(stop_exit)}
+        return {"reason": "take_profit", "exit_price": float(take_profit_exit)}
+
+    def _get_favorable_price(self, current_data: Dict[str, Any], side: str) -> float:
+        default_price = float(current_data.get("close", 0) or 0.0)
+        if side == "buy":
+            return float(current_data.get("high", default_price) or default_price)
+        return float(current_data.get("low", default_price) or default_price)
+
+    def _safe_price(self, value: Any) -> Optional[float]:
+        try:
+            if value is None:
+                return None
+            parsed = float(value)
+        except (TypeError, ValueError):
+            return None
+        if not np.isfinite(parsed):
+            return None
+        return parsed
     
     def update_equity(self, current_data: Dict):
         """
@@ -343,7 +511,10 @@ class Backtester:
         if missing_features:
             raise ValueError(f"Prepared feature data is missing selected features: {missing_features}")
 
-        prediction_frame = runtime_predictor.predict_batch(feature_data)
+        if hasattr(runtime_predictor, "predict_batch"):
+            prediction_frame = runtime_predictor.predict_batch(feature_data)
+        else:
+            prediction_frame = runtime_predictor.predict_ensemble_batch(feature_data, feature_columns=selected_features)
 
         if int(prediction_frame['is_valid'].sum()) == 0:
             raise ValueError("No valid rows remain for backtesting after feature filtering")
@@ -358,11 +529,11 @@ class Backtester:
                     'high': row.get('High', 0),
                     'low': row.get('Low', 0),
                     'close': row.get('Close', 0),
-                    'volume': row.get('Volume', 0)
+                    'volume': row.get('Volume', 0),
                 }
                 
                 # 检查止损止盈
-                closed_this_bar = self.check_stop_conditions(current_data)
+                closed_this_bar = self._simulate_open_positions_on_bar(current_data)
 
                 if closed_this_bar:
                     self.update_equity(current_data)
@@ -430,6 +601,8 @@ class Backtester:
                 return None
             
             current_price = current_data['close']
+            stop_distance = float(self.trading_config['stop_loss_pips'])
+            take_profit_distance = float(self.trading_config['take_profit_pips'])
             
             if prediction == 1:  # 看涨信号
                 return {
@@ -438,8 +611,8 @@ class Backtester:
                     'symbol': self.trading_config.get('symbol', 'XAUUSD'),
                     'size': float(self.trading_config.get('position_size', 0.01)),
                     'confidence': confidence,
-                    'stop_loss': current_price - self.trading_config['stop_loss_pips'],
-                    'take_profit': current_price + self.trading_config['take_profit_pips']
+                    'stop_loss': current_price - stop_distance,
+                    'take_profit': current_price + take_profit_distance
                 }
             elif prediction == 0:  # 看跌信号
                 return {
@@ -448,8 +621,8 @@ class Backtester:
                     'symbol': self.trading_config.get('symbol', 'XAUUSD'),
                     'size': float(self.trading_config.get('position_size', 0.01)),
                     'confidence': confidence,
-                    'stop_loss': current_price + self.trading_config['stop_loss_pips'],
-                    'take_profit': current_price - self.trading_config['take_profit_pips']
+                    'stop_loss': current_price + stop_distance,
+                    'take_profit': current_price - take_profit_distance
                 }
             
             return None
@@ -457,7 +630,68 @@ class Backtester:
         except Exception as e:
             logger.debug(f"Failed to generate signal: {e}")
             return None
-    
+
+    def _load_exit_management_config(self) -> Dict[str, Any]:
+        exit_config = dict(self.config.get("live_trading", {}).get("exit_management", {}) or {})
+        mode = str(exit_config.get("mode", "disabled")).strip().lower() or "disabled"
+        return {
+            "enabled": mode == "trailing_stop",
+            "mode": mode,
+            "break_even_enabled": bool(exit_config.get("break_even_enabled", True)),
+            "break_even_trigger_pips": float(exit_config.get("break_even_trigger_pips", 35.0)),
+            "break_even_offset_pips": float(exit_config.get("break_even_offset_pips", 2.0)),
+            "trailing_enabled": bool(exit_config.get("trailing_enabled", True)),
+            "trailing_activation_pips": float(exit_config.get("trailing_activation_pips", 60.0)),
+            "trailing_distance_pips": float(exit_config.get("trailing_distance_pips", 25.0)),
+            "trailing_step_pips": float(exit_config.get("trailing_step_pips", 10.0)),
+        }
+
+    def _calculate_managed_stop_loss(self, trade: Trade, current_price: float) -> Optional[float]:
+        if current_price <= 0:
+            return None
+
+        entry_price = float(trade.entry_price)
+        current_stop_loss = None if trade.stop_loss is None else float(trade.stop_loss)
+        favorable_move = (current_price - entry_price) if trade.side == 'buy' else (entry_price - current_price)
+        if favorable_move <= 0:
+            return None
+
+        break_even_trigger = float(self.exit_management["break_even_trigger_pips"])
+        break_even_offset = float(self.exit_management["break_even_offset_pips"])
+        trailing_activation = float(self.exit_management["trailing_activation_pips"])
+        trailing_distance = float(self.exit_management["trailing_distance_pips"])
+        trailing_step = float(self.exit_management["trailing_step_pips"])
+
+        candidate_stop_loss: Optional[float] = None
+        if bool(self.exit_management.get("break_even_enabled")) and favorable_move >= break_even_trigger:
+            offset = break_even_offset
+            candidate_stop_loss = entry_price + offset if trade.side == 'buy' else entry_price - offset
+
+        if bool(self.exit_management.get("trailing_enabled")) and favorable_move >= trailing_activation:
+            distance = trailing_distance
+            trailing_stop_loss = current_price - distance if trade.side == 'buy' else current_price + distance
+            if candidate_stop_loss is None:
+                candidate_stop_loss = trailing_stop_loss
+            else:
+                candidate_stop_loss = max(candidate_stop_loss, trailing_stop_loss) if trade.side == 'buy' else min(candidate_stop_loss, trailing_stop_loss)
+
+        if candidate_stop_loss is None:
+            return None
+
+        if current_stop_loss is None:
+            return float(candidate_stop_loss)
+
+        if trade.side == 'buy':
+            if candidate_stop_loss <= current_stop_loss:
+                return None
+        else:
+            if candidate_stop_loss >= current_stop_loss:
+                return None
+
+        if abs(candidate_stop_loss - current_stop_loss) < float(trailing_step or 0.0):
+            return None
+        return float(candidate_stop_loss)
+
     def _calculate_results(self) -> BacktestResult:
         """
         计算回测结果
@@ -665,10 +899,13 @@ class Backtester:
                         'entry_price': trade.entry_price,
                         'exit_time': trade.exit_time.isoformat() if trade.exit_time else None,
                         'exit_price': trade.exit_price,
+                        'exit_trigger_price': trade.exit_trigger_price,
                         'size': trade.size,
                         'pnl': trade.pnl,
                         'status': trade.status,
-                        'reason': trade.reason
+                        'reason': trade.reason,
+                        'managed_stop_loss': trade.managed_stop_loss,
+                        'protection_updated_on_exit_bar': trade.protection_updated_on_exit_bar,
                     }
                     for trade in self.trades if trade.status == 'closed'
                 ],
@@ -707,9 +944,12 @@ class Backtester:
                     'Entry Price': trade.entry_price,
                     'Exit Time': trade.exit_time,
                     'Exit Price': trade.exit_price,
+                    'Exit Trigger Price': trade.exit_trigger_price,
                     'Size': trade.size,
                     'PnL': trade.pnl,
-                    'Close Reason': trade.reason
+                    'Close Reason': trade.reason,
+                    'Managed Stop Loss': trade.managed_stop_loss,
+                    'Protection Updated On Exit Bar': trade.protection_updated_on_exit_bar,
                 })
             
             df = pd.DataFrame(trade_data)

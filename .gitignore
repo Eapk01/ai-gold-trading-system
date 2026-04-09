@@ -7,8 +7,10 @@ __pycache__/
 
 data/trading_system.db
 data/imports/*.csv
+data/imports/**/*.csv
 logs/*.log
-models/*.joblib
+models/
+models/**/*.joblib
 reports/
 
 .pytest_cache/

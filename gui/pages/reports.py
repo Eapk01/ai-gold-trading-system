@@ -103,6 +103,7 @@ def _initialize_search_form_state(catalog: dict[str, object]) -> None:
         _search_form_key("max_workers"),
         int(((defaults.get("worker_policy") or {}).get("max_worker_cap")) or 1),
     )
+    st.session_state.setdefault("search_run_name_input", "research_search")
 
 
 def _parse_threshold_text(raw_value: str) -> tuple[list[float], str | None]:
@@ -166,26 +167,32 @@ def _render_search_space_editor(service: ResearchAppService, base_catalog: dict[
     _initialize_search_form_state(base_catalog)
     defaults = dict(base_catalog.get("defaults") or {})
 
-    st.subheader("Search Setup")
-    st.caption(
-        "Adjust the bounded Stage 5 search space for this run only. These selections do not write back to `config.yaml`."
-    )
+    st.subheader("Build Search")
+    st.caption("Adjust the bounded Stage 5 search space for this run only. These selections do not write back to `config.yaml`.")
 
-    trainer_rows = list(base_catalog.get("available_trainers") or [])
-    trainer_labels = {str(row.get("id")): str(row.get("display_name") or row.get("id") or "") for row in trainer_rows}
-    st.selectbox(
-        "Trainer",
-        options=list(trainer_labels.keys()),
-        index=max(
-            list(trainer_labels.keys()).index(str(st.session_state.get(_search_form_key("trainer_name")) or ""))
-            if str(st.session_state.get(_search_form_key("trainer_name")) or "") in trainer_labels
-            else 0,
-            0,
-        ),
-        format_func=lambda trainer_id: trainer_labels.get(trainer_id, trainer_id),
-        key=_search_form_key("trainer_name"),
-        help="Trainer family for this run. Preset choices update automatically.",
-    )
+    top_left, top_right = st.columns([2, 1])
+    with top_left:
+        st.text_input(
+            "Search run name",
+            key="search_run_name_input",
+            help="Used in the saved report and candidate artifact names.",
+        )
+
+        trainer_rows = list(base_catalog.get("available_trainers") or [])
+        trainer_labels = {str(row.get("id")): str(row.get("display_name") or row.get("id") or "") for row in trainer_rows}
+        st.selectbox(
+            "Trainer",
+            options=list(trainer_labels.keys()),
+            index=max(
+                list(trainer_labels.keys()).index(str(st.session_state.get(_search_form_key("trainer_name")) or ""))
+                if str(st.session_state.get(_search_form_key("trainer_name")) or "") in trainer_labels
+                else 0,
+                0,
+            ),
+            format_func=lambda trainer_id: trainer_labels.get(trainer_id, trainer_id),
+            key=_search_form_key("trainer_name"),
+            help="Trainer family for this run. Preset choices update automatically.",
+        )
 
     current_catalog = (
         service.get_search_catalog(
@@ -226,28 +233,23 @@ def _render_search_space_editor(service: ResearchAppService, base_catalog: dict[
         for row in available_selectors
     }
 
-    target_col, feature_col = st.columns(2)
-    with target_col:
-        st.multiselect(
-            "Targets",
-            options=list(target_labels.keys()),
-            default=list(st.session_state.get(_search_form_key("target_ids")) or []),
-            format_func=lambda target_id: target_labels.get(target_id, target_id),
-            key=_search_form_key("target_ids"),
-        )
-    with feature_col:
-        st.multiselect(
-            "Feature Sets",
-            options=list(feature_set_labels.keys()),
-            default=list(st.session_state.get(_search_form_key("feature_set_names")) or []),
-            format_func=lambda feature_set_id: feature_set_labels.get(feature_set_id, feature_set_id),
-            key=_search_form_key("feature_set_names"),
-        )
+    st.multiselect(
+        "Targets",
+        options=list(target_labels.keys()),
+        format_func=lambda target_id: target_labels.get(target_id, target_id),
+        key=_search_form_key("target_ids"),
+    )
+
+    st.multiselect(
+        "Feature Sets",
+        options=list(feature_set_labels.keys()),
+        format_func=lambda feature_set_id: feature_set_labels.get(feature_set_id, feature_set_id),
+        key=_search_form_key("feature_set_names"),
+    )
 
     st.multiselect(
         "Presets",
         options=list(preset_labels.keys()),
-        default=list(st.session_state.get(_search_form_key("preset_names")) or []),
         format_func=lambda preset_id: preset_labels.get(preset_id, preset_id),
         key=_search_form_key("preset_names"),
         help="Preset options are driven by the selected trainer.",
@@ -257,20 +259,22 @@ def _render_search_space_editor(service: ResearchAppService, base_catalog: dict[
     selected_feature_set_count = len(list(st.session_state.get(_search_form_key("feature_set_names")) or []))
     selected_preset_count = len(list(st.session_state.get(_search_form_key("preset_names")) or []))
     candidate_count = selected_target_count * selected_feature_set_count * selected_preset_count
-    summary_col, detail_col = st.columns([1, 2])
-    with summary_col:
+    with top_right:
+        st.markdown("**Search Summary**")
         st.metric("Candidate Count", candidate_count)
-        st.caption(
-            f"{selected_target_count} targets x {selected_feature_set_count} feature sets x {selected_preset_count} presets"
-        )
-    with detail_col:
+        st.caption(f"{selected_target_count} targets x {selected_feature_set_count} feature sets x {selected_preset_count} presets")
+        st.caption(f"Trainer: {trainer_labels.get(str(st.session_state.get(_search_form_key('trainer_name')) or ''), 'Unknown')}")
+        st.caption(f"Splits: {_format_split_summary(defaults | {'train_fraction': st.session_state.get(_search_form_key('train_fraction')), 'validation_fraction': st.session_state.get(_search_form_key('validation_fraction')), 'test_fraction': st.session_state.get(_search_form_key('test_fraction'))})}")
+        worker_mode = "Auto" if bool(st.session_state.get(_search_form_key("use_auto_workers"), True)) else f"Manual ({int(st.session_state.get(_search_form_key('max_workers')) or 0)})"
+        st.caption(f"Workers: {worker_mode}")
         if candidate_count > 50:
-            st.warning("This search space is large. Expect longer runtimes and more candidate reports.")
+            st.warning("Large search space.")
         elif candidate_count > 24:
-            st.info("This search space is starting to get wide. Runtime grows with each extra option.")
+            st.info("Medium search space.")
         else:
-            st.info("This remains a bounded search space designed for understandable comparisons.")
+            st.success("Bounded search space.")
 
+    st.markdown("**Advanced Settings**")
     with st.expander("Advanced Search Settings", expanded=False):
         st.text_input(
             "Threshold list",
@@ -348,18 +352,6 @@ def _render_search_space_editor(service: ResearchAppService, base_catalog: dict[
                 key=_search_form_key("max_workers"),
             )
 
-    with st.expander("Where These Values Come From"):
-        st.markdown(
-            "\n".join(
-                [
-                    "- Stage 5 defaults come from `config/config.yaml`.",
-                    "- Available targets come from `src/research/catalog/stage5_targets.py`.",
-                    "- Available feature sets come from `src/research/feature_sets.py`.",
-                    "- Available presets come from `src/research/catalog/search_presets.py`.",
-                    "- The GUI reads everything through `ResearchAppService.get_search_catalog()`.",
-                ]
-            )
-        )
     thresholds, threshold_error = _parse_threshold_text(
         str(st.session_state.get(_search_form_key("threshold_text")) or "")
     )
@@ -370,6 +362,359 @@ def _render_search_space_editor(service: ResearchAppService, base_catalog: dict[
         "candidate_count": candidate_count,
         "validation_errors": validation_errors,
     }
+
+
+def _render_target_glossary(catalog: dict[str, object]) -> None:
+    rows = [
+        {
+            "Target": row.get("display_name"),
+            "Internal Name": row.get("id"),
+            "Meaning": row.get("description"),
+        }
+        for row in list(catalog.get("available_targets") or [])
+    ]
+    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+
+def _render_trainer_glossary(catalog: dict[str, object]) -> None:
+    rows = [
+        {
+            "Trainer": row.get("display_name"),
+            "Internal Name": row.get("id"),
+        }
+        for row in list(catalog.get("available_trainers") or [])
+    ]
+    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+
+def _render_search_origin_notes() -> None:
+    st.markdown(
+        "\n".join(
+            [
+                "- Stage 5 defaults come from `config/config.yaml`.",
+                "- Available targets come from `src/research/catalog/stage5_targets.py`.",
+                "- Available feature sets come from `src/research/feature_sets.py`.",
+                "- Available presets come from `src/research/catalog/search_presets.py`.",
+                "- The GUI reads everything through `ResearchAppService.get_search_catalog()`.",
+            ]
+        )
+    )
+
+
+def _render_search_setup_tab(service: ResearchAppService, catalog: dict[str, object]) -> tuple[dict[str, object], dict[str, object]]:
+    search_overrides, live_catalog = _render_search_space_editor(service, catalog)
+    render_subtle_divider()
+    st.subheader("Understand These Options")
+    target_tab, feature_tab, preset_tab, trainer_tab, source_tab = st.tabs(
+        ["Targets", "Feature Sets", "Presets", "Trainers", "Where They Come From"]
+    )
+    with target_tab:
+        _render_target_glossary(live_catalog)
+    with feature_tab:
+        _render_feature_set_glossary(live_catalog, expand=False)
+    with preset_tab:
+        _render_preset_glossary(live_catalog, expand=False)
+    with trainer_tab:
+        _render_trainer_glossary(live_catalog)
+    with source_tab:
+        _render_search_origin_notes()
+    return search_overrides, live_catalog
+
+
+def _render_search_progress_snapshot(
+    progress_bar,
+    progress_status,
+    progress_details,
+    snapshot: dict | None,
+) -> None:
+    payload = snapshot or {}
+    phase = str(payload.get("phase") or "idle").title()
+    step_label = str(payload.get("step_label") or "Waiting to start")
+    current = int(payload.get("current") or 0)
+    total = int(payload.get("total") or 0)
+    ratio = float(payload.get("progress_ratio") or 0.0)
+    elapsed = _format_elapsed_seconds(payload.get("elapsed_seconds"))
+    details = payload.get("details") or {}
+
+    progress_bar.progress(min(max(ratio, 0.0), 1.0), text=f"{phase}: {step_label}")
+    progress_status.caption(f"Phase: {phase} | Progress: {current}/{total if total else '?'} | Elapsed: {elapsed}")
+
+    detail_parts: list[str] = []
+    if details.get("execution_mode"):
+        detail_parts.append(f"Mode: {details['execution_mode']}")
+    if details.get("resolved_max_workers") is not None:
+        detail_parts.append(f"Workers: {details['resolved_max_workers']}")
+    if details.get("completed_count") is not None:
+        detail_parts.append(f"Completed: {details['completed_count']}")
+    if details.get("failed_count") is not None:
+        detail_parts.append(f"Failed: {details['failed_count']}")
+    if details.get("active_count") is not None:
+        detail_parts.append(f"Active: {details['active_count']}")
+    if details.get("target_display_name"):
+        detail_parts.append(f"Target: {details['target_display_name']}")
+    if details.get("feature_set_name"):
+        detail_parts.append(f"Feature Set: {get_feature_set_display_name(str(details['feature_set_name']))}")
+    if details.get("preset_name"):
+        detail_parts.append(f"Preset: {get_stage5_preset_display_name(str(details['preset_name']))}")
+    if details.get("target_count") is not None:
+        detail_parts.append(f"Targets: {details['target_count']}")
+    if details.get("feature_set_count") is not None:
+        detail_parts.append(f"Feature Sets: {details['feature_set_count']}")
+    if details.get("preset_count") is not None:
+        detail_parts.append(f"Presets: {details['preset_count']}")
+    if details.get("winner_status"):
+        detail_parts.append(f"Winner Status: {details['winner_status']}")
+    if details.get("error"):
+        detail_parts.append(f"Error: {details['error']}")
+    progress_details.caption(" | ".join(detail_parts) if detail_parts else "No extra details yet.")
+
+
+def _render_search_run_readiness(
+    *,
+    validation_errors: list[str],
+    data_is_prepared: bool,
+    has_run_result: bool,
+) -> None:
+    st.markdown("**Run Readiness**")
+    if validation_errors:
+        st.error("Please fix the search setup before running.")
+        for error_message in validation_errors:
+            st.caption(f"- {error_message}")
+    elif not data_is_prepared:
+        st.info("Prepare data first to run search. You can still configure the bounded search space in Search Setup.")
+    elif not has_run_result:
+        st.info("Ready to run. Configure a search in Search Setup, then launch it here.")
+    else:
+        st.success("Ready to run again with the current Search Setup selections.")
+
+
+def _render_search_run_tab(
+    service: ResearchAppService,
+    search_overrides: dict[str, object],
+    live_catalog: dict[str, object],
+) -> None:
+    st.subheader("Run Primary Research Search")
+    st.caption("Run the search using the current Search Setup selections. This tab is only for execution and monitoring.")
+    st.caption(f"Current run name: `{str(st.session_state.get('search_run_name_input') or 'research_search').strip() or 'research_search'}`")
+    validation_errors = list(live_catalog.get("validation_errors") or [])
+    run_result = st.session_state.get("last_search_run_result")
+    data_is_prepared = bool(service.feature_data is not None and not service.feature_data.empty)
+    _render_search_run_readiness(
+        validation_errors=validation_errors,
+        data_is_prepared=data_is_prepared,
+        has_run_result=bool(run_result),
+    )
+    render_subtle_divider()
+    st.markdown("**Run Search**")
+
+    run_requested = st.button("Run Automated Search", use_container_width=True)
+    if run_requested:
+        if validation_errors:
+            return
+        st.session_state.last_search_progress = {
+            "phase": "setup",
+            "step_label": "Preparing search run",
+            "current": 0,
+            "total": 0,
+            "progress_ratio": 0.0,
+            "elapsed_seconds": 0.0,
+            "details": {},
+        }
+
+    render_subtle_divider()
+    st.markdown("**Progress**")
+    progress_bar = st.progress(0.0, text="Idle")
+    progress_status = st.empty()
+    progress_details = st.empty()
+
+    _render_search_progress_snapshot(
+        progress_bar,
+        progress_status,
+        progress_details,
+        st.session_state.get("last_search_progress"),
+    )
+    if run_requested:
+        _render_search_progress_snapshot(
+            progress_bar,
+            progress_status,
+            progress_details,
+            st.session_state.last_search_progress,
+        )
+        def _progress_callback(payload: dict) -> None:
+            st.session_state.last_search_progress = dict(payload or {})
+            _render_search_progress_snapshot(
+                progress_bar,
+                progress_status,
+                progress_details,
+                st.session_state.last_search_progress,
+            )
+
+        with st.spinner("Running primary research search... This may take a while on real data."):
+            st.session_state.last_search_run_result = service.run_automated_search(
+                (str(st.session_state.get("search_run_name_input") or "research_search").strip() or "research_search"),
+                progress_callback=_progress_callback,
+                search_overrides=search_overrides,
+            )
+
+        final_progress = dict(st.session_state.get("last_search_progress") or {})
+        if str(final_progress.get("phase") or "").lower() != "failed":
+            final_progress.setdefault("phase", "complete")
+            final_progress.setdefault("step_label", "Search finished")
+            final_progress["progress_ratio"] = 1.0
+        st.session_state.last_search_progress = final_progress
+        _render_search_progress_snapshot(progress_bar, progress_status, progress_details, final_progress)
+
+    run_result = st.session_state.get("last_search_run_result")
+    render_subtle_divider()
+    st.markdown("**Latest Run**")
+    if not run_result:
+        st.caption("No run has been completed in this session yet.")
+        return
+
+    show_response(run_result)
+    run_data = run_result.get("data") or {}
+    run_summary = run_data.get("summary") or {}
+    if run_summary:
+        render_subtle_divider()
+        st.subheader("Latest Search Run")
+        render_search_summary(run_summary)
+
+    run_integrity = run_data.get("integrity") or {}
+    if run_integrity:
+        render_subtle_divider()
+        st.subheader("Latest Search Integrity")
+        render_integrity_summary(run_integrity)
+
+    run_artifacts = run_result.get("artifacts") or {}
+    if run_artifacts:
+        render_subtle_divider()
+        st.subheader("Latest Search Artifacts")
+        render_artifact_summary(run_artifacts)
+
+
+def _render_search_history_tab(service: ResearchAppService) -> None:
+    st.subheader("History")
+    st.caption("Browse saved search reports and inspect full diagnostics, rankings, and recommended winners.")
+    reports_result = service.list_search_reports(limit=20)
+    reports = reports_result.get("data") or []
+    if not reports:
+        st.info("No search report files found.")
+        return
+
+    report_options = {report["name"]: report["path"] for report in reports}
+    selected_report = st.selectbox("Select a search report", list(report_options.keys()))
+
+    if st.button("Load Search Report", use_container_width=True):
+        with st.spinner("Loading search report..."):
+            st.session_state.last_search_report_result = service.get_search_report(report_options[selected_report])
+
+    result = st.session_state.get("last_search_report_result")
+    if not result:
+        return
+
+    show_response(result)
+    data = result.get("data") or {}
+    summary = data.get("summary") or {}
+    if summary:
+        render_subtle_divider()
+        st.subheader("Search Summary")
+        render_search_summary(summary)
+
+    integrity = data.get("integrity") or {}
+    if integrity:
+        render_subtle_divider()
+        st.subheader("Integrity Proof")
+        render_integrity_summary(integrity)
+        integrity_rows = integrity.get("fold_rows") or []
+        if integrity_rows:
+            render_subtle_divider()
+            st.caption("Candidate Integrity")
+            st.dataframe(pd.DataFrame(integrity_rows), use_container_width=True, hide_index=True)
+
+    diagnostics = data.get("diagnostics") or {}
+    if diagnostics:
+        render_subtle_divider()
+        st.subheader("Why Candidates Failed")
+        render_diagnostics_summary(diagnostics)
+        candidate_highlights = diagnostics.get("candidate_highlights") or []
+        if candidate_highlights:
+            highlight_frame = pd.DataFrame(candidate_highlights)
+            preferred_columns = [
+                "target_display_name",
+                "feature_set_display_name",
+                "preset_display_name",
+                "execution_status",
+                "error_message",
+                "elapsed_seconds",
+                "proof_status",
+                "integrity_contract_ok",
+                "integrity_failure_reasons",
+                "passed_truth_gate",
+                "truth_gate_failures",
+                "overall_mean_test_accuracy",
+                "majority_baseline_mean_test_accuracy",
+                "selected_threshold_test_mean_f1",
+                "selected_threshold_test_mean_coverage",
+                "one_class_fold_count",
+                "undefined_selected_threshold_metric_count",
+                "constant_feature_fold_count",
+                "near_constant_feature_fold_count",
+            ]
+            available_columns = [column for column in preferred_columns if column in highlight_frame.columns]
+            st.dataframe(highlight_frame.loc[:, available_columns], use_container_width=True, hide_index=True)
+
+    leaderboard_rows = data.get("leaderboard_rows") or []
+    if leaderboard_rows:
+        render_subtle_divider()
+        st.subheader("Leaderboard")
+        leaderboard_frame = pd.DataFrame(leaderboard_rows)
+        if not leaderboard_frame.empty:
+            preferred_columns = [
+                "rank",
+                "target_display_name",
+                "feature_set_display_name",
+                "preset_display_name",
+                "execution_status",
+                "error_message",
+                "elapsed_seconds",
+                "selected_threshold",
+                "validation_beat_rate",
+                "validation_f1_std",
+                "validation_mean_f1",
+                "validation_mean_coverage",
+                "test_mean_f1",
+                "test_mean_coverage",
+                "overall_mean_test_accuracy",
+                "majority_baseline_mean_test_accuracy",
+                "test_best_baseline_mean_f1",
+                "passed_test_guardrail",
+                "passed_truth_gate",
+                "truth_gate_failures",
+                "proof_status",
+                "integrity_contract_ok",
+                "diagnostics",
+                "is_recommended",
+                "report_file",
+            ]
+            available_columns = [column for column in preferred_columns if column in leaderboard_frame.columns]
+            st.dataframe(leaderboard_frame.loc[:, available_columns], use_container_width=True, hide_index=True)
+
+    recommended_winner = data.get("recommended_winner") or {}
+    if recommended_winner:
+        render_subtle_divider()
+        st.subheader("Recommended Winner")
+        if recommended_winner.get("status") == "no_winner":
+            st.warning(recommended_winner.get("reason") or "No winner was recommended.")
+            gate_summary = data.get("gate_summary") or recommended_winner.get("gate_summary") or {}
+            if gate_summary:
+                st.json(gate_summary)
+        st.json(recommended_winner)
+
+    artifacts = data.get("artifact_paths") or {}
+    if artifacts:
+        render_subtle_divider()
+        st.subheader("Artifacts")
+        render_artifact_summary(artifacts)
 
 
 def render(service: ResearchAppService) -> None:
@@ -550,259 +895,19 @@ def _render_training_experiment_reports(service: ResearchAppService) -> None:
 
 def _render_search_reports(service: ResearchAppService) -> None:
     catalog = (service.get_search_catalog().get("data") or {})
-    search_overrides, live_catalog = _render_search_space_editor(service, catalog)
-    _render_feature_set_glossary(live_catalog)
-    _render_preset_glossary(live_catalog)
-    render_subtle_divider()
-
-    st.subheader("Run Primary Research Search")
-    st.caption("Use this as the default workflow. The other research tabs are optional diagnostics for drilling into one candidate, target family, or feature family.")
-    search_name = st.text_input(
-        "Search run name",
-        value="research_search",
-        key="search_run_name_input",
-        help="Used in the saved report and candidate artifact names.",
+    setup_tab, run_tab, history_tab = st.tabs(
+        ["Search Setup", "Run Primary Research Search", "History"]
     )
-    progress_bar = st.progress(0.0, text="Idle")
-    progress_status = st.empty()
-    progress_details = st.empty()
-
-    def _render_progress_snapshot(snapshot: dict | None) -> None:
-        payload = snapshot or {}
-        phase = str(payload.get("phase") or "idle").title()
-        step_label = str(payload.get("step_label") or "Waiting to start")
-        current = int(payload.get("current") or 0)
-        total = int(payload.get("total") or 0)
-        ratio = float(payload.get("progress_ratio") or 0.0)
-        elapsed = _format_elapsed_seconds(payload.get("elapsed_seconds"))
-        details = payload.get("details") or {}
-
-        progress_bar.progress(min(max(ratio, 0.0), 1.0), text=f"{phase}: {step_label}")
-        progress_status.caption(
-            f"Phase: {phase} | Progress: {current}/{total if total else '?'} | Elapsed: {elapsed}"
-        )
-
-        detail_parts: list[str] = []
-        if details.get("execution_mode"):
-            detail_parts.append(f"Mode: {details['execution_mode']}")
-        if details.get("resolved_max_workers") is not None:
-            detail_parts.append(f"Workers: {details['resolved_max_workers']}")
-        if details.get("completed_count") is not None:
-            detail_parts.append(f"Completed: {details['completed_count']}")
-        if details.get("failed_count") is not None:
-            detail_parts.append(f"Failed: {details['failed_count']}")
-        if details.get("active_count") is not None:
-            detail_parts.append(f"Active: {details['active_count']}")
-        if details.get("target_display_name"):
-            detail_parts.append(f"Target: {details['target_display_name']}")
-        if details.get("feature_set_name"):
-            detail_parts.append(f"Feature Set: {get_feature_set_display_name(str(details['feature_set_name']))}")
-        if details.get("preset_name"):
-            detail_parts.append(f"Preset: {get_stage5_preset_display_name(str(details['preset_name']))}")
-        if details.get("target_count") is not None:
-            detail_parts.append(f"Targets: {details['target_count']}")
-        if details.get("feature_set_count") is not None:
-            detail_parts.append(f"Feature Sets: {details['feature_set_count']}")
-        if details.get("preset_count") is not None:
-            detail_parts.append(f"Presets: {details['preset_count']}")
-        if details.get("winner_status"):
-            detail_parts.append(f"Winner Status: {details['winner_status']}")
-        if details.get("error"):
-            detail_parts.append(f"Error: {details['error']}")
-        progress_details.caption(" | ".join(detail_parts) if detail_parts else "No extra details yet.")
-
-    _render_progress_snapshot(st.session_state.get("last_search_progress"))
-
-    validation_errors = list(live_catalog.get("validation_errors") or [])
-    if validation_errors:
-        st.error("Please fix the search setup before running:")
-        for error_message in validation_errors:
-            st.caption(f"- {error_message}")
-
-    if service.feature_data is None or service.feature_data.empty:
-        st.info("Prepare data first to run search. You can still edit the bounded search space now.")
-
-    if st.button("Run Automated Search", use_container_width=True):
-        if validation_errors:
-            return
-        st.session_state.last_search_progress = {
-            "phase": "setup",
-            "step_label": "Preparing search run",
-            "current": 0,
-            "total": 0,
-            "progress_ratio": 0.0,
-            "elapsed_seconds": 0.0,
-            "details": {},
-        }
-        _render_progress_snapshot(st.session_state.last_search_progress)
-
-        def _progress_callback(payload: dict) -> None:
-            st.session_state.last_search_progress = dict(payload or {})
-            _render_progress_snapshot(st.session_state.last_search_progress)
-
-        with st.spinner("Running primary research search... This may take a while on real data."):
-            st.session_state.last_search_run_result = service.run_automated_search(
-                search_name.strip() or "research_search",
-                progress_callback=_progress_callback,
-                search_overrides=search_overrides,
-            )
-
-        final_progress = dict(st.session_state.get("last_search_progress") or {})
-        if str(final_progress.get("phase") or "").lower() != "failed":
-            final_progress.setdefault("phase", "complete")
-            final_progress.setdefault("step_label", "Search finished")
-            final_progress["progress_ratio"] = 1.0
-        st.session_state.last_search_progress = final_progress
-        _render_progress_snapshot(final_progress)
-
-    run_result = st.session_state.get("last_search_run_result")
-    if run_result:
-        show_response(run_result)
-        run_data = run_result.get("data") or {}
-        run_summary = run_data.get("summary") or {}
-        if run_summary:
-            render_subtle_divider()
-            st.subheader("Latest Search Run")
-            render_search_summary(run_summary)
-
-        run_integrity = run_data.get("integrity") or {}
-        if run_integrity:
-            render_subtle_divider()
-            st.subheader("Latest Search Integrity")
-            render_integrity_summary(run_integrity)
-
-        run_artifacts = run_result.get("artifacts") or {}
-        if run_artifacts:
-            render_subtle_divider()
-            st.subheader("Latest Search Artifacts")
-            render_artifact_summary(run_artifacts)
-
-    render_subtle_divider()
-    st.subheader("Open Saved Search Report")
-    reports_result = service.list_search_reports(limit=20)
-    reports = reports_result.get("data") or []
-    if not reports:
-        st.info("No search report files found.")
-        return
-
-    report_options = {report["name"]: report["path"] for report in reports}
-    selected_report = st.selectbox("Select a search report", list(report_options.keys()))
-
-    if st.button("Load Search Report", use_container_width=True):
-        with st.spinner("Loading search report..."):
-            st.session_state.last_search_report_result = service.get_search_report(report_options[selected_report])
-
-    result = st.session_state.get("last_search_report_result")
-    if not result:
-        return
-
-    show_response(result)
-    data = result.get("data") or {}
-    summary = data.get("summary") or {}
-    if summary:
-        render_subtle_divider()
-        st.subheader("Search Summary")
-        render_search_summary(summary)
-
-    integrity = data.get("integrity") or {}
-    if integrity:
-        render_subtle_divider()
-        st.subheader("Integrity Proof")
-        render_integrity_summary(integrity)
-        integrity_rows = integrity.get("fold_rows") or []
-        if integrity_rows:
-            render_subtle_divider()
-            st.caption("Candidate Integrity")
-            st.dataframe(pd.DataFrame(integrity_rows), use_container_width=True, hide_index=True)
-
-    diagnostics = data.get("diagnostics") or {}
-    if diagnostics:
-        render_subtle_divider()
-        st.subheader("Why Candidates Failed")
-        render_diagnostics_summary(diagnostics)
-        candidate_highlights = diagnostics.get("candidate_highlights") or []
-        if candidate_highlights:
-            highlight_frame = pd.DataFrame(candidate_highlights)
-            preferred_columns = [
-                "target_display_name",
-                "feature_set_display_name",
-                "preset_display_name",
-                "execution_status",
-                "error_message",
-                "elapsed_seconds",
-                "proof_status",
-                "integrity_contract_ok",
-                "integrity_failure_reasons",
-                "passed_truth_gate",
-                "truth_gate_failures",
-                "overall_mean_test_accuracy",
-                "majority_baseline_mean_test_accuracy",
-                "selected_threshold_test_mean_f1",
-                "selected_threshold_test_mean_coverage",
-                "one_class_fold_count",
-                "undefined_selected_threshold_metric_count",
-                "constant_feature_fold_count",
-                "near_constant_feature_fold_count",
-            ]
-            available_columns = [column for column in preferred_columns if column in highlight_frame.columns]
-            st.dataframe(highlight_frame.loc[:, available_columns], use_container_width=True, hide_index=True)
-
-    leaderboard_rows = data.get("leaderboard_rows") or []
-    if leaderboard_rows:
-        render_subtle_divider()
-        st.subheader("Leaderboard")
-        leaderboard_frame = pd.DataFrame(leaderboard_rows)
-        if not leaderboard_frame.empty:
-            preferred_columns = [
-                "rank",
-                "target_display_name",
-                "feature_set_display_name",
-                "preset_display_name",
-                "execution_status",
-                "error_message",
-                "elapsed_seconds",
-                "selected_threshold",
-                "validation_beat_rate",
-                "validation_f1_std",
-                "validation_mean_f1",
-                "validation_mean_coverage",
-                "test_mean_f1",
-                "test_mean_coverage",
-                "overall_mean_test_accuracy",
-                "majority_baseline_mean_test_accuracy",
-                "test_best_baseline_mean_f1",
-                "passed_test_guardrail",
-                "passed_truth_gate",
-                "truth_gate_failures",
-                "proof_status",
-                "integrity_contract_ok",
-                "diagnostics",
-                "is_recommended",
-                "report_file",
-            ]
-            available_columns = [column for column in preferred_columns if column in leaderboard_frame.columns]
-            st.dataframe(leaderboard_frame.loc[:, available_columns], use_container_width=True, hide_index=True)
-
-    recommended_winner = data.get("recommended_winner") or {}
-    if recommended_winner:
-        render_subtle_divider()
-        st.subheader("Recommended Winner")
-        if recommended_winner.get("status") == "no_winner":
-            st.warning(recommended_winner.get("reason") or "No winner was recommended.")
-            gate_summary = data.get("gate_summary") or recommended_winner.get("gate_summary") or {}
-            if gate_summary:
-                st.json(gate_summary)
-        st.json(recommended_winner)
-
-    artifacts = data.get("artifact_paths") or {}
-    if artifacts:
-        render_subtle_divider()
-        st.subheader("Artifacts")
-        render_artifact_summary(artifacts)
+    with setup_tab:
+        search_overrides, live_catalog = _render_search_setup_tab(service, catalog)
+    with run_tab:
+        _render_search_run_tab(service, search_overrides, live_catalog)
+    with history_tab:
+        _render_search_history_tab(service)
 
 
-def _render_feature_set_glossary(catalog: dict[str, object]) -> None:
-    with st.expander("What The Feature Sets Mean"):
+def _render_feature_set_glossary(catalog: dict[str, object], *, expand: bool = True) -> None:
+    def _render() -> None:
         rows = [
             {
                 "Feature Set": row.get("display_name"),
@@ -812,10 +917,15 @@ def _render_feature_set_glossary(catalog: dict[str, object]) -> None:
             for row in list(catalog.get("available_feature_sets") or [])
         ]
         st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+    if expand:
+        with st.expander("What The Feature Sets Mean"):
+            _render()
+    else:
+        _render()
 
 
-def _render_preset_glossary(catalog: dict[str, object]) -> None:
-    with st.expander("What The Search Presets Mean"):
+def _render_preset_glossary(catalog: dict[str, object], *, expand: bool = True) -> None:
+    def _render() -> None:
         rows = [
             {
                 "Preset": row.get("display_name"),
@@ -825,3 +935,8 @@ def _render_preset_glossary(catalog: dict[str, object]) -> None:
             for row in list(catalog.get("available_presets") or [])
         ]
         st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+    if expand:
+        with st.expander("What The Search Presets Mean"):
+            _render()
+    else:
+        _render()

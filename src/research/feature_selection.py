@@ -8,6 +8,14 @@ from typing import Any, List
 import pandas as pd
 
 
+def _filter_variable_numeric_columns(feature_frame: pd.DataFrame) -> pd.DataFrame:
+    """Drop columns that cannot produce stable correlation statistics."""
+    numeric_features = feature_frame.apply(pd.to_numeric, errors="coerce")
+    variances = numeric_features.var(numeric_only=True)
+    variable_columns = variances[variances > 0].index.tolist()
+    return numeric_features.loc[:, variable_columns]
+
+
 @dataclass(frozen=True)
 class FeatureSelectorResult:
     """Research-facing output for one fold-local feature-selection pass."""
@@ -45,7 +53,7 @@ class CorrelationFeatureSelector:
     max_features: int = 30
 
     def select(self, feature_frame: pd.DataFrame, target: pd.Series) -> FeatureSelectorResult:
-        numeric_features = feature_frame.apply(pd.to_numeric, errors="coerce")
+        numeric_features = _filter_variable_numeric_columns(feature_frame)
         numeric_target = pd.to_numeric(target, errors="coerce")
         correlations = numeric_features.corrwith(numeric_target).abs().dropna().sort_values(ascending=False)
         ranked = correlations.head(int(self.max_features))
@@ -71,7 +79,7 @@ class VarianceFeatureSelector:
 
     def select(self, feature_frame: pd.DataFrame, target: pd.Series) -> FeatureSelectorResult:
         del target
-        numeric_features = feature_frame.apply(pd.to_numeric, errors="coerce")
+        numeric_features = _filter_variable_numeric_columns(feature_frame)
         variances = numeric_features.var(numeric_only=True).dropna().sort_values(ascending=False)
         ranked = variances.head(int(self.max_features))
         return FeatureSelectorResult(

@@ -394,6 +394,67 @@ class ExnessBroker:
             logger.error(f"Exness close position failed: {exc}")
             return {"success": False, "error": str(exc)}
 
+    def update_position_protection(
+        self,
+        position_ticket: str,
+        *,
+        stop_loss: Optional[float] = None,
+        take_profit: Optional[float] = None,
+    ) -> Dict:
+        """Update stop-loss and/or take-profit for an open MetaTrader5 position."""
+        try:
+            if not self._ensure_connection():
+                return {"success": False, "error": "Exness broker is not connected"}
+
+            positions = self.mt5.positions_get(ticket=int(position_ticket))
+            if not positions:
+                return {"success": False, "error": f"Open position not found: {position_ticket}"}
+
+            position = positions[0]
+            symbol = getattr(position, "symbol", "")
+            current_sl = getattr(position, "sl", None)
+            current_tp = getattr(position, "tp", None)
+
+            resolved_sl = current_sl if stop_loss is None else float(stop_loss)
+            resolved_tp = current_tp if take_profit is None else float(take_profit)
+            if resolved_sl is None and resolved_tp is None:
+                return {"success": False, "error": "No protection fields were provided"}
+
+            request = {
+                "action": getattr(self.mt5, "TRADE_ACTION_SLTP", 7),
+                "symbol": symbol,
+                "position": int(position_ticket),
+            }
+            if resolved_sl is not None:
+                request["sl"] = float(resolved_sl)
+            if resolved_tp is not None:
+                request["tp"] = float(resolved_tp)
+
+            result = self.mt5.order_send(request)
+            if result is None:
+                return {"success": False, "error": f"order_send returned None: {self.mt5.last_error()}"}
+
+            payload = result._asdict() if hasattr(result, "_asdict") else {"retcode": getattr(result, "retcode", None)}
+            success = result.retcode == getattr(self.mt5, "TRADE_RETCODE_DONE", -1)
+            if success:
+                self.last_heartbeat = datetime.now()
+                logger.info(f"Exness position protection updated successfully: {position_ticket}")
+                return {
+                    "success": True,
+                    "position_ticket": str(position_ticket),
+                    "stop_loss": request.get("sl"),
+                    "take_profit": request.get("tp"),
+                    "status": "updated",
+                    "data": payload,
+                }
+
+            error_msg = payload.get("comment") or f"retcode={payload.get('retcode')}"
+            logger.error(f"Exness protection update failed: {error_msg}")
+            return {"success": False, "error": error_msg, "data": payload}
+        except Exception as exc:
+            logger.error(f"Exness protection update failed: {exc}")
+            return {"success": False, "error": str(exc)}
+
     def _ensure_connection(self) -> bool:
         return self.is_connected and self.mt5 is not None
 
@@ -429,6 +490,10 @@ class BrokerManager:
                 return False
 
             existing_broker = self.brokers.get(name)
+            if existing_broker and self._configs_match(existing_broker.config, config):
+                existing_broker.config = self._merge_configs(existing_broker.config, config)
+                logger.info(f"Broker preserved without reconnect: {name}")
+                return True
             if existing_broker and existing_broker.is_connected:
                 existing_broker.disconnect()
                 if self.active_broker == existing_broker:
@@ -440,6 +505,31 @@ class BrokerManager:
         except Exception as exc:
             logger.error(f"Failed to add broker: {exc}")
             return False
+
+    def _configs_match(self, existing: BrokerConfig, incoming: BrokerConfig) -> bool:
+        return (
+            existing.broker_type == incoming.broker_type
+            and str(existing.login) == str(incoming.login)
+            and str(existing.server) == str(incoming.server)
+            and str(existing.terminal_path) == str(incoming.terminal_path)
+            and bool(existing.sandbox) == bool(incoming.sandbox)
+            and str(existing.account_id) == str(incoming.account_id)
+            and int(existing.timeout) == int(incoming.timeout)
+            and int(existing.max_retries) == int(incoming.max_retries)
+        )
+
+    def _merge_configs(self, existing: BrokerConfig, incoming: BrokerConfig) -> BrokerConfig:
+        return BrokerConfig(
+            broker_type=incoming.broker_type,
+            login=incoming.login,
+            password=existing.password or incoming.password,
+            server=incoming.server,
+            terminal_path=incoming.terminal_path,
+            sandbox=incoming.sandbox,
+            account_id=incoming.account_id,
+            timeout=incoming.timeout,
+            max_retries=incoming.max_retries,
+        )
 
     def remove_broker(self, name: str) -> bool:
         """Remove a saved broker from the manager."""
@@ -583,6 +673,22 @@ class BrokerManager:
         if not self.active_broker:
             return {"success": False, "error": "No active Exness broker connection"}
         return self.active_broker.close_position(position_ticket)
+
+    def update_position_protection(
+        self,
+        position_ticket: str,
+        *,
+        stop_loss: Optional[float] = None,
+        take_profit: Optional[float] = None,
+    ) -> Dict:
+        """Update protection levels for an open position through the active Exness connection."""
+        if not self.active_broker:
+            return {"success": False, "error": "No active Exness broker connection"}
+        return self.active_broker.update_position_protection(
+            position_ticket,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
+        )
 
 
 def create_broker_config(broker_type: str, **kwargs) -> BrokerConfig:

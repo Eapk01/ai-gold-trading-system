@@ -1,6 +1,6 @@
 trading:
   symbol: XAUUSDm
-  timeframe: 30m
+  timeframe: 5m
   position_size: 0.01
   stop_loss_pips: 50
   take_profit_pips: 100
@@ -98,7 +98,7 @@ backtest:
   initial_capital: 10000
   commission: 0.0001
   slippage: 0.0002
-  signal_confidence_threshold: 0.6
+  signal_confidence_threshold: 0.53
 database:
   type: sqlite
   path: data/trading_system.db
@@ -135,6 +135,17 @@ live_trading:
   enabled_demo_only: true
   poll_interval_seconds: 5
   inactive_poll_interval_seconds: 30
-  signal_confidence_threshold: 0.6
+  signal_confidence_threshold: 0.53
   startup_candle_buffer: 150
   stale_candle_multiplier: 4
+  presets: {}
+  exit_management:
+    mode: trailing_stop
+    break_even_enabled: true
+    break_even_trigger_pips: 8.0
+    break_even_offset_pips: 1.0
+    trailing_enabled: true
+    trailing_activation_pips: 12.0
+    trailing_distance_pips: 5.0
+    trailing_step_pips: 2.0
+    keep_take_profit: true

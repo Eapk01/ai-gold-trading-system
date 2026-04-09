@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 from loguru import logger
 from src.config_utils import get_effective_confidence_threshold
+from src.runtime_predictor import EnsemblePredictor
 
 
 class LiveDemoTrader:
@@ -42,6 +43,7 @@ class LiveDemoTrader:
         self.demo_only = bool(live_config.get("enabled_demo_only", True))
         self.candle_duration_seconds = self._timeframe_to_seconds(self.timeframe)
         self.stale_threshold_seconds = self.candle_duration_seconds * self.stale_candle_multiplier
+        self.exit_management = self._load_exit_management_config(live_config)
 
         self._thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
@@ -58,6 +60,8 @@ class LiveDemoTrader:
         self._startup_ready = False
         self._market_state = "idle"
         self._last_candle_age_seconds: Optional[int] = None
+        self._last_protection_action: str = "idle"
+        self._last_managed_stop_loss: Optional[float] = None
 
     def start(self) -> Tuple[bool, str]:
         """Start the background trading runtime."""
@@ -152,6 +156,10 @@ class LiveDemoTrader:
                 "active_poll_interval_seconds": self.poll_interval_seconds,
                 "inactive_poll_interval_seconds": self.inactive_poll_interval_seconds,
                 "stale_threshold_seconds": self.stale_threshold_seconds,
+                "exit_management_enabled": bool(self.exit_management.get("enabled")),
+                "exit_management_mode": self.exit_management.get("mode", "disabled"),
+                "last_protection_action": self._last_protection_action,
+                "last_managed_stop_loss": self._last_managed_stop_loss,
             }
 
     def get_recent_events(self, limit: int = 20) -> List[Dict[str, Any]]:
@@ -251,11 +259,13 @@ class LiveDemoTrader:
             self._append_event("warning", message)
             return False, message
 
+        latest_feature_row = feature_history.iloc[-1] if feature_history is not None and not feature_history.empty else pd.Series(dtype=float)
+        protection_message = self._manage_open_position(signal, latest_feature_row)
         action_message = self._apply_signal(signal)
         with self._lock:
             self._latest_signal = signal
             self._latest_error = None
-            self._latest_action = action_message
+            self._latest_action = action_message if not protection_message else f"{protection_message} | {action_message}"
 
         self._append_event("info", action_message, {"signal": signal})
         return True, action_message
@@ -353,7 +363,9 @@ class LiveDemoTrader:
         latest_row = feature_history.iloc[-1]
         price = float(pd.to_numeric(latest_row.get("Close"), errors="coerce"))
         signal_side = "buy" if prediction == 1 else "sell"
-        stop_loss, take_profit = self._calculate_stop_levels(signal_side, price)
+        stop_loss, take_profit = self._calculate_stop_levels(signal_side, price, latest_row)
+        if stop_loss is None or take_profit is None:
+            return False, "ATR-based exits could not be resolved from the latest feature row", None, feature_history
         signal = {
             "timestamp": feature_history.index[-1].isoformat(),
             "prediction": prediction,
@@ -368,10 +380,13 @@ class LiveDemoTrader:
     def _get_runtime_predictor(self):
         if callable(self.runtime_predictor_getter):
             try:
-                return self.runtime_predictor_getter()
+                predictor = self.runtime_predictor_getter()
+                if predictor is not None:
+                    return predictor
             except Exception as exc:
                 logger.warning(f"Failed to resolve runtime predictor: {exc}")
-                return None
+        if getattr(self.ai_model_manager, "models", {}):
+            return EnsemblePredictor.from_manager(self.ai_model_manager)
         return None
 
     def _apply_signal(self, signal: Dict[str, Any]) -> str:
@@ -414,10 +429,161 @@ class LiveDemoTrader:
             take_profit=signal.get("take_profit"),
         )
 
-    def _calculate_stop_levels(self, side: str, price: float) -> Tuple[float, float]:
+    def _calculate_stop_levels(self, side: str, price: float, feature_row: pd.Series) -> Tuple[Optional[float], Optional[float]]:
+        stop_distance = self.stop_loss_pips
+        take_profit_distance = self.take_profit_pips
         if side == "buy":
-            return price - self.stop_loss_pips, price + self.take_profit_pips
-        return price + self.stop_loss_pips, price - self.take_profit_pips
+            return price - stop_distance, price + take_profit_distance
+        return price + stop_distance, price - take_profit_distance
+
+    def _load_exit_management_config(self, live_config: Dict[str, Any]) -> Dict[str, Any]:
+        exit_config = dict(live_config.get("exit_management", {}) or {})
+        mode = str(exit_config.get("mode", "trailing_stop")).strip().lower() or "trailing_stop"
+        return {
+            "enabled": mode == "trailing_stop",
+            "mode": mode,
+            "break_even_enabled": bool(exit_config.get("break_even_enabled", True)),
+            "break_even_trigger_pips": float(exit_config.get("break_even_trigger_pips", 35.0)),
+            "break_even_offset_pips": float(exit_config.get("break_even_offset_pips", 2.0)),
+            "trailing_enabled": bool(exit_config.get("trailing_enabled", True)),
+            "trailing_activation_pips": float(exit_config.get("trailing_activation_pips", 60.0)),
+            "trailing_distance_pips": float(exit_config.get("trailing_distance_pips", 25.0)),
+            "trailing_step_pips": float(exit_config.get("trailing_step_pips", 10.0)),
+            "keep_take_profit": bool(exit_config.get("keep_take_profit", True)),
+        }
+
+    def _manage_open_position(self, signal: Dict[str, Any], feature_row: pd.Series) -> str:
+        if not bool(self.exit_management.get("enabled")):
+            return ""
+
+        positions = self._get_symbol_positions()
+        if len(positions) != 1:
+            if len(positions) > 1:
+                message = f"Skipped protection update: multiple open positions detected for {self.symbol}"
+                with self._lock:
+                    self._last_protection_action = message
+                self._append_event("warning", message)
+                return message
+            with self._lock:
+                self._last_protection_action = "No managed position to protect"
+                self._last_managed_stop_loss = None
+            return ""
+
+        position = positions[0]
+        update = self._build_protection_update(position, signal, feature_row)
+        if not update.get("should_update"):
+            message = str(update.get("message") or "No protection update needed")
+            with self._lock:
+                self._last_protection_action = message
+                self._last_managed_stop_loss = self._safe_float(position.get("sl"))
+            if bool(update.get("log_event")):
+                self._append_event("info", message, {"position_ticket": str(position.get("ticket", ""))})
+            return message
+
+        update_result = self.broker_manager.update_position_protection(
+            str(position.get("ticket", "")),
+            stop_loss=update.get("stop_loss"),
+            take_profit=update.get("take_profit"),
+        )
+        if update_result.get("success"):
+            message = str(update.get("message") or "Protection updated")
+            with self._lock:
+                self._last_protection_action = message
+                self._last_managed_stop_loss = self._safe_float(update.get("stop_loss"))
+            self._append_event(
+                "info",
+                message,
+                {
+                    "position_ticket": str(position.get("ticket", "")),
+                    "stop_loss": update.get("stop_loss"),
+                    "take_profit": update.get("take_profit"),
+                },
+            )
+            return message
+
+        error_message = f"Protection update failed: {update_result.get('error', 'unknown error')}"
+        with self._lock:
+            self._last_protection_action = error_message
+            self._last_managed_stop_loss = self._safe_float(position.get("sl"))
+        self._append_event(
+            "warning",
+            error_message,
+            {
+                "position_ticket": str(position.get("ticket", "")),
+                "requested_stop_loss": update.get("stop_loss"),
+                "requested_take_profit": update.get("take_profit"),
+            },
+        )
+        return error_message
+
+    def _build_protection_update(self, position: Dict[str, Any], signal: Dict[str, Any], feature_row: pd.Series) -> Dict[str, Any]:
+        side = self._position_side(position)
+        entry_price = self._safe_float(position.get("price_open"))
+        current_price = self._safe_float(position.get("price_current"), fallback=float(signal.get("price", 0.0)))
+        current_stop_loss = self._safe_float(position.get("sl"))
+        current_take_profit = self._safe_float(position.get("tp"))
+
+        if entry_price is None or current_price is None:
+            return {"should_update": False, "message": "Skipped protection update: missing position pricing"}
+
+        favorable_move = (current_price - entry_price) if side == "buy" else (entry_price - current_price)
+        if favorable_move <= 0:
+            return {"should_update": False, "message": "Skipped protection update: position is not in profit"}
+
+        candidate_stop_loss: Optional[float] = None
+        reason = ""
+
+        break_even_trigger = float(self.exit_management["break_even_trigger_pips"])
+        break_even_offset = float(self.exit_management["break_even_offset_pips"])
+        trailing_activation = float(self.exit_management["trailing_activation_pips"])
+        trailing_distance = float(self.exit_management["trailing_distance_pips"])
+        trailing_step = float(self.exit_management["trailing_step_pips"])
+
+        if bool(self.exit_management.get("break_even_enabled")) and break_even_trigger is not None and favorable_move >= break_even_trigger:
+            offset = break_even_offset or 0.0
+            candidate_stop_loss = entry_price + offset if side == "buy" else entry_price - offset
+            reason = "Break-even stop activated"
+
+        if bool(self.exit_management.get("trailing_enabled")) and trailing_activation is not None and favorable_move >= trailing_activation:
+            distance = trailing_distance or 0.0
+            trailing_stop_loss = current_price - distance if side == "buy" else current_price + distance
+            if candidate_stop_loss is None:
+                candidate_stop_loss = trailing_stop_loss
+            else:
+                candidate_stop_loss = max(candidate_stop_loss, trailing_stop_loss) if side == "buy" else min(candidate_stop_loss, trailing_stop_loss)
+            reason = "Trailing stop moved"
+
+        if candidate_stop_loss is None:
+            return {"should_update": False, "message": "Skipped protection update: profit has not reached management triggers"}
+
+        if current_stop_loss is not None:
+            if side == "buy" and candidate_stop_loss <= current_stop_loss:
+                return {"should_update": False, "message": "Skipped protection update: new stop is not above current stop"}
+            if side == "sell" and candidate_stop_loss >= current_stop_loss:
+                return {"should_update": False, "message": "Skipped protection update: new stop is not below current stop"}
+            step = trailing_step or 0.0
+            improvement = abs(candidate_stop_loss - current_stop_loss)
+            if improvement < step:
+                return {
+                    "should_update": False,
+                    "message": f"Skipped protection update: move {improvement:.2f} is below trailing step {step:.2f}",
+                    "log_event": True,
+                }
+
+        return {
+            "should_update": True,
+            "message": f"{reason} to {candidate_stop_loss:.2f}",
+            "stop_loss": candidate_stop_loss,
+            "take_profit": current_take_profit if bool(self.exit_management.get("keep_take_profit", True)) else None,
+        }
+
+    def _safe_float(self, value: Any, fallback: Optional[float] = None) -> Optional[float]:
+        try:
+            if value is None:
+                return fallback
+            return float(value)
+        except (TypeError, ValueError):
+            return fallback
 
     def _candles_to_frame(self, candles: List[Dict[str, Any]]) -> pd.DataFrame:
         frame = pd.DataFrame(candles or [])

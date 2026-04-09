@@ -8,8 +8,10 @@ sys.modules.setdefault("talib", types.SimpleNamespace())
 sys.modules.setdefault("pandas_ta", types.SimpleNamespace())
 
 from src.app_service import ResearchAppService
+from src.broker_interface import BrokerConfig, BrokerManager, BrokerType
 from src.secret_store import BrokerSecretStore
 from src.services.research_service import ResearchWorkflowService
+from src.services.trading_service import TradingWorkflowService
 
 
 class DashboardSnapshotTests(unittest.TestCase):
@@ -180,6 +182,57 @@ class BrokerAutoconnectTests(unittest.TestCase):
         service._autoconnect_saved_broker()
 
         self.assertEqual(service.broker_manager.attempts, [("Backup", "secret")])
+
+
+class BrokerManagerReloadTests(unittest.TestCase):
+    def test_add_broker_preserves_existing_connected_profile_when_config_is_unchanged(self):
+        manager = BrokerManager()
+        preserved_config = BrokerConfig(
+            broker_type=BrokerType.EXNESS,
+            login="123456",
+            password="secret",
+            server="Exness-MT5Trial16",
+            terminal_path="",
+            sandbox=False,
+            account_id="",
+            timeout=30,
+            max_retries=3,
+        )
+
+        class FakeConnectedBroker:
+            def __init__(self, config):
+                self.config = config
+                self.is_connected = True
+                self.disconnect_called = False
+
+            def disconnect(self):
+                self.disconnect_called = True
+                self.is_connected = False
+
+        existing_broker = FakeConnectedBroker(preserved_config)
+        manager.brokers["Main"] = existing_broker
+        manager.active_broker = existing_broker
+
+        result = manager.add_broker(
+            "Main",
+            BrokerConfig(
+                broker_type=BrokerType.EXNESS,
+                login="123456",
+                password="",
+                server="Exness-MT5Trial16",
+                terminal_path="",
+                sandbox=False,
+                account_id="",
+                timeout=30,
+                max_retries=3,
+            ),
+        )
+
+        self.assertTrue(result)
+        self.assertIs(manager.brokers["Main"], existing_broker)
+        self.assertIs(manager.active_broker, existing_broker)
+        self.assertFalse(existing_broker.disconnect_called)
+        self.assertEqual(manager.brokers["Main"].config.password, "secret")
 
 
 class SecretStoreTests(unittest.TestCase):
@@ -503,6 +556,218 @@ class SearchCatalogServiceTests(unittest.TestCase):
         self.assertEqual(captured["search_name"], "stage5_gui")
         self.assertEqual(captured["max_workers"], 2)
         self.assertEqual(captured["search_overrides"], {"preset_names": ["capacity"]})
+
+
+class AutoTraderSettingsTests(unittest.TestCase):
+    def _make_service(self, *, running: bool = False):
+        service = ResearchAppService.__new__(ResearchAppService)
+        service.config = {
+            "trading": {
+                "symbol": "XAUUSDm",
+                "timeframe": "5m",
+                "stop_loss_pips": 50.0,
+                "take_profit_pips": 100.0,
+                "confidence_threshold": 0.6,
+            },
+            "live_trading": {
+                "signal_confidence_threshold": 0.6,
+                "presets": {},
+                "exit_management": {
+                    "mode": "trailing_stop",
+                    "atr_source": "ATR_14",
+                    "initial_stop_loss_mode": "fixed",
+                    "initial_take_profit_mode": "fixed",
+                    "initial_stop_loss_atr_multiplier": 2.0,
+                    "initial_take_profit_atr_multiplier": 4.0,
+                    "break_even_enabled": True,
+                    "break_even_trigger_mode": "fixed",
+                    "break_even_trigger_pips": 8.0,
+                    "break_even_trigger_atr_multiplier": 1.0,
+                    "break_even_offset_mode": "fixed",
+                    "break_even_offset_pips": 1.0,
+                    "break_even_offset_atr_multiplier": 0.25,
+                    "trailing_enabled": True,
+                    "trailing_activation_mode": "fixed",
+                    "trailing_activation_pips": 12.0,
+                    "trailing_activation_atr_multiplier": 1.5,
+                    "trailing_distance_mode": "fixed",
+                    "trailing_distance_pips": 5.0,
+                    "trailing_distance_atr_multiplier": 1.0,
+                    "trailing_step_mode": "fixed",
+                    "trailing_step_pips": 2.0,
+                    "trailing_step_atr_multiplier": 0.25,
+                    "keep_take_profit": True,
+                },
+            },
+        }
+        service.auto_trader_session_overrides = {}
+        service._response = ResearchAppService._response.__get__(service, ResearchAppService)
+        service._deep_merge_dicts = ResearchAppService._deep_merge_dicts.__get__(service, ResearchAppService)
+        service._get_effective_runtime_config = ResearchAppService._get_effective_runtime_config.__get__(service, ResearchAppService)
+        service._persist_called = 0
+        service._build_called = 0
+        service._persist_config = lambda: setattr(service, "_persist_called", service._persist_called + 1)
+        service._build_runtime_components = lambda: setattr(service, "_build_called", service._build_called + 1)
+        service.auto_trader = type("AutoTrader", (), {"get_status": staticmethod(lambda: {"running": running})})()
+        return service, TradingWorkflowService(service)
+
+    def test_apply_auto_trader_settings_updates_session_without_persisting(self):
+        service, workflow = self._make_service(running=False)
+        result = workflow.apply_auto_trader_settings(
+            {
+                "stop_loss_pips": 20.0,
+                "take_profit_pips": 35.0,
+                "signal_confidence_threshold": 0.58,
+                "exit_management_mode": "trailing_stop",
+                "atr_source": "ATR_14",
+                "initial_stop_loss_mode": "fixed",
+                "initial_take_profit_mode": "fixed",
+                "initial_stop_loss_atr_multiplier": 2.0,
+                "initial_take_profit_atr_multiplier": 4.0,
+                "break_even_enabled": True,
+                "break_even_trigger_mode": "fixed",
+                "break_even_trigger_pips": 6.0,
+                "break_even_trigger_atr_multiplier": 1.0,
+                "break_even_offset_mode": "fixed",
+                "break_even_offset_pips": 0.5,
+                "break_even_offset_atr_multiplier": 0.25,
+                "trailing_enabled": True,
+                "trailing_activation_mode": "fixed",
+                "trailing_activation_pips": 9.0,
+                "trailing_activation_atr_multiplier": 1.5,
+                "trailing_distance_mode": "fixed",
+                "trailing_distance_pips": 3.5,
+                "trailing_distance_atr_multiplier": 1.0,
+                "trailing_step_mode": "fixed",
+                "trailing_step_pips": 1.0,
+                "trailing_step_atr_multiplier": 0.25,
+                "keep_take_profit": True,
+            }
+        )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(service._persist_called, 0)
+        self.assertEqual(service._build_called, 1)
+        effective = service._get_effective_runtime_config()
+        self.assertEqual(effective["trading"]["stop_loss_pips"], 20.0)
+        self.assertEqual(effective["live_trading"]["exit_management"]["trailing_distance_pips"], 3.5)
+
+    def test_save_auto_trader_settings_as_defaults_persists_values(self):
+        service, workflow = self._make_service(running=False)
+        result = workflow.save_auto_trader_settings_as_defaults(
+            {
+                "stop_loss_pips": 15.0,
+                "take_profit_pips": 25.0,
+                "signal_confidence_threshold": 0.56,
+                "exit_management_mode": "trailing_stop",
+                "atr_source": "ATR_14",
+                "initial_stop_loss_mode": "fixed",
+                "initial_take_profit_mode": "fixed",
+                "initial_stop_loss_atr_multiplier": 2.0,
+                "initial_take_profit_atr_multiplier": 4.0,
+                "break_even_enabled": True,
+                "break_even_trigger_mode": "fixed",
+                "break_even_trigger_pips": 4.0,
+                "break_even_trigger_atr_multiplier": 1.0,
+                "break_even_offset_mode": "fixed",
+                "break_even_offset_pips": 0.3,
+                "break_even_offset_atr_multiplier": 0.25,
+                "trailing_enabled": True,
+                "trailing_activation_mode": "fixed",
+                "trailing_activation_pips": 6.0,
+                "trailing_activation_atr_multiplier": 1.5,
+                "trailing_distance_mode": "fixed",
+                "trailing_distance_pips": 2.5,
+                "trailing_distance_atr_multiplier": 1.0,
+                "trailing_step_mode": "fixed",
+                "trailing_step_pips": 0.8,
+                "trailing_step_atr_multiplier": 0.25,
+                "keep_take_profit": True,
+            }
+        )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(service._persist_called, 1)
+        self.assertEqual(service.config["trading"]["stop_loss_pips"], 15.0)
+        self.assertEqual(service.config["live_trading"]["exit_management"]["trailing_step_pips"], 0.8)
+
+    def test_running_auto_trader_apply_requires_restart(self):
+        service, workflow = self._make_service(running=True)
+        result = workflow.apply_auto_trader_settings(
+            {
+                "stop_loss_pips": 20.0,
+                "take_profit_pips": 35.0,
+                "signal_confidence_threshold": 0.58,
+                "exit_management_mode": "trailing_stop",
+                "atr_source": "ATR_14",
+                "initial_stop_loss_mode": "fixed",
+                "initial_take_profit_mode": "fixed",
+                "initial_stop_loss_atr_multiplier": 2.0,
+                "initial_take_profit_atr_multiplier": 4.0,
+                "break_even_enabled": True,
+                "break_even_trigger_mode": "fixed",
+                "break_even_trigger_pips": 6.0,
+                "break_even_trigger_atr_multiplier": 1.0,
+                "break_even_offset_mode": "fixed",
+                "break_even_offset_pips": 0.5,
+                "break_even_offset_atr_multiplier": 0.25,
+                "trailing_enabled": True,
+                "trailing_activation_mode": "fixed",
+                "trailing_activation_pips": 9.0,
+                "trailing_activation_atr_multiplier": 1.5,
+                "trailing_distance_mode": "fixed",
+                "trailing_distance_pips": 3.5,
+                "trailing_distance_atr_multiplier": 1.0,
+                "trailing_step_mode": "fixed",
+                "trailing_step_pips": 1.0,
+                "trailing_step_atr_multiplier": 0.25,
+                "keep_take_profit": True,
+            }
+        )
+
+        self.assertTrue(result["success"])
+        self.assertTrue(result["data"]["restart_required"])
+        self.assertEqual(service._build_called, 0)
+
+    def test_custom_auto_trader_presets_can_be_saved_and_deleted(self):
+        service, workflow = self._make_service(running=False)
+        values = {
+            "stop_loss_pips": 20.0,
+            "take_profit_pips": 35.0,
+            "signal_confidence_threshold": 0.58,
+            "exit_management_mode": "trailing_stop",
+            "atr_source": "ATR_14",
+            "initial_stop_loss_mode": "fixed",
+            "initial_take_profit_mode": "fixed",
+            "initial_stop_loss_atr_multiplier": 2.0,
+            "initial_take_profit_atr_multiplier": 4.0,
+            "break_even_enabled": True,
+            "break_even_trigger_mode": "fixed",
+            "break_even_trigger_pips": 6.0,
+            "break_even_trigger_atr_multiplier": 1.0,
+            "break_even_offset_mode": "fixed",
+            "break_even_offset_pips": 0.5,
+            "break_even_offset_atr_multiplier": 0.25,
+            "trailing_enabled": True,
+            "trailing_activation_mode": "fixed",
+            "trailing_activation_pips": 9.0,
+            "trailing_activation_atr_multiplier": 1.5,
+            "trailing_distance_mode": "fixed",
+            "trailing_distance_pips": 3.5,
+            "trailing_distance_atr_multiplier": 1.0,
+            "trailing_step_mode": "fixed",
+            "trailing_step_pips": 1.0,
+            "trailing_step_atr_multiplier": 0.25,
+            "keep_take_profit": True,
+        }
+
+        save_result = workflow.save_auto_trader_preset("Balanced 5m Custom", values)
+        catalog = workflow.get_auto_trader_settings_catalog()
+        delete_result = workflow.delete_auto_trader_preset("Balanced_5m_Custom")
+
+        self.assertTrue(save_result["success"])
+        self.assertTrue(any(preset["id"] == "Balanced_5m_Custom" for preset in catalog["data"]["custom_presets"]))
+        self.assertTrue(delete_result["success"])
 
 
 if __name__ == "__main__":

@@ -83,6 +83,7 @@ class ResearchAppService:
         self.latest_search_artifacts: Dict[str, str] = {}
         self.latest_data_preview: List[Dict[str, Any]] = []
         self.latest_model_analysis: Dict[str, Any] = {}
+        self.auto_trader_session_overrides: Dict[str, Any] = {}
         self.report_store = ReportStore()
         self.experiment_store = ExperimentStore.from_config(self.config)
 
@@ -200,18 +201,31 @@ class ResearchAppService:
 
     def _build_runtime_components(self) -> None:
         """Build all config-dependent runtime components from one config snapshot."""
-        self.data_collector = DataCollector(self.config)
-        self.feature_engineer = FeatureEngineer(self.config)
-        self.ai_model_manager = AIModelManager(self.config)
-        self.backtester = Backtester(self.config)
+        runtime_config = self._get_effective_runtime_config()
+        self.data_collector = DataCollector(runtime_config)
+        self.feature_engineer = FeatureEngineer(runtime_config)
+        self.ai_model_manager = AIModelManager(runtime_config)
+        self.backtester = Backtester(runtime_config)
         self.model_tester = ModelTester()
         self.auto_trader = LiveDemoTrader(
-            self.config,
+            runtime_config,
             self.broker_manager,
             self.feature_engineer,
             self.ai_model_manager,
             runtime_predictor_getter=self.get_runtime_predictor,
         )
+
+    def _get_effective_runtime_config(self) -> Dict[str, Any]:
+        return self._deep_merge_dicts(self.config, self.auto_trader_session_overrides)
+
+    def _deep_merge_dicts(self, base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+        merged = dict(base)
+        for key, value in (override or {}).items():
+            if isinstance(value, dict) and isinstance(merged.get(key), dict):
+                merged[key] = self._deep_merge_dicts(dict(merged[key]), value)
+            else:
+                merged[key] = value
+        return merged
 
     def _reload_runtime_from_disk(self) -> None:
         """Reload config and rebuild all config-backed components together when safe."""
@@ -670,6 +684,30 @@ class ResearchAppService:
     def get_auto_trader_events(self, limit: int = 20) -> Dict[str, Any]:
         self._ensure_workflow_services()
         return self.trading_workflows.get_auto_trader_events(limit)
+
+    def get_auto_trader_settings_catalog(self) -> Dict[str, Any]:
+        self._ensure_workflow_services()
+        return self.trading_workflows.get_auto_trader_settings_catalog()
+
+    def apply_auto_trader_settings(self, overrides: Dict[str, Any]) -> Dict[str, Any]:
+        self._ensure_workflow_services()
+        return self.trading_workflows.apply_auto_trader_settings(overrides)
+
+    def save_auto_trader_settings_as_defaults(self, overrides: Dict[str, Any]) -> Dict[str, Any]:
+        self._ensure_workflow_services()
+        return self.trading_workflows.save_auto_trader_settings_as_defaults(overrides)
+
+    def save_auto_trader_preset(self, name: str, values: Dict[str, Any]) -> Dict[str, Any]:
+        self._ensure_workflow_services()
+        return self.trading_workflows.save_auto_trader_preset(name, values)
+
+    def delete_auto_trader_preset(self, name: str) -> Dict[str, Any]:
+        self._ensure_workflow_services()
+        return self.trading_workflows.delete_auto_trader_preset(name)
+
+    def apply_auto_trader_preset(self, name: str, scope: str = "session") -> Dict[str, Any]:
+        self._ensure_workflow_services()
+        return self.trading_workflows.apply_auto_trader_preset(name, scope=scope)
 
     def _get_chart_data(self, symbol: str, timeframe: str, bars: int) -> tuple[List[Dict[str, Any]], str, str]:
         broker_chart = self.broker_manager.get_historical_data(symbol, timeframe, bars)

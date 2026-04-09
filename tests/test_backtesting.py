@@ -52,6 +52,11 @@ class BacktestingRefactorTests(unittest.TestCase):
                 "stop_loss_pips": 50,
                 "take_profit_pips": 100,
             },
+            "live_trading": {
+                "exit_management": {
+                    "mode": "disabled",
+                },
+            },
         }
 
     def test_predict_ensemble_batch_preserves_alignment_and_invalid_rows(self):
@@ -231,6 +236,213 @@ class BacktestingRefactorTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             backtester.run_backtest(prepared_data, StubAIManager(predictions), ["feat1"])
+
+    def test_backtest_trailing_stop_can_close_trade_earlier_than_fixed_stop(self):
+        config = {
+            "ai_model": {
+                "type": "ensemble",
+                "models": ["random_forest"],
+            },
+            "backtest": {
+                "initial_capital": 10000,
+                "commission": 0.0,
+                "slippage": 0.0,
+                "signal_confidence_threshold": 0.6,
+            },
+            "trading": {
+                "symbol": "XAUUSDm",
+                "position_size": 1.0,
+                "confidence_threshold": 0.6,
+                "stop_loss_pips": 10.0,
+                "take_profit_pips": 100.0,
+            },
+            "live_trading": {
+                "exit_management": {
+                    "mode": "trailing_stop",
+                    "break_even_enabled": True,
+                    "break_even_trigger_pips": 2.0,
+                    "break_even_offset_pips": 0.5,
+                    "trailing_enabled": True,
+                    "trailing_activation_pips": 4.0,
+                    "trailing_distance_pips": 1.5,
+                    "trailing_step_pips": 0.5,
+                },
+            },
+        }
+        backtester = Backtester(config)
+        prepared_data = pd.DataFrame(
+            {
+                "Open": [100.0, 105.0, 103.0],
+                "High": [100.0, 105.0, 103.0],
+                "Low": [100.0, 105.0, 103.0],
+                "Close": [100.0, 105.0, 103.0],
+                "Volume": [10.0, 10.0, 10.0],
+                "feat1": [0.1, 0.2, 0.3],
+                "feat2": [0.4, 0.5, 0.6],
+            },
+            index=pd.date_range("2025-01-01", periods=3, freq="5min"),
+        )
+        predictions = pd.DataFrame(
+            {
+                "is_valid": [True, True, True],
+                "prediction": [1.0, 1.0, 1.0],
+                "confidence": [0.8, 0.8, 0.8],
+            },
+            index=prepared_data.index,
+        )
+
+        result = backtester.run_backtest(prepared_data, StubAIManager(predictions), ["feat1", "feat2"])
+
+        self.assertEqual(result.total_trades, 1)
+        self.assertEqual(backtester.trades[0].reason, "stop_loss")
+        self.assertEqual(backtester.trades[0].exit_time, prepared_data.index[2])
+        self.assertGreater(backtester.trades[0].stop_loss, backtester.trades[0].entry_price)
+
+    def test_backtest_disabled_exit_management_keeps_fixed_exit_behavior(self):
+        config = {
+            "ai_model": {
+                "type": "ensemble",
+                "models": ["random_forest"],
+            },
+            "backtest": {
+                "initial_capital": 10000,
+                "commission": 0.0,
+                "slippage": 0.0,
+                "signal_confidence_threshold": 0.6,
+            },
+            "trading": {
+                "symbol": "XAUUSDm",
+                "position_size": 1.0,
+                "confidence_threshold": 0.6,
+                "stop_loss_pips": 10.0,
+                "take_profit_pips": 100.0,
+            },
+            "live_trading": {
+                "exit_management": {
+                    "mode": "disabled",
+                },
+            },
+        }
+        backtester = Backtester(config)
+        prepared_data = pd.DataFrame(
+            {
+                "Open": [100.0, 105.0, 103.0],
+                "High": [100.0, 105.0, 103.0],
+                "Low": [100.0, 105.0, 103.0],
+                "Close": [100.0, 105.0, 103.0],
+                "Volume": [10.0, 10.0, 10.0],
+                "feat1": [0.1, 0.2, 0.3],
+                "feat2": [0.4, 0.5, 0.6],
+            },
+            index=pd.date_range("2025-01-01", periods=3, freq="5min"),
+        )
+        predictions = pd.DataFrame(
+            {
+                "is_valid": [True, True, True],
+                "prediction": [1.0, 1.0, 1.0],
+                "confidence": [0.8, 0.8, 0.8],
+            },
+            index=prepared_data.index,
+        )
+
+        result = backtester.run_backtest(prepared_data, StubAIManager(predictions), ["feat1", "feat2"])
+
+        self.assertEqual(result.total_trades, 1)
+        self.assertEqual(backtester.trades[0].reason, "backtest_end")
+        self.assertEqual(backtester.trades[0].exit_time, prepared_data.index[-1])
+
+    def test_intrabar_buy_stop_loss_hits_on_low_even_when_close_survives(self):
+        config = {
+            "ai_model": {"type": "ensemble", "models": ["random_forest"]},
+            "backtest": {"initial_capital": 10000, "commission": 0.0, "slippage": 0.0, "signal_confidence_threshold": 0.6},
+            "trading": {"symbol": "XAUUSDm", "position_size": 1.0, "confidence_threshold": 0.6, "stop_loss_pips": 5.0, "take_profit_pips": 20.0},
+            "live_trading": {"exit_management": {"mode": "disabled"}},
+        }
+        backtester = Backtester(config)
+        prepared_data = pd.DataFrame(
+            {
+                "Open": [100.0, 100.0],
+                "High": [100.0, 103.0],
+                "Low": [100.0, 94.0],
+                "Close": [100.0, 101.0],
+                "Volume": [10.0, 10.0],
+                "feat1": [0.1, 0.2],
+                "feat2": [0.4, 0.5],
+            },
+            index=pd.date_range("2025-01-01", periods=2, freq="5min"),
+        )
+        predictions = pd.DataFrame(
+            {"is_valid": [True, True], "prediction": [1.0, 1.0], "confidence": [0.8, 0.8]},
+            index=prepared_data.index,
+        )
+
+        result = backtester.run_backtest(prepared_data, StubAIManager(predictions), ["feat1", "feat2"])
+
+        self.assertEqual(result.total_trades, 1)
+        self.assertEqual(backtester.trades[0].reason, "stop_loss")
+        self.assertEqual(backtester.trades[0].exit_trigger_price, 95.0)
+
+    def test_intrabar_buy_take_profit_hits_on_high_even_when_close_falls_back(self):
+        config = {
+            "ai_model": {"type": "ensemble", "models": ["random_forest"]},
+            "backtest": {"initial_capital": 10000, "commission": 0.0, "slippage": 0.0, "signal_confidence_threshold": 0.6},
+            "trading": {"symbol": "XAUUSDm", "position_size": 1.0, "confidence_threshold": 0.6, "stop_loss_pips": 20.0, "take_profit_pips": 5.0},
+            "live_trading": {"exit_management": {"mode": "disabled"}},
+        }
+        backtester = Backtester(config)
+        prepared_data = pd.DataFrame(
+            {
+                "Open": [100.0, 100.0],
+                "High": [100.0, 106.0],
+                "Low": [100.0, 99.0],
+                "Close": [100.0, 101.0],
+                "Volume": [10.0, 10.0],
+                "feat1": [0.1, 0.2],
+                "feat2": [0.4, 0.5],
+            },
+            index=pd.date_range("2025-01-01", periods=2, freq="5min"),
+        )
+        predictions = pd.DataFrame(
+            {"is_valid": [True, True], "prediction": [1.0, 1.0], "confidence": [0.8, 0.8]},
+            index=prepared_data.index,
+        )
+
+        result = backtester.run_backtest(prepared_data, StubAIManager(predictions), ["feat1", "feat2"])
+
+        self.assertEqual(result.total_trades, 1)
+        self.assertEqual(backtester.trades[0].reason, "take_profit")
+        self.assertEqual(backtester.trades[0].exit_trigger_price, 105.0)
+
+    def test_same_bar_stop_and_take_profit_uses_conservative_exit(self):
+        config = {
+            "ai_model": {"type": "ensemble", "models": ["random_forest"]},
+            "backtest": {"initial_capital": 10000, "commission": 0.0, "slippage": 0.0, "signal_confidence_threshold": 0.6},
+            "trading": {"symbol": "XAUUSDm", "position_size": 1.0, "confidence_threshold": 0.6, "stop_loss_pips": 5.0, "take_profit_pips": 5.0},
+            "live_trading": {"exit_management": {"mode": "disabled"}},
+        }
+        backtester = Backtester(config)
+        prepared_data = pd.DataFrame(
+            {
+                "Open": [100.0, 100.0],
+                "High": [100.0, 106.0],
+                "Low": [100.0, 94.0],
+                "Close": [100.0, 100.0],
+                "Volume": [10.0, 10.0],
+                "feat1": [0.1, 0.2],
+                "feat2": [0.4, 0.5],
+            },
+            index=pd.date_range("2025-01-01", periods=2, freq="5min"),
+        )
+        predictions = pd.DataFrame(
+            {"is_valid": [True, True], "prediction": [1.0, 1.0], "confidence": [0.8, 0.8]},
+            index=prepared_data.index,
+        )
+
+        result = backtester.run_backtest(prepared_data, StubAIManager(predictions), ["feat1", "feat2"])
+
+        self.assertEqual(result.total_trades, 1)
+        self.assertEqual(backtester.trades[0].reason, "stop_loss")
+        self.assertEqual(backtester.trades[0].exit_trigger_price, 95.0)
 
 
 if __name__ == "__main__":

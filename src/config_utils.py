@@ -116,6 +116,18 @@ def get_default_config() -> Dict[str, Any]:
             "signal_confidence_threshold": 0.60,
             "startup_candle_buffer": 150,
             "stale_candle_multiplier": 4,
+            "presets": {},
+            "exit_management": {
+                "mode": "trailing_stop",
+                "break_even_enabled": True,
+                "break_even_trigger_pips": 35.0,
+                "break_even_offset_pips": 2.0,
+                "trailing_enabled": True,
+                "trailing_activation_pips": 60.0,
+                "trailing_distance_pips": 25.0,
+                "trailing_step_pips": 10.0,
+                "keep_take_profit": True,
+            },
         },
     }
 
@@ -237,6 +249,11 @@ def validate_config(config: Dict[str, Any]) -> None:
     _validate_numeric(config, "live_trading.signal_confidence_threshold", min_value=0, max_value=1, errors=errors)
     _validate_numeric(config, "live_trading.startup_candle_buffer", min_value=10, errors=errors, integer=True)
     _validate_numeric(config, "live_trading.stale_candle_multiplier", min_value=1, errors=errors, integer=True)
+    _validate_numeric(config, "live_trading.exit_management.break_even_trigger_pips", min_value=0, errors=errors)
+    _validate_numeric(config, "live_trading.exit_management.break_even_offset_pips", min_value=0, errors=errors)
+    _validate_numeric(config, "live_trading.exit_management.trailing_activation_pips", min_value=0, errors=errors)
+    _validate_numeric(config, "live_trading.exit_management.trailing_distance_pips", min_value=0, errors=errors)
+    _validate_numeric(config, "live_trading.exit_management.trailing_step_pips", min_value=0, errors=errors)
     _validate_numeric(config, "risk_management.max_daily_loss", min_value=0, errors=errors)
     _validate_numeric(config, "risk_management.max_positions", min_value=1, errors=errors, integer=True)
     _validate_numeric(config, "risk_management.risk_per_trade", min_value=0, max_value=1, errors=errors)

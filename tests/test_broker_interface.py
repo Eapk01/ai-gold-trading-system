@@ -27,6 +27,7 @@ class FakeMT5:
     TRADE_ACTION_DEAL = 1
     TRADE_ACTION_PENDING = 5
     TRADE_ACTION_REMOVE = 6
+    TRADE_ACTION_SLTP = 7
     ORDER_TIME_GTC = 0
     ORDER_FILLING_IOC = 1
     ORDER_TYPE_BUY = 0
@@ -68,8 +69,15 @@ class FakeMT5:
     def history_orders_get(self, ticket):
         return []
 
-    def positions_get(self):
-        return [SimpleNamespace(_asdict=lambda: {"symbol": "XAUUSD", "volume": 0.01})]
+    def positions_get(self, ticket=None):
+        position = SimpleNamespace(
+            symbol="XAUUSD",
+            volume=0.01,
+            type=self.ORDER_TYPE_BUY,
+            sl=1990.0,
+            tp=2010.0,
+        )
+        return [position]
 
     def account_info(self):
         return SimpleNamespace(_asdict=lambda: {"login": 123456, "balance": 10000.0})
@@ -106,6 +114,24 @@ class BrokerInterfaceTests(unittest.TestCase):
         self.assertTrue(result["success"])
         self.assertEqual(result["order_id"], "123456")
         self.assertEqual(result["status"], "filled")
+
+    @patch("src.broker_interface._import_metatrader5", return_value=FakeMT5())
+    def test_exness_broker_updates_position_protection(self, _mock_mt5):
+        config = create_broker_config(
+            broker_type="exness",
+            login="123456",
+            password="secret",
+            server="Exness-MT5Real",
+        )
+        broker = ExnessBroker(config)
+
+        self.assertTrue(broker.connect())
+        result = broker.update_position_protection("77", stop_loss=1995.0)
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["position_ticket"], "77")
+        self.assertEqual(result["stop_loss"], 1995.0)
+        self.assertEqual(result["take_profit"], 2010.0)
 
     def test_broker_manager_registers_exness(self):
         manager = BrokerManager()

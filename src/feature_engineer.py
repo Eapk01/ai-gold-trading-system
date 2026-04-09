@@ -390,10 +390,14 @@ class FeatureEngineer:
             if constant_features:
                 X = X.drop(columns=constant_features)
                 logger.info(f"移除常数特征: {len(constant_features)} 个")
+
+            if X.empty:
+                logger.warning("移除常数特征后没有可用的特征列")
+                return []
             
             if method == 'correlation':
                 # 基于相关性的特征选择
-                correlations = abs(X.corrwith(y)).sort_values(ascending=False)
+                correlations = abs(X.corrwith(y)).dropna().sort_values(ascending=False)
                 selected_features = correlations.head(max_features).index.tolist()
                 
             elif method == 'variance':
@@ -403,7 +407,7 @@ class FeatureEngineer:
             
             else:
                 # 默认使用相关性
-                correlations = abs(X.corrwith(y)).sort_values(ascending=False)
+                correlations = abs(X.corrwith(y)).dropna().sort_values(ascending=False)
                 selected_features = correlations.head(max_features).index.tolist()
             
             logger.info(f"特征选择完成 - 选择了 {len(selected_features)} 个特征")

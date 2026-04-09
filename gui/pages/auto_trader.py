@@ -26,12 +26,134 @@ def render(service: ResearchAppService) -> None:
     snapshot_result = service.get_trading_snapshot()
     snapshot = snapshot_result.get("data") or {}
     events = service.get_auto_trader_events(limit=25).get("data") or []
+    settings_catalog = service.get_auto_trader_settings_catalog().get("data") or {}
 
     page_result = st.session_state.get("auto_trader_result")
     if page_result:
         show_response(page_result)
         st.session_state.auto_trader_result = None
 
+    settings_tab, monitor_tab = st.tabs(["Settings", "Monitor"])
+    with settings_tab:
+        _render_settings_tab(service, status, settings_catalog)
+    with monitor_tab:
+        _render_monitor_tab(service, status, snapshot, events)
+
+
+def _render_settings_tab(service: ResearchAppService, status: dict[str, Any], catalog: dict[str, Any]) -> None:
+    _initialize_settings_form_state(catalog)
+
+    presets = list(catalog.get("built_in_presets") or []) + list(catalog.get("custom_presets") or [])
+    preset_options = {preset["id"]: preset for preset in presets}
+    selected_default = st.session_state.get("auto_trader_form_selected_preset_id") or catalog.get("selected_preset_id")
+    selected_preset_id = st.selectbox(
+        "Preset",
+        options=list(preset_options.keys()),
+        index=_safe_option_index(list(preset_options.keys()), selected_default),
+        format_func=lambda preset_id: preset_options[preset_id]["display_name"],
+        key="auto_trader_form_selected_preset_id",
+    )
+    if selected_preset_id and selected_preset_id != st.session_state.get("auto_trader_form_applied_preset_id"):
+        _load_form_values_into_session((preset_options.get(selected_preset_id) or {}).get("values") or {})
+        st.session_state.auto_trader_form_applied_preset_id = selected_preset_id
+
+    selected_preset = preset_options.get(selected_preset_id)
+    if selected_preset:
+        st.caption(selected_preset.get("description", ""))
+
+    if bool(status.get("running")):
+        st.warning("Auto Trader is running. Applied or saved setting changes will take effect after restart.")
+
+    current_values = _get_form_values()
+    differs_from_session = current_values != (catalog.get("session_values") or {})
+    differs_from_defaults = current_values != (catalog.get("saved_values") or {})
+    dirty_bits = []
+    if differs_from_session:
+        dirty_bits.append("differs from session settings")
+    if differs_from_defaults:
+        dirty_bits.append("differs from saved defaults")
+    if dirty_bits:
+        st.caption("Current form state: " + " | ".join(dirty_bits))
+    else:
+        st.caption("Current form state matches the active session settings.")
+
+    entry_col, exit_col = st.columns(2)
+    with entry_col:
+        st.subheader("Entry / Risk")
+        st.number_input("Stop Loss", min_value=0.01, step=0.5, key="auto_trader_form_stop_loss_pips")
+        st.number_input("Take Profit", min_value=0.01, step=0.5, key="auto_trader_form_take_profit_pips")
+        st.number_input(
+            "Signal Confidence Threshold",
+            min_value=0.0,
+            max_value=1.0,
+            step=0.01,
+            key="auto_trader_form_signal_confidence_threshold",
+        )
+    with exit_col:
+        st.subheader("Exit Management")
+        st.selectbox(
+            "Exit Mode",
+            options=["disabled", "trailing_stop"],
+            key="auto_trader_form_exit_management_mode",
+        )
+        st.checkbox("Break-even Enabled", key="auto_trader_form_break_even_enabled")
+        st.number_input("Break-even Trigger", min_value=0.0, step=0.5, key="auto_trader_form_break_even_trigger_pips")
+        st.number_input("Break-even Offset", min_value=0.0, step=0.1, key="auto_trader_form_break_even_offset_pips")
+        st.checkbox("Trailing Enabled", key="auto_trader_form_trailing_enabled")
+        st.number_input("Trailing Activation", min_value=0.0, step=0.5, key="auto_trader_form_trailing_activation_pips")
+        st.number_input("Trailing Distance", min_value=0.0, step=0.5, key="auto_trader_form_trailing_distance_pips")
+        st.number_input("Trailing Step", min_value=0.0, step=0.1, key="auto_trader_form_trailing_step_pips")
+        st.checkbox("Keep Take Profit", key="auto_trader_form_keep_take_profit")
+
+    preset_name = st.text_input(
+        "Custom Preset Name",
+        value=st.session_state.get("auto_trader_form_preset_name", ""),
+        key="auto_trader_form_preset_name",
+        help="Used when saving the current form as a custom preset.",
+    )
+
+    action_cols = st.columns(4)
+    with action_cols[0]:
+        if st.button("Apply For This Session", use_container_width=True):
+            validation_error = _validate_form_values(current_values)
+            if validation_error:
+                st.session_state.auto_trader_result = {"success": False, "message": validation_error}
+            else:
+                st.session_state.auto_trader_result = service.apply_auto_trader_settings(current_values)
+            st.rerun()
+    with action_cols[1]:
+        if st.button("Save As Defaults", use_container_width=True):
+            validation_error = _validate_form_values(current_values)
+            if validation_error:
+                st.session_state.auto_trader_result = {"success": False, "message": validation_error}
+            else:
+                st.session_state.auto_trader_result = service.save_auto_trader_settings_as_defaults(current_values)
+            st.rerun()
+    with action_cols[2]:
+        if st.button("Save As Preset", use_container_width=True):
+            validation_error = _validate_form_values(current_values)
+            if validation_error:
+                st.session_state.auto_trader_result = {"success": False, "message": validation_error}
+            elif not preset_name.strip():
+                st.session_state.auto_trader_result = {"success": False, "message": "Preset name is required"}
+            else:
+                st.session_state.auto_trader_result = service.save_auto_trader_preset(preset_name, current_values)
+            st.rerun()
+    with action_cols[3]:
+        delete_disabled = not bool(selected_preset and selected_preset.get("kind") == "custom")
+        if st.button("Delete Preset", use_container_width=True, disabled=delete_disabled):
+            st.session_state.auto_trader_result = service.delete_auto_trader_preset(selected_preset_id)
+            st.session_state.auto_trader_form_selected_preset_id = catalog.get("selected_preset_id") or "current_defaults"
+            st.session_state.auto_trader_form_applied_preset_id = None
+            st.rerun()
+
+
+def _render_monitor_tab(
+    service: ResearchAppService,
+    status: dict[str, Any],
+    snapshot: dict[str, Any],
+    events: list[dict[str, Any]],
+) -> None:
     _render_runtime_summary(service, status)
 
     controls_col, status_col = st.columns([1, 2])
@@ -47,6 +169,10 @@ def render(service: ResearchAppService) -> None:
         st.caption(
             f"Latest action: `{status.get('latest_action', 'idle')}` | "
             f"Last processed candle: `{status.get('last_processed_candle') or 'None'}`"
+        )
+        st.caption(
+            f"Protection manager: `{status.get('exit_management_mode', 'disabled')}` | "
+            f"Last protection action: `{status.get('last_protection_action', 'idle')}`"
         )
         if latest_signal:
             st.caption(
@@ -75,7 +201,7 @@ def render(service: ResearchAppService) -> None:
 
     render_subtle_divider()
     st.subheader("Managed Positions")
-    _render_positions(snapshot.get("positions") or [], service.config["trading"]["symbol"])
+    _render_positions(snapshot.get("positions") or [], status.get("symbol") or service.config["trading"]["symbol"])
 
     render_subtle_divider()
     st.subheader("Recent Events")
@@ -108,12 +234,85 @@ def _render_runtime_summary(service: ResearchAppService, status: dict[str, Any])
         {"Field": "Last Candle Age", "Value": _format_age(status.get("last_candle_age_seconds"))},
         {"Field": "History Rows", "Value": status.get("history_rows", 0)},
         {"Field": "Confidence Threshold", "Value": status.get("confidence_threshold")},
+        {"Field": "Exit Management", "Value": status.get("exit_management_mode") or "disabled"},
+        {"Field": "Last Managed Stop", "Value": status.get("last_managed_stop_loss")},
         {"Field": "Active Poll Interval", "Value": f"{status.get('active_poll_interval_seconds', 0)}s"},
         {"Field": "Inactive Poll Interval", "Value": f"{status.get('inactive_poll_interval_seconds', 0)}s"},
         {"Field": "Loaded Feature Count", "Value": status.get("loaded_feature_count", 0)},
     ]
     rows = [{"Field": row["Field"], "Value": _stringify_value(row["Value"])} for row in rows]
     st.table(pd.DataFrame(rows))
+
+
+def _initialize_settings_form_state(catalog: dict[str, Any]) -> None:
+    defaults = dict(catalog.get("session_values") or {})
+    for field_name, value in defaults.items():
+        session_key = f"auto_trader_form_{field_name}"
+        if session_key not in st.session_state:
+            st.session_state[session_key] = value
+    if "auto_trader_form_selected_preset_id" not in st.session_state:
+        st.session_state.auto_trader_form_selected_preset_id = catalog.get("selected_preset_id") or "current_defaults"
+    if "auto_trader_form_applied_preset_id" not in st.session_state:
+        st.session_state.auto_trader_form_applied_preset_id = catalog.get("selected_preset_id")
+    if "auto_trader_form_preset_name" not in st.session_state:
+        st.session_state.auto_trader_form_preset_name = ""
+
+
+def _load_form_values_into_session(values: dict[str, Any]) -> None:
+    for field_name, value in values.items():
+        st.session_state[f"auto_trader_form_{field_name}"] = value
+
+
+def _get_form_values() -> dict[str, Any]:
+    field_names = [
+        "stop_loss_pips",
+        "take_profit_pips",
+        "signal_confidence_threshold",
+        "exit_management_mode",
+        "break_even_enabled",
+        "break_even_trigger_pips",
+        "break_even_offset_pips",
+        "trailing_enabled",
+        "trailing_activation_pips",
+        "trailing_distance_pips",
+        "trailing_step_pips",
+        "keep_take_profit",
+    ]
+    return {field_name: st.session_state.get(f"auto_trader_form_{field_name}") for field_name in field_names}
+
+
+def _validate_form_values(values: dict[str, Any]) -> str | None:
+    try:
+        stop_loss = float(values.get("stop_loss_pips", 0.0))
+        take_profit = float(values.get("take_profit_pips", 0.0))
+        confidence = float(values.get("signal_confidence_threshold", 0.0))
+        break_even_trigger = float(values.get("break_even_trigger_pips", 0.0))
+        break_even_offset = float(values.get("break_even_offset_pips", 0.0))
+        trailing_activation = float(values.get("trailing_activation_pips", 0.0))
+        trailing_distance = float(values.get("trailing_distance_pips", 0.0))
+        trailing_step = float(values.get("trailing_step_pips", 0.0))
+    except (TypeError, ValueError):
+        return "Settings contain an invalid numeric value"
+
+    if stop_loss <= 0:
+        return "Stop loss must be greater than zero"
+    if take_profit <= 0:
+        return "Take profit must be greater than zero"
+    if confidence < 0 or confidence > 1:
+        return "Signal confidence threshold must be between 0 and 1"
+    if min(break_even_trigger, break_even_offset, trailing_activation, trailing_distance, trailing_step) < 0:
+        return "Exit-management values must be zero or greater"
+    exit_mode = str(values.get("exit_management_mode", "disabled"))
+    if exit_mode not in {"disabled", "trailing_stop"}:
+        return "Exit mode must be disabled or trailing_stop"
+    return None
+
+
+def _safe_option_index(options: list[str], selected: str | None) -> int:
+    try:
+        return options.index(selected) if selected in options else 0
+    except ValueError:
+        return 0
 
 
 def _render_positions(positions: list[dict[str, Any]], managed_symbol: str) -> None:
@@ -131,6 +330,8 @@ def _render_positions(positions: list[dict[str, Any]], managed_symbol: str) -> N
                 "Volume": float(position.get("volume", 0.0)),
                 "Open Price": float(position.get("price_open", 0.0)),
                 "Current Price": float(position.get("price_current", 0.0)),
+                "Stop Loss": float(position.get("sl", 0.0)),
+                "Take Profit": float(position.get("tp", 0.0)),
                 "Profit": float(position.get("profit", 0.0)),
             }
         )
