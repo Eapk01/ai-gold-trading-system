@@ -75,6 +75,29 @@ def render_backtest_summary(summary: dict) -> None:
         detail_items.append(("Equity Curve Points", summary.get("equity_curve_points"), "integer"))
 
     render_key_value_summary(detail_items)
+
+    baseline_summary = summary.get("baseline_summary") or {}
+    if baseline_summary:
+        st.caption("Baseline Comparison")
+        baseline_items = [
+            ("Baseline Trades", baseline_summary.get("total_trades"), "integer"),
+            ("Baseline Win Rate", baseline_summary.get("win_rate"), "percent"),
+            ("Baseline PnL", baseline_summary.get("total_pnl"), "currency"),
+            ("Baseline Sharpe", baseline_summary.get("sharpe_ratio"), "float"),
+        ]
+        render_key_value_summary(baseline_items)
+
+    comparison_summary = summary.get("comparison_summary") or {}
+    if comparison_summary:
+        comparison_items = [
+            ("Baseline Name", comparison_summary.get("baseline_name"), "auto"),
+            ("Curve Rows", comparison_summary.get("equity_curve_rows"), "integer"),
+            ("PnL vs Baseline", comparison_summary.get("model_minus_baseline_pnl"), "currency"),
+            ("Win Rate vs Baseline", comparison_summary.get("model_minus_baseline_win_rate"), "percent"),
+            ("Sharpe vs Baseline", comparison_summary.get("model_minus_baseline_sharpe"), "float"),
+        ]
+        render_key_value_summary(comparison_items)
+
     render_raw_expander("Raw details", summary)
 
 
@@ -325,6 +348,8 @@ def render_artifact_summary(artifacts: dict, *, saved_model_name: str | None = N
         ("Model Path", artifacts.get("model_path"), "auto"),
         ("Report File", artifacts.get("report_file"), "auto"),
         ("Chart File", artifacts.get("chart_file"), "auto"),
+        ("Comparison Chart File", artifacts.get("comparison_chart_file"), "auto"),
+        ("Comparison Curve File", artifacts.get("comparison_curve_file"), "auto"),
         ("Trade Summary File", artifacts.get("trade_summary_file"), "auto"),
         ("Evaluation Rows File", artifacts.get("evaluation_rows_file"), "auto"),
         ("Prediction Rows File", artifacts.get("prediction_rows_file"), "auto"),

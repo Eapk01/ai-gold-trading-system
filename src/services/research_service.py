@@ -522,19 +522,31 @@ class ResearchWorkflowService:
             return self.service._response(False, "Please prepare the data first")
 
         try:
-            result = self.service.backtester.run_backtest(
+            comparison = self.service.backtester.run_backtest_comparison(
                 self.service.feature_data,
                 runtime_predictor,
                 runtime_feature_columns,
+                baseline_name="persistence",
+                model_name="model",
             )
 
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             result_file = f"reports/backtest_result_{timestamp}.json"
             chart_file = f"reports/backtest_chart_{timestamp}.png"
+            comparison_chart_file = f"reports/backtest_comparison_{timestamp}.png"
+            comparison_curve_file = f"reports/backtest_comparison_curve_{timestamp}.csv"
             summary_file = ""
 
-            self.service.backtester.save_results(result, result_file)
-            self.service.backtester.plot_results(result, chart_file)
+            self.service.backtester.save_results(comparison.model_result, result_file)
+            self.service.backtester.plot_results(comparison.model_result, chart_file)
+            self.service.backtester.plot_comparison_results(comparison, comparison_chart_file)
+            self.service.backtester.save_comparison_curve_data(comparison, comparison_curve_file)
+
+            self.service.backtester.run_backtest(
+                self.service.feature_data,
+                runtime_predictor,
+                runtime_feature_columns,
+            )
 
             trade_summary = self.service.backtester.get_trade_summary()
             if not trade_summary.empty:
@@ -542,15 +554,30 @@ class ResearchWorkflowService:
                 trade_summary.to_csv(summary_file, index=False, encoding="utf-8-sig")
                 logger.info(f"Trade summary saved: {summary_file}")
 
-            result_summary = self.service._serialize_backtest_result(result)
+            result_summary = self.service._serialize_backtest_result(comparison.model_result)
+            baseline_summary = self.service._serialize_backtest_result(comparison.baseline_result)
+            comparison_summary = {
+                "baseline_name": comparison.baseline_name,
+                "model_name": comparison.model_name,
+                "equity_curve_rows": len(comparison.equity_curve_data),
+                "model_minus_baseline_pnl": result_summary.get("total_pnl", 0.0) - baseline_summary.get("total_pnl", 0.0),
+                "model_minus_baseline_win_rate": result_summary.get("win_rate", 0.0) - baseline_summary.get("win_rate", 0.0),
+                "model_minus_baseline_sharpe": result_summary.get("sharpe_ratio", 0.0) - baseline_summary.get("sharpe_ratio", 0.0),
+            }
             artifacts = {
                 "report_file": result_file,
                 "chart_file": chart_file,
+                "comparison_chart_file": comparison_chart_file,
+                "comparison_curve_file": comparison_curve_file,
             }
             if summary_file:
                 artifacts["trade_summary_file"] = summary_file
 
-            self.service.latest_backtest_summary = result_summary
+            self.service.latest_backtest_summary = {
+                **result_summary,
+                "baseline_summary": baseline_summary,
+                "comparison_summary": comparison_summary,
+            }
             self.service.latest_backtest_artifacts = artifacts
 
             return self.service._response(
@@ -558,6 +585,8 @@ class ResearchWorkflowService:
                 "Backtest completed successfully",
                 data={
                     "summary": result_summary,
+                    "baseline_summary": baseline_summary,
+                    "comparison_summary": comparison_summary,
                     "trade_summary_rows": len(trade_summary),
                 },
                 artifacts=artifacts,

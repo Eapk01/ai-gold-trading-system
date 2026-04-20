@@ -40,6 +40,6 @@ def render(service: ResearchAppService) -> None:
             st.subheader("Artifacts")
             render_artifact_summary(artifacts)
 
-            chart_file = artifacts.get("chart_file")
+            chart_file = artifacts.get("comparison_chart_file") or artifacts.get("chart_file")
             if chart_file and Path(chart_file).exists():
                 st.image(str(Path(chart_file)), caption=Path(chart_file).name, use_container_width=True)

@@ -2,8 +2,8 @@ trading:
   symbol: XAUUSDm
   timeframe: 5m
   position_size: 0.01
-  stop_loss_pips: 50
-  take_profit_pips: 100
+  stop_loss_pips: 50.0
+  take_profit_pips: 100.0
   confidence_threshold: 0.6
   max_risk: 30
 data_sources:
@@ -141,11 +141,11 @@ live_trading:
   presets: {}
   exit_management:
     mode: trailing_stop
-    break_even_enabled: true
+    break_even_enabled: false
     break_even_trigger_pips: 8.0
     break_even_offset_pips: 1.0
     trailing_enabled: true
-    trailing_activation_pips: 12.0
+    trailing_activation_pips: 29.0
     trailing_distance_pips: 5.0
     trailing_step_pips: 2.0
     keep_take_profit: true

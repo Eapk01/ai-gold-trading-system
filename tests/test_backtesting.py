@@ -161,6 +161,60 @@ class BacktestingRefactorTests(unittest.TestCase):
 
         self.assertEqual(result.total_trades, 0)
 
+    def test_persistence_baseline_predictions_use_only_past_realized_moves(self):
+        backtester = Backtester(self.config)
+        prepared_data = pd.DataFrame(
+            {
+                "Close": [100.0, 101.0, 99.0, 102.0],
+            },
+            index=pd.date_range("2025-01-01", periods=4, freq="5min"),
+        )
+
+        baseline_predictions = backtester.build_persistence_baseline_predictions(prepared_data)
+
+        self.assertFalse(bool(baseline_predictions.iloc[0]["is_valid"]))
+        self.assertFalse(bool(baseline_predictions.iloc[1]["is_valid"]))
+        self.assertTrue(bool(baseline_predictions.iloc[2]["is_valid"]))
+        self.assertEqual(float(baseline_predictions.iloc[2]["prediction"]), 1.0)
+        self.assertEqual(float(baseline_predictions.iloc[3]["prediction"]), 0.0)
+
+    def test_run_backtest_comparison_returns_curve_data_for_model_and_baseline(self):
+        backtester = Backtester(self.config)
+        prepared_data = pd.DataFrame(
+            {
+                "Open": [100.0, 101.0, 100.0, 102.0],
+                "High": [101.0, 102.0, 101.0, 103.0],
+                "Low": [99.0, 100.0, 99.0, 101.0],
+                "Close": [100.0, 101.0, 100.0, 102.0],
+                "Volume": [10.0, 10.0, 10.0, 10.0],
+                "feat1": [0.1, 0.2, 0.3, 0.4],
+                "feat2": [0.4, 0.5, 0.6, 0.7],
+            },
+            index=pd.date_range("2025-01-01", periods=4, freq="5min"),
+        )
+        predictions = pd.DataFrame(
+            {
+                "is_valid": [True, True, True, True],
+                "prediction": [1.0, 1.0, 0.0, 1.0],
+                "confidence": [0.9, 0.9, 0.9, 0.9],
+            },
+            index=prepared_data.index,
+        )
+
+        comparison = backtester.run_backtest_comparison(
+            prepared_data,
+            StubAIManager(predictions),
+            ["feat1", "feat2"],
+        )
+
+        self.assertEqual(comparison.baseline_name, "persistence")
+        self.assertIn("model_equity", comparison.equity_curve_data.columns)
+        self.assertIn("baseline_equity", comparison.equity_curve_data.columns)
+        self.assertIn("model_return_pct", comparison.equity_curve_data.columns)
+        self.assertGreater(len(comparison.equity_curve_data), 0)
+        self.assertIsNotNone(comparison.model_result.equity_curve)
+        self.assertIsNotNone(comparison.baseline_result.equity_curve)
+
     def test_run_backtest_does_not_reenter_on_same_candle_after_close(self):
         config = {
             "ai_model": {

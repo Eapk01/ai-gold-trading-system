@@ -65,6 +65,17 @@ class BacktestResult:
     equity_curve: List[float] = None
 
 
+@dataclass
+class BacktestComparison:
+    """Structured comparison between a model backtest and a baseline backtest."""
+
+    model_name: str
+    baseline_name: str
+    model_result: BacktestResult
+    baseline_result: BacktestResult
+    equity_curve_data: pd.DataFrame
+
+
 class Backtester:
     """Backtester with a strict strategy validation workflow."""
     
@@ -481,6 +492,112 @@ class Backtester:
         else:
             drawdown = (self.peak_capital - total_equity) / self.peak_capital
             self.max_drawdown = max(self.max_drawdown, drawdown)
+
+    def _build_prediction_frame(
+        self,
+        feature_data: pd.DataFrame,
+        runtime_predictor,
+        selected_features: List[str],
+    ) -> pd.DataFrame:
+        missing_features = [feature for feature in selected_features if feature not in feature_data.columns]
+        if missing_features:
+            raise ValueError(f"Prepared feature data is missing selected features: {missing_features}")
+
+        if hasattr(runtime_predictor, "predict_batch"):
+            prediction_frame = runtime_predictor.predict_batch(feature_data)
+        else:
+            prediction_frame = runtime_predictor.predict_ensemble_batch(feature_data, feature_columns=selected_features)
+
+        if "is_valid" not in prediction_frame.columns:
+            raise ValueError("Prediction frame is missing the required 'is_valid' column")
+        if int(prediction_frame["is_valid"].sum()) == 0:
+            raise ValueError("No valid rows remain for backtesting after feature filtering")
+
+        return prediction_frame.reindex(feature_data.index)
+
+    def build_persistence_baseline_predictions(self, feature_data: pd.DataFrame) -> pd.DataFrame:
+        """Create a persistence baseline using the previous realized close-to-close move."""
+        if "Close" not in feature_data.columns:
+            raise ValueError("Prepared feature data is missing the Close column required for baseline comparison")
+
+        close_series = pd.to_numeric(feature_data["Close"], errors="coerce")
+        price_diff = close_series.diff()
+        realized_move = pd.Series(
+            np.where(price_diff.isna(), np.nan, np.where(price_diff >= 0, 1.0, 0.0)),
+            index=feature_data.index,
+            dtype="float64",
+        )
+        baseline_prediction = realized_move.shift(1)
+        is_valid = baseline_prediction.notna()
+
+        return pd.DataFrame(
+            {
+                "is_valid": is_valid,
+                "prediction": baseline_prediction.where(is_valid, np.nan),
+                "confidence": np.where(is_valid, 1.0, 0.0),
+                "probability": baseline_prediction.where(is_valid, np.nan),
+            },
+            index=feature_data.index,
+        )
+
+    def _run_backtest_from_predictions(
+        self,
+        feature_data: pd.DataFrame,
+        prediction_frame: pd.DataFrame,
+    ) -> BacktestResult:
+        self.reset()
+
+        for i, (timestamp, row) in enumerate(feature_data.iterrows()):
+            try:
+                current_data = {
+                    'timestamp': timestamp,
+                    'open': row.get('Open', 0),
+                    'high': row.get('High', 0),
+                    'low': row.get('Low', 0),
+                    'close': row.get('Close', 0),
+                    'volume': row.get('Volume', 0),
+                }
+
+                closed_this_bar = self._simulate_open_positions_on_bar(current_data)
+                if closed_this_bar:
+                    self.update_equity(current_data)
+                    continue
+
+                prediction_row = prediction_frame.loc[timestamp]
+                if not bool(prediction_row['is_valid']):
+                    self.update_equity(current_data)
+                    continue
+
+                prediction = int(prediction_row['prediction'])
+                confidence = float(prediction_row['confidence'])
+                signal = self._generate_signal(prediction, current_data, confidence)
+
+                if signal:
+                    if len(self.current_positions) == 0:
+                        self.open_position(signal, current_data)
+                    elif signal.get('action') == 'close':
+                        for trade_id in list(self.current_positions.keys()):
+                            self.close_position(trade_id, current_data, 'signal')
+
+                self.update_equity(current_data)
+
+                if i % 1000 == 0:
+                    progress = (i / len(feature_data)) * 100
+                    logger.info(f"Backtest progress: {progress:.1f}% ({i}/{len(feature_data)})")
+
+            except Exception as e:
+                logger.debug(f"Backtest loop error: {e}")
+                continue
+
+        final_data = {
+            'timestamp': feature_data.index[-1],
+            'close': feature_data['Close'].iloc[-1]
+        }
+
+        for trade_id in list(self.current_positions.keys()):
+            self.close_position(trade_id, final_data, 'backtest_end')
+
+        return self._calculate_results()
     
     def run_backtest(self, prepared_data: pd.DataFrame, runtime_predictor,
                     selected_features: List[str]) -> BacktestResult:
@@ -506,6 +623,11 @@ class Backtester:
         if feature_data.empty:
             logger.error("Prepared feature data is empty")
             return BacktestResult()
+
+        prediction_frame = self._build_prediction_frame(feature_data, runtime_predictor, selected_features)
+        result = self._run_backtest_from_predictions(feature_data, prediction_frame)
+        logger.info("Backtest complete")
+        return result
 
         missing_features = [feature for feature in selected_features if feature not in feature_data.columns]
         if missing_features:
@@ -581,6 +703,58 @@ class Backtester:
         
         logger.info("Backtest complete")
         return result
+
+    def run_backtest_comparison(
+        self,
+        prepared_data: pd.DataFrame,
+        runtime_predictor,
+        selected_features: List[str],
+        *,
+        baseline_name: str = "persistence",
+        model_name: str = "model",
+    ) -> BacktestComparison:
+        """Run the model backtest and a baseline backtest on the same prepared dataset."""
+        feature_data = prepared_data.sort_index().copy()
+        if feature_data.empty:
+            raise ValueError("Prepared feature data is empty")
+
+        model_prediction_frame = self._build_prediction_frame(feature_data, runtime_predictor, selected_features)
+        model_result = self._run_backtest_from_predictions(feature_data, model_prediction_frame)
+
+        normalized_baseline_name = str(baseline_name or "persistence").strip().lower()
+        if normalized_baseline_name != "persistence":
+            raise ValueError(f"Unsupported baseline comparison: {baseline_name}")
+        baseline_prediction_frame = self.build_persistence_baseline_predictions(feature_data)
+        if int(baseline_prediction_frame["is_valid"].sum()) == 0:
+            raise ValueError("No valid rows remain for the baseline comparison backtest")
+        baseline_result = self._run_backtest_from_predictions(feature_data, baseline_prediction_frame)
+
+        model_curve = list(model_result.equity_curve or [])
+        baseline_curve = list(baseline_result.equity_curve or [])
+        row_count = min(len(feature_data.index), len(model_curve), len(baseline_curve))
+        equity_curve_data = pd.DataFrame(
+            {
+                "timestamp": feature_data.index[:row_count],
+                "model_equity": model_curve[:row_count],
+                "baseline_equity": baseline_curve[:row_count],
+                "model_return_pct": [
+                    ((equity / self.initial_capital) - 1.0) if self.initial_capital else 0.0
+                    for equity in model_curve[:row_count]
+                ],
+                "baseline_return_pct": [
+                    ((equity / self.initial_capital) - 1.0) if self.initial_capital else 0.0
+                    for equity in baseline_curve[:row_count]
+                ],
+            }
+        )
+
+        return BacktestComparison(
+            model_name=str(model_name or "model"),
+            baseline_name=normalized_baseline_name,
+            model_result=model_result,
+            baseline_result=baseline_result,
+            equity_curve_data=equity_curve_data,
+        )
     
     def _generate_signal(self, prediction: int, current_data: Dict,
                         confidence: float) -> Optional[Dict]:
@@ -860,6 +1034,54 @@ class Backtester:
             
         except Exception as e:
             logger.error(f"Failed to plot backtest results: {e}")
+
+    def plot_comparison_results(self, comparison: BacktestComparison, save_path: str | None = None):
+        """Plot a poster-friendly model-vs-baseline equity comparison chart."""
+        try:
+            if plt is None:
+                raise RuntimeError("matplotlib is not installed; cannot plot comparison results")
+
+            curve_data = comparison.equity_curve_data
+            if curve_data.empty:
+                raise ValueError("Comparison equity curve data is empty")
+
+            fig, ax = plt.subplots(figsize=(12, 6))
+            ax.plot(curve_data["timestamp"], curve_data["model_equity"], label=comparison.model_name.title(), linewidth=2.2)
+            ax.plot(
+                curve_data["timestamp"],
+                curve_data["baseline_equity"],
+                label=comparison.baseline_name.replace("_", " ").title(),
+                linewidth=2.0,
+                linestyle="--",
+            )
+            ax.axhline(y=self.initial_capital, color="gray", linestyle=":", linewidth=1.2, label="Initial Capital")
+            ax.set_title("Backtest Equity Curve Comparison")
+            ax.set_xlabel("Time")
+            ax.set_ylabel("Equity ($)")
+            ax.grid(True, alpha=0.3)
+            ax.legend()
+            fig.autofmt_xdate()
+            plt.tight_layout()
+
+            if save_path:
+                plt.savefig(save_path, dpi=300, bbox_inches='tight')
+                logger.info(f"Backtest comparison chart saved: {save_path}")
+
+            plt.close(fig)
+
+        except Exception as e:
+            logger.error(f"Failed to plot comparison results: {e}")
+
+    def save_comparison_curve_data(self, comparison: BacktestComparison, file_path: str):
+        """Persist model-vs-baseline curve data for poster/chart tooling."""
+        try:
+            curve_data = comparison.equity_curve_data.copy()
+            if "timestamp" in curve_data.columns:
+                curve_data["timestamp"] = pd.to_datetime(curve_data["timestamp"], errors="coerce").dt.strftime("%Y-%m-%d %H:%M:%S")
+            curve_data.to_csv(file_path, index=False, encoding="utf-8-sig")
+            logger.info(f"Backtest comparison curve data saved: {file_path}")
+        except Exception as e:
+            logger.error(f"Failed to save comparison curve data: {e}")
     
     def save_results(self, result: BacktestResult, file_path: str):
         """
