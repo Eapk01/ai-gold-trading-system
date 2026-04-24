@@ -626,6 +626,7 @@ class AutoTraderSettingsTests(unittest.TestCase):
             },
             "live_trading": {
                 "signal_confidence_threshold": 0.6,
+                "initial_stop_loss_enabled": True,
                 "presets": {},
                 "exit_management": {
                     "mode": "trailing_stop",
@@ -671,6 +672,7 @@ class AutoTraderSettingsTests(unittest.TestCase):
         result = workflow.apply_auto_trader_settings(
             {
                 "position_size": 0.1,
+                "initial_stop_loss_enabled": False,
                 "stop_loss_pips": 20.0,
                 "take_profit_pips": 35.0,
                 "signal_confidence_threshold": 0.58,
@@ -706,6 +708,7 @@ class AutoTraderSettingsTests(unittest.TestCase):
         self.assertEqual(service._build_called, 1)
         effective = service._get_effective_runtime_config()
         self.assertEqual(effective["trading"]["position_size"], 0.1)
+        self.assertFalse(effective["live_trading"]["initial_stop_loss_enabled"])
         self.assertEqual(effective["trading"]["stop_loss_pips"], 20.0)
         self.assertEqual(effective["live_trading"]["exit_management"]["trailing_distance_pips"], 3.5)
 
@@ -714,6 +717,7 @@ class AutoTraderSettingsTests(unittest.TestCase):
         result = workflow.save_auto_trader_settings_as_defaults(
             {
                 "position_size": 0.2,
+                "initial_stop_loss_enabled": False,
                 "stop_loss_pips": 15.0,
                 "take_profit_pips": 25.0,
                 "signal_confidence_threshold": 0.56,
@@ -747,6 +751,7 @@ class AutoTraderSettingsTests(unittest.TestCase):
         self.assertTrue(result["success"])
         self.assertEqual(service._persist_called, 1)
         self.assertEqual(service.config["trading"]["position_size"], 0.2)
+        self.assertFalse(service.config["live_trading"]["initial_stop_loss_enabled"])
         self.assertEqual(service.config["trading"]["stop_loss_pips"], 15.0)
         self.assertEqual(service.config["live_trading"]["exit_management"]["trailing_step_pips"], 0.8)
 
@@ -755,6 +760,7 @@ class AutoTraderSettingsTests(unittest.TestCase):
         result = workflow.apply_auto_trader_settings(
             {
                 "position_size": 0.1,
+                "initial_stop_loss_enabled": False,
                 "stop_loss_pips": 20.0,
                 "take_profit_pips": 35.0,
                 "signal_confidence_threshold": 0.58,
@@ -793,6 +799,7 @@ class AutoTraderSettingsTests(unittest.TestCase):
         service, workflow = self._make_service(running=False)
         values = {
             "position_size": 0.1,
+            "initial_stop_loss_enabled": False,
             "stop_loss_pips": 20.0,
             "take_profit_pips": 35.0,
             "signal_confidence_threshold": 0.58,
@@ -838,6 +845,8 @@ class AutoTraderSettingsTests(unittest.TestCase):
         self.assertTrue(catalog["success"])
         self.assertEqual(catalog["data"]["saved_values"]["position_size"], 0.01)
         self.assertEqual(catalog["data"]["session_values"]["position_size"], 0.01)
+        self.assertTrue(catalog["data"]["saved_values"]["initial_stop_loss_enabled"])
+        self.assertTrue(catalog["data"]["session_values"]["initial_stop_loss_enabled"])
 
 
 if __name__ == "__main__":

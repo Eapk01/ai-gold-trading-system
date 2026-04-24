@@ -81,7 +81,14 @@ def _render_settings_tab(service: ResearchAppService, status: dict[str, Any], ca
     with entry_col:
         st.subheader("Entry / Risk")
         st.number_input("Position Size", min_value=0.01, step=0.01, key="auto_trader_form_position_size")
-        st.number_input("Stop Loss", min_value=0.01, step=0.5, key="auto_trader_form_stop_loss_pips")
+        st.checkbox("Initial Stop Loss Enabled", key="auto_trader_form_initial_stop_loss_enabled")
+        st.number_input(
+            "Stop Loss",
+            min_value=0.0,
+            step=0.5,
+            key="auto_trader_form_stop_loss_pips",
+            disabled=not bool(st.session_state.get("auto_trader_form_initial_stop_loss_enabled", True)),
+        )
         st.number_input("Take Profit", min_value=0.01, step=0.5, key="auto_trader_form_take_profit_pips")
         st.number_input(
             "Signal Confidence Threshold",
@@ -231,6 +238,7 @@ def _render_runtime_summary(service: ResearchAppService, status: dict[str, Any])
         {"Field": "Symbol", "Value": status.get("symbol") or config.get("trading_symbol")},
         {"Field": "Timeframe", "Value": status.get("timeframe") or config.get("timeframe")},
         {"Field": "Position Size", "Value": status.get("position_size") or service.config["trading"].get("position_size")},
+        {"Field": "Initial Stop Loss", "Value": "Enabled" if status.get("initial_stop_loss_enabled", True) else "Disabled"},
         {"Field": "Market State", "Value": status.get("market_state") or "idle"},
         {"Field": "Startup Ready", "Value": "Yes" if status.get("startup_ready") else "No"},
         {"Field": "Last Candle Age", "Value": _format_age(status.get("last_candle_age_seconds"))},
@@ -268,6 +276,7 @@ def _load_form_values_into_session(values: dict[str, Any]) -> None:
 def _get_form_values() -> dict[str, Any]:
     field_names = [
         "position_size",
+        "initial_stop_loss_enabled",
         "stop_loss_pips",
         "take_profit_pips",
         "signal_confidence_threshold",
@@ -287,6 +296,7 @@ def _get_form_values() -> dict[str, Any]:
 def _validate_form_values(values: dict[str, Any]) -> str | None:
     try:
         position_size = float(values.get("position_size", 0.0))
+        initial_stop_loss_enabled = bool(values.get("initial_stop_loss_enabled", True))
         stop_loss = float(values.get("stop_loss_pips", 0.0))
         take_profit = float(values.get("take_profit_pips", 0.0))
         confidence = float(values.get("signal_confidence_threshold", 0.0))
@@ -300,8 +310,10 @@ def _validate_form_values(values: dict[str, Any]) -> str | None:
 
     if position_size <= 0:
         return "Position size must be greater than zero"
-    if stop_loss <= 0:
+    if initial_stop_loss_enabled and stop_loss <= 0:
         return "Stop loss must be greater than zero"
+    if stop_loss < 0:
+        return "Stop loss must be zero or greater"
     if take_profit <= 0:
         return "Take profit must be greater than zero"
     if confidence < 0 or confidence > 1:

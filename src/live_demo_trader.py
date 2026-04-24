@@ -45,6 +45,7 @@ class LiveDemoTrader:
         self.take_profit_pips = float(config["trading"]["take_profit_pips"])
         self.lookback_periods = int(config["ai_model"]["lookback_periods"])
         self.confidence_threshold = get_effective_confidence_threshold(config, "live_trading")
+        self.initial_stop_loss_enabled = bool(live_config.get("initial_stop_loss_enabled", True))
         self.poll_interval_seconds = int(live_config.get("poll_interval_seconds", 5))
         self.inactive_poll_interval_seconds = int(live_config.get("inactive_poll_interval_seconds", 30))
         self.startup_candle_buffer = int(live_config.get("startup_candle_buffer", 150))
@@ -154,6 +155,7 @@ class LiveDemoTrader:
                 "symbol": self.symbol,
                 "timeframe": self.timeframe,
                 "position_size": self.position_size,
+                "initial_stop_loss_enabled": self.initial_stop_loss_enabled,
                 "market_state": self._market_state,
                 "started_at": self._started_at,
                 "last_processed_candle": self._last_processed_candle.isoformat() if self._last_processed_candle else None,
@@ -378,8 +380,8 @@ class LiveDemoTrader:
         price = float(pd.to_numeric(latest_row.get("Close"), errors="coerce"))
         signal_side = "buy" if prediction == 1 else "sell"
         stop_loss, take_profit = self._calculate_stop_levels(signal_side, price, latest_row)
-        if stop_loss is None or take_profit is None:
-            return False, "ATR-based exits could not be resolved from the latest feature row", None, feature_history
+        if take_profit is None:
+            return False, "Take-profit exits could not be resolved from the latest feature row", None, feature_history
         signal = {
             "timestamp": feature_history.index[-1].isoformat(),
             "prediction": prediction,
@@ -444,11 +446,13 @@ class LiveDemoTrader:
         )
 
     def _calculate_stop_levels(self, side: str, price: float, feature_row: pd.Series) -> Tuple[Optional[float], Optional[float]]:
-        stop_distance = self.stop_loss_pips
+        stop_distance = self.stop_loss_pips if self.initial_stop_loss_enabled else None
         take_profit_distance = self.take_profit_pips
         if side == "buy":
-            return price - stop_distance, price + take_profit_distance
-        return price + stop_distance, price - take_profit_distance
+            stop_loss = None if stop_distance is None else price - stop_distance
+            return stop_loss, price + take_profit_distance
+        stop_loss = None if stop_distance is None else price + stop_distance
+        return stop_loss, price - take_profit_distance
 
     def _load_exit_management_config(self, live_config: Dict[str, Any]) -> Dict[str, Any]:
         exit_config = dict(live_config.get("exit_management", {}) or {})

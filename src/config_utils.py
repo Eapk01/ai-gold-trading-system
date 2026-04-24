@@ -114,6 +114,7 @@ def get_default_config() -> Dict[str, Any]:
             "poll_interval_seconds": 5,
             "inactive_poll_interval_seconds": 30,
             "signal_confidence_threshold": 0.60,
+            "initial_stop_loss_enabled": True,
             "startup_candle_buffer": 150,
             "stale_candle_multiplier": 4,
             "presets": {},

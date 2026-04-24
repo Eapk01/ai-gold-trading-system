@@ -367,6 +367,7 @@ class TradingWorkflowService:
             "stop_loss_pips": float(config.get("trading", {}).get("stop_loss_pips", 0.0)),
             "take_profit_pips": float(config.get("trading", {}).get("take_profit_pips", 0.0)),
             "signal_confidence_threshold": float(live_trading.get("signal_confidence_threshold", config.get("trading", {}).get("confidence_threshold", 0.6))),
+            "initial_stop_loss_enabled": bool(live_trading.get("initial_stop_loss_enabled", True)),
             "exit_management_mode": str(exit_management.get("mode", "disabled")),
             "break_even_enabled": bool(exit_management.get("break_even_enabled", True)),
             "break_even_trigger_pips": float(exit_management.get("break_even_trigger_pips", 0.0)),
@@ -385,6 +386,7 @@ class TradingWorkflowService:
                 "stop_loss_pips": float(values.get("stop_loss_pips", 0.0)),
                 "take_profit_pips": float(values.get("take_profit_pips", 0.0)),
                 "signal_confidence_threshold": float(values.get("signal_confidence_threshold", 0.0)),
+                "initial_stop_loss_enabled": bool(values.get("initial_stop_loss_enabled", True)),
                 "exit_management_mode": str(values.get("exit_management_mode", "disabled")).strip().lower() or "disabled",
                 "break_even_enabled": bool(values.get("break_even_enabled", True)),
                 "break_even_trigger_pips": float(values.get("break_even_trigger_pips", 0.0)),
@@ -400,10 +402,12 @@ class TradingWorkflowService:
 
         if normalized["position_size"] <= 0:
             return "Position size must be greater than zero"
-        if normalized["stop_loss_pips"] <= 0:
+        if normalized["initial_stop_loss_enabled"] and normalized["stop_loss_pips"] <= 0:
             return "Stop loss must be greater than zero"
         if normalized["take_profit_pips"] <= 0:
             return "Take profit must be greater than zero"
+        if normalized["stop_loss_pips"] < 0:
+            return "Stop loss must be zero or greater"
         if not 0.0 <= normalized["signal_confidence_threshold"] <= 1.0:
             return "Signal confidence threshold must be between 0 and 1"
         if normalized["exit_management_mode"] not in {"disabled", "trailing_stop"}:
@@ -423,6 +427,7 @@ class TradingWorkflowService:
             },
             "live_trading": {
                 "signal_confidence_threshold": float(values["signal_confidence_threshold"]),
+                "initial_stop_loss_enabled": bool(values["initial_stop_loss_enabled"]),
                 "exit_management": {
                     "mode": str(values["exit_management_mode"]),
                     "break_even_enabled": bool(values["break_even_enabled"]),
@@ -444,6 +449,7 @@ class TradingWorkflowService:
         config["trading"]["take_profit_pips"] = float(values["take_profit_pips"])
         config.setdefault("live_trading", {})
         config["live_trading"]["signal_confidence_threshold"] = float(values["signal_confidence_threshold"])
+        config["live_trading"]["initial_stop_loss_enabled"] = bool(values["initial_stop_loss_enabled"])
         config["live_trading"]["exit_management"] = {
             "mode": str(values["exit_management_mode"]),
             "break_even_enabled": bool(values["break_even_enabled"]),
@@ -472,6 +478,7 @@ class TradingWorkflowService:
                 "description": "Wider room for gold moves on 5-minute candles.",
                 "values": {
                     "position_size": float(saved_values.get("position_size", 0.01)),
+                    "initial_stop_loss_enabled": bool(saved_values.get("initial_stop_loss_enabled", True)),
                     "stop_loss_pips": 25.0,
                     "take_profit_pips": 45.0,
                     "signal_confidence_threshold": 0.60,
@@ -493,6 +500,7 @@ class TradingWorkflowService:
                 "description": "Balanced profit protection and room for follow-through on 5-minute gold.",
                 "values": {
                     "position_size": float(saved_values.get("position_size", 0.01)),
+                    "initial_stop_loss_enabled": bool(saved_values.get("initial_stop_loss_enabled", True)),
                     "stop_loss_pips": 20.0,
                     "take_profit_pips": 35.0,
                     "signal_confidence_threshold": 0.58,
@@ -514,6 +522,7 @@ class TradingWorkflowService:
                 "description": "Fast protection for short-lived 5-minute moves at the cost of more early exits.",
                 "values": {
                     "position_size": float(saved_values.get("position_size", 0.01)),
+                    "initial_stop_loss_enabled": bool(saved_values.get("initial_stop_loss_enabled", True)),
                     "stop_loss_pips": 15.0,
                     "take_profit_pips": 25.0,
                     "signal_confidence_threshold": 0.56,

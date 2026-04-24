@@ -130,6 +130,7 @@ class LiveDemoTraderTests(unittest.TestCase):
                 "poll_interval_seconds": 1,
                 "inactive_poll_interval_seconds": 10,
                 "signal_confidence_threshold": 0.6,
+                "initial_stop_loss_enabled": True,
                 "startup_candle_buffer": 3,
                 "stale_candle_multiplier": 4,
                 "exit_management": {
@@ -218,7 +219,29 @@ class LiveDemoTraderTests(unittest.TestCase):
 
         self.assertTrue(result)
         self.assertIn("below threshold", message.lower())
-        self.assertEqual(len(broker_manager.orders), 0)
+
+    def test_run_once_opens_position_with_take_profit_and_no_initial_stop_loss_when_disabled(self):
+        broker_manager = FakeBrokerManager(self.base_candles)
+        config = {
+            **self.config,
+            "live_trading": {
+                **self.config["live_trading"],
+                "initial_stop_loss_enabled": False,
+            },
+        }
+        trader = LiveDemoTrader(config, broker_manager, FakeFeatureEngineer(), FakeAIModelManager(prediction=1.0, confidence=0.9))
+
+        success, _ = trader._initialize_history()
+        self.assertTrue(success)
+        broker_manager._candles = self.base_candles + [make_candle(600, 12.5, 13.0, 12.0, 12.8)]
+
+        result, message = trader.run_once()
+
+        self.assertTrue(result)
+        self.assertIn("opened buy", message.lower())
+        self.assertEqual(len(broker_manager.orders), 1)
+        self.assertIsNone(broker_manager.orders[0]["stop_loss"])
+        self.assertIsNotNone(broker_manager.orders[0]["take_profit"])
 
     def test_run_once_holds_same_side_position(self):
         positions = [{"ticket": "88", "symbol": "XAUUSD", "type": 0, "volume": 0.01, "price_open": 11.0, "price_current": 12.8, "sl": 10.0, "tp": 13.5}]

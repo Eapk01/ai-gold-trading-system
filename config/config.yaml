@@ -1,5 +1,5 @@
 trading:
-  symbol: XAUUSDm
+  symbol: ETHUSDm
   timeframe: 5m
   position_size: 0.01
   stop_loss_pips: 50.0
@@ -126,16 +126,17 @@ live_trading:
   poll_interval_seconds: 5
   inactive_poll_interval_seconds: 30
   signal_confidence_threshold: 0.53
+  initial_stop_loss_enabled: true
   startup_candle_buffer: 150
   stale_candle_multiplier: 4
   presets: {}
   spacetime_dashboard:
-    enabled: false
-    sender_script: ''
-    sender_project_dir: ''
-    npx_command: ''
+    enabled: true
+    sender_script: C:\Users\Bruh\Desktop\Tests\scripts\send-snapshot.ts
+    sender_project_dir: C:\Users\Bruh\Desktop\Tests
+    npx_command: C:\Program Files\nodejs\npx.cmd
     uri: https://maincloud.spacetimedb.com
-    database_name: ''
+    database_name: trading-bot-demo-bruh-20260419
   exit_management:
     mode: trailing_stop
     break_even_enabled: false
