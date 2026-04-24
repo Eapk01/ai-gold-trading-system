@@ -139,6 +139,13 @@ live_trading:
   startup_candle_buffer: 150
   stale_candle_multiplier: 4
   presets: {}
+  spacetime_dashboard:
+    enabled: false
+    sender_script: C:\Users\Bruh\Desktop\Tests\scripts\send-snapshot.ts
+    sender_project_dir: C:\Users\Bruh\Desktop\Tests
+    npx_command: C:\Program Files\nodejs\npx.cmd
+    uri: https://maincloud.spacetimedb.com
+    database_name: trading-bot-demo-bruh-20260419
   exit_management:
     mode: trailing_stop
     break_even_enabled: false

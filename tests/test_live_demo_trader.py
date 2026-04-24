@@ -1,5 +1,6 @@
 import unittest
 from datetime import datetime, timezone
+from unittest.mock import patch
 
 import pandas as pd
 
@@ -31,12 +32,16 @@ class FakeBrokerManager:
         self.closed = []
         self.protection_updates = []
         self.update_result = {"success": True}
+        self.account_info = {"equity": 10000.0}
 
     def get_historical_data(self, symbol, timeframe, bars=200):
         return list(self._candles)[-bars:]
 
     def get_positions(self):
         return list(self.positions)
+
+    def get_account_info(self):
+        return dict(self.account_info)
 
     def place_order(self, **kwargs):
         self.orders.append(kwargs)
@@ -91,6 +96,19 @@ class FakeAIModelManager:
             },
             index=index,
         )
+
+
+class FakeSnapshotPublisher:
+    def __init__(self, enabled=True, should_raise=False):
+        self.enabled = enabled
+        self.should_raise = should_raise
+        self.calls = []
+
+    def publish_runtime_snapshot(self, **kwargs):
+        self.calls.append(kwargs)
+        if self.should_raise:
+            raise RuntimeError("publish failed")
+        return True
 
 
 class LiveDemoTraderTests(unittest.TestCase):
@@ -342,6 +360,88 @@ class LiveDemoTraderTests(unittest.TestCase):
         self.assertNotEqual(status["market_state"], "market_closed_or_stale")
         self.assertEqual(trader._get_current_poll_interval(), 1)
         self.assertIn("Fresh market data resumed", event_messages)
+
+    def test_run_once_publishes_one_snapshot_for_new_closed_candle(self):
+        publisher = FakeSnapshotPublisher()
+        broker_manager = FakeBrokerManager(self.base_candles)
+        trader = LiveDemoTrader(
+            self.config,
+            broker_manager,
+            FakeFeatureEngineer(),
+            FakeAIModelManager(prediction=1.0, confidence=0.9),
+            snapshot_publisher=publisher,
+        )
+
+        success, _ = trader._initialize_history()
+        self.assertTrue(success)
+        broker_manager._candles = self.base_candles + [make_candle(600, 12.5, 13.0, 12.0, 12.8)]
+
+        result, _ = trader.run_once()
+
+        self.assertTrue(result)
+        self.assertEqual(len(publisher.calls), 1)
+        self.assertEqual(publisher.calls[0]["event_message"], "Opened buy position at 12.50")
+
+    def test_run_once_does_not_publish_when_no_new_candle(self):
+        publisher = FakeSnapshotPublisher()
+        trader = LiveDemoTrader(
+            self.config,
+            FakeBrokerManager(self.base_candles),
+            FakeFeatureEngineer(),
+            FakeAIModelManager(prediction=1.0, confidence=0.9),
+            snapshot_publisher=publisher,
+        )
+
+        success, _ = trader._initialize_history()
+        self.assertTrue(success)
+
+        result, message = trader.run_once()
+
+        self.assertTrue(result)
+        self.assertIn("No new", message)
+        self.assertEqual(len(publisher.calls), 0)
+
+    def test_stop_publishes_idle_snapshot(self):
+        publisher = FakeSnapshotPublisher()
+        trader = LiveDemoTrader(
+            self.config,
+            FakeBrokerManager(self.base_candles),
+            FakeFeatureEngineer(),
+            FakeAIModelManager(),
+            snapshot_publisher=publisher,
+        )
+
+        success, _ = trader.start()
+        self.assertTrue(success)
+
+        stop_success, _ = trader.stop()
+
+        self.assertTrue(stop_success)
+        self.assertEqual(len(publisher.calls), 1)
+        self.assertEqual(publisher.calls[0]["event_message"], "Auto trader stopped")
+        self.assertEqual(publisher.calls[0]["positions"], [])
+
+    @patch("src.live_demo_trader.logger.warning")
+    def test_run_once_sender_failure_is_non_fatal(self, mock_warning):
+        publisher = FakeSnapshotPublisher(should_raise=True)
+        broker_manager = FakeBrokerManager(self.base_candles)
+        trader = LiveDemoTrader(
+            self.config,
+            broker_manager,
+            FakeFeatureEngineer(),
+            FakeAIModelManager(prediction=1.0, confidence=0.9),
+            snapshot_publisher=publisher,
+        )
+
+        success, _ = trader._initialize_history()
+        self.assertTrue(success)
+        broker_manager._candles = self.base_candles + [make_candle(600, 12.5, 13.0, 12.0, 12.8)]
+
+        result, message = trader.run_once()
+
+        self.assertTrue(result)
+        self.assertIn("Opened buy position", message)
+        self.assertTrue(mock_warning.called)
 
 
 if __name__ == "__main__":

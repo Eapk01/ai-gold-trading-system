@@ -349,6 +349,7 @@ class TradingWorkflowService:
         live_trading = dict(config.get("live_trading", {}) or {})
         exit_management = dict(live_trading.get("exit_management", {}) or {})
         return {
+            "position_size": float(config.get("trading", {}).get("position_size", 0.01)),
             "stop_loss_pips": float(config.get("trading", {}).get("stop_loss_pips", 0.0)),
             "take_profit_pips": float(config.get("trading", {}).get("take_profit_pips", 0.0)),
             "signal_confidence_threshold": float(live_trading.get("signal_confidence_threshold", config.get("trading", {}).get("confidence_threshold", 0.6))),
@@ -366,6 +367,7 @@ class TradingWorkflowService:
     def _validate_auto_trader_settings(self, values: Dict[str, Any]) -> Dict[str, Any] | str:
         try:
             normalized = {
+                "position_size": float(values.get("position_size", 0.0)),
                 "stop_loss_pips": float(values.get("stop_loss_pips", 0.0)),
                 "take_profit_pips": float(values.get("take_profit_pips", 0.0)),
                 "signal_confidence_threshold": float(values.get("signal_confidence_threshold", 0.0)),
@@ -382,6 +384,8 @@ class TradingWorkflowService:
         except (TypeError, ValueError):
             return "Auto trader settings contain an invalid numeric value"
 
+        if normalized["position_size"] <= 0:
+            return "Position size must be greater than zero"
         if normalized["stop_loss_pips"] <= 0:
             return "Stop loss must be greater than zero"
         if normalized["take_profit_pips"] <= 0:
@@ -399,6 +403,7 @@ class TradingWorkflowService:
     def _build_auto_trader_override_payload(self, values: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "trading": {
+                "position_size": float(values["position_size"]),
                 "stop_loss_pips": float(values["stop_loss_pips"]),
                 "take_profit_pips": float(values["take_profit_pips"]),
             },
@@ -420,6 +425,7 @@ class TradingWorkflowService:
 
     def _apply_settings_to_config(self, config: Dict[str, Any], values: Dict[str, Any]) -> None:
         config.setdefault("trading", {})
+        config["trading"]["position_size"] = float(values["position_size"])
         config["trading"]["stop_loss_pips"] = float(values["stop_loss_pips"])
         config["trading"]["take_profit_pips"] = float(values["take_profit_pips"])
         config.setdefault("live_trading", {})
@@ -451,6 +457,7 @@ class TradingWorkflowService:
                 "kind": "built_in",
                 "description": "Wider room for gold moves on 5-minute candles.",
                 "values": {
+                    "position_size": float(saved_values.get("position_size", 0.01)),
                     "stop_loss_pips": 25.0,
                     "take_profit_pips": 45.0,
                     "signal_confidence_threshold": 0.60,
@@ -471,6 +478,7 @@ class TradingWorkflowService:
                 "kind": "built_in",
                 "description": "Balanced profit protection and room for follow-through on 5-minute gold.",
                 "values": {
+                    "position_size": float(saved_values.get("position_size", 0.01)),
                     "stop_loss_pips": 20.0,
                     "take_profit_pips": 35.0,
                     "signal_confidence_threshold": 0.58,
@@ -491,6 +499,7 @@ class TradingWorkflowService:
                 "kind": "built_in",
                 "description": "Fast protection for short-lived 5-minute moves at the cost of more early exits.",
                 "values": {
+                    "position_size": float(saved_values.get("position_size", 0.01)),
                     "stop_loss_pips": 15.0,
                     "take_profit_pips": 25.0,
                     "signal_confidence_threshold": 0.56,

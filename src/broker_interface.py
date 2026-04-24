@@ -6,6 +6,7 @@ Focused v1 adapter built around a local MetaTrader5 terminal session.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from decimal import Decimal, ROUND_FLOOR
 from datetime import datetime
 from enum import Enum
 from importlib import import_module
@@ -124,11 +125,15 @@ class ExnessBroker:
             if tick is None:
                 return {"success": False, "error": f"No market tick available for {symbol}"}
 
+            normalized_volume, volume_error = self._normalize_order_volume(symbol, quantity)
+            if volume_error:
+                return {"success": False, "error": volume_error}
+
             normalized_type = order_type.lower()
             request = {
                 "action": self.mt5.TRADE_ACTION_DEAL,
                 "symbol": symbol,
-                "volume": float(quantity),
+                "volume": normalized_volume,
                 "deviation": 20,
                 "magic": 20260402,
                 "comment": "ai-gold-trading-system",
@@ -173,7 +178,10 @@ class ExnessBroker:
             if success:
                 self.last_heartbeat = datetime.now()
                 order_id = str(payload.get("order") or payload.get("deal") or payload.get("request_id") or "")
-                logger.info(f"Exness order submitted successfully: {order_id}")
+                logger.info(
+                    f"Exness order submitted successfully: {order_id} "
+                    f"(requested volume={float(quantity):.8f}, submitted volume={request['volume']:.8f})"
+                )
                 return {
                     "success": True,
                     "order_id": order_id,
@@ -182,7 +190,10 @@ class ExnessBroker:
                 }
 
             error_msg = payload.get("comment") or f"retcode={payload.get('retcode')}"
-            logger.error(f"Exness order failed: {error_msg}")
+            logger.error(
+                f"Exness order failed: {error_msg} "
+                f"(requested volume={float(quantity):.8f}, submitted volume={request['volume']:.8f})"
+            )
             return {"success": False, "error": error_msg, "data": payload}
         except Exception as exc:
             logger.error(f"Exness order placement failed: {exc}")
@@ -457,6 +468,74 @@ class ExnessBroker:
 
     def _ensure_connection(self) -> bool:
         return self.is_connected and self.mt5 is not None
+
+    def _normalize_order_volume(self, symbol: str, quantity: float) -> tuple[Optional[float], Optional[str]]:
+        """Normalize a requested order volume against the symbol's broker rules."""
+        try:
+            requested_volume = float(quantity)
+        except (TypeError, ValueError):
+            return None, f"Invalid volume value: {quantity}"
+
+        if requested_volume <= 0:
+            return None, f"Volume must be greater than zero: {requested_volume}"
+
+        symbol_info_getter = getattr(self.mt5, "symbol_info", None)
+        if not callable(symbol_info_getter):
+            return requested_volume, None
+
+        symbol_info = symbol_info_getter(symbol)
+        if symbol_info is None:
+            return requested_volume, None
+
+        min_volume = float(getattr(symbol_info, "volume_min", 0.0) or 0.0)
+        max_volume = float(getattr(symbol_info, "volume_max", 0.0) or 0.0)
+        step_volume = float(getattr(symbol_info, "volume_step", 0.0) or 0.0)
+
+        if min_volume > 0 and requested_volume < min_volume:
+            return None, (
+                f"Invalid volume: requested {requested_volume:.8f} is below the minimum "
+                f"{min_volume:.8f} for {symbol}"
+            )
+        if max_volume > 0 and requested_volume > max_volume:
+            return None, (
+                f"Invalid volume: requested {requested_volume:.8f} exceeds the maximum "
+                f"{max_volume:.8f} for {symbol}"
+            )
+
+        if step_volume <= 0:
+            return requested_volume, None
+
+        requested_decimal = Decimal(str(requested_volume))
+        min_decimal = Decimal(str(min_volume)) if min_volume > 0 else Decimal("0")
+        step_decimal = Decimal(str(step_volume))
+        base_decimal = min_decimal if min_volume > 0 else Decimal("0")
+
+        step_count = ((requested_decimal - base_decimal) / step_decimal).to_integral_value(rounding=ROUND_FLOOR)
+        normalized_decimal = base_decimal + (step_count * step_decimal)
+        if normalized_decimal < min_decimal:
+            normalized_decimal = min_decimal
+
+        precision = self._volume_precision(step_decimal, min_decimal)
+        normalized_volume = round(float(normalized_decimal), precision)
+
+        if normalized_volume != requested_volume:
+            logger.info(
+                f"Normalized order volume for {symbol}: "
+                f"{requested_volume:.8f} -> {normalized_volume:.8f} "
+                f"(min={min_volume:.8f}, step={step_volume:.8f}, max={max_volume:.8f})"
+            )
+
+        return normalized_volume, None
+
+    def _volume_precision(self, *values: Decimal) -> int:
+        precision = 0
+        for value in values:
+            if not value:
+                continue
+            exponent = value.normalize().as_tuple().exponent
+            if exponent < 0:
+                precision = max(precision, -exponent)
+        return precision
 
     def _resolve_timeframe(self, timeframe: str) -> Optional[int]:
         mapping = {

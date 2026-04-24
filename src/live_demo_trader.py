@@ -15,17 +15,27 @@ import pandas as pd
 from loguru import logger
 from src.config_utils import get_effective_confidence_threshold
 from src.runtime_predictor import EnsemblePredictor
+from src.spacetime_snapshot_publisher import SpacetimeSnapshotPublisher
 
 
 class LiveDemoTrader:
     """Small Exness-first demo trading runtime for the GUI/service app."""
 
-    def __init__(self, config: Dict[str, Any], broker_manager, feature_engineer, ai_model_manager, runtime_predictor_getter=None):
+    def __init__(
+        self,
+        config: Dict[str, Any],
+        broker_manager,
+        feature_engineer,
+        ai_model_manager,
+        runtime_predictor_getter=None,
+        snapshot_publisher=None,
+    ):
         self.config = config
         self.broker_manager = broker_manager
         self.feature_engineer = feature_engineer
         self.ai_model_manager = ai_model_manager
         self.runtime_predictor_getter = runtime_predictor_getter
+        self.snapshot_publisher = snapshot_publisher or SpacetimeSnapshotPublisher(config)
 
         live_config = config.get("live_trading", {})
         self.symbol = config["trading"]["symbol"]
@@ -113,6 +123,7 @@ class LiveDemoTrader:
             self._thread = None
 
         self._append_event("info", "Auto trader stopped")
+        self._publish_dashboard_snapshot("Auto trader stopped", positions_override=[])
         return True, "Auto trader stopped"
 
     def run_once(self) -> Tuple[bool, str]:
@@ -142,6 +153,7 @@ class LiveDemoTrader:
                 "startup_ready": self._startup_ready,
                 "symbol": self.symbol,
                 "timeframe": self.timeframe,
+                "position_size": self.position_size,
                 "market_state": self._market_state,
                 "started_at": self._started_at,
                 "last_processed_candle": self._last_processed_candle.isoformat() if self._last_processed_candle else None,
@@ -266,8 +278,10 @@ class LiveDemoTrader:
             self._latest_signal = signal
             self._latest_error = None
             self._latest_action = action_message if not protection_message else f"{protection_message} | {action_message}"
+            latest_action = self._latest_action
 
         self._append_event("info", action_message, {"signal": signal})
+        self._publish_dashboard_snapshot(latest_action)
         return True, action_message
 
     def _get_current_poll_interval(self) -> int:
@@ -651,3 +665,30 @@ class LiveDemoTrader:
             "details": details or {},
         }
         self._events.append(event)
+
+    def _publish_dashboard_snapshot(
+        self,
+        event_message: str,
+        *,
+        positions_override: Optional[List[Dict[str, Any]]] = None,
+    ) -> None:
+        if not getattr(self.snapshot_publisher, "enabled", False):
+            return
+
+        with self._lock:
+            latest_signal = deepcopy(self._latest_signal)
+
+        positions = list(positions_override) if positions_override is not None else self._get_symbol_positions()
+        account_info = self.broker_manager.get_account_info()
+
+        try:
+            self.snapshot_publisher.publish_runtime_snapshot(
+                symbol=self.symbol,
+                timeframe=self.timeframe,
+                latest_signal=latest_signal,
+                positions=positions,
+                account_info=account_info,
+                event_message=event_message,
+            )
+        except Exception as exc:
+            logger.warning(f"Unexpected Spacetime dashboard publish failure: {exc}")

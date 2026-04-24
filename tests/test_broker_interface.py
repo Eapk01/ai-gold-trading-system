@@ -59,6 +59,9 @@ class FakeMT5:
     def symbol_info_tick(self, symbol):
         return SimpleNamespace(bid=1999.5, ask=2000.0, last=1999.8, time=1710000000)
 
+    def symbol_info(self, symbol):
+        return SimpleNamespace(volume_min=0.01, volume_max=100.0, volume_step=0.01)
+
     def order_send(self, request):
         self.last_request = request
         return FakeResult(self.TRADE_RETCODE_DONE, order=123456, comment="done")
@@ -132,6 +135,41 @@ class BrokerInterfaceTests(unittest.TestCase):
         self.assertEqual(result["position_ticket"], "77")
         self.assertEqual(result["stop_loss"], 1995.0)
         self.assertEqual(result["take_profit"], 2010.0)
+
+    @patch("src.broker_interface._import_metatrader5", return_value=FakeMT5())
+    def test_exness_broker_normalizes_volume_to_symbol_step(self, _mock_mt5):
+        config = create_broker_config(
+            broker_type="exness",
+            login="123456",
+            password="secret",
+            server="Exness-MT5Real",
+        )
+        broker = ExnessBroker(config)
+
+        self.assertTrue(broker.connect())
+        broker.mt5.symbol_info = lambda symbol: SimpleNamespace(volume_min=0.1, volume_max=100.0, volume_step=0.1)
+        result = broker.place_order("XAUUSD", "buy", 0.15, "market")
+
+        self.assertTrue(result["success"])
+        self.assertEqual(broker.mt5.last_request["volume"], 0.1)
+
+    @patch("src.broker_interface._import_metatrader5", return_value=FakeMT5())
+    def test_exness_broker_rejects_volume_below_symbol_minimum(self, _mock_mt5):
+        config = create_broker_config(
+            broker_type="exness",
+            login="123456",
+            password="secret",
+            server="Exness-MT5Real",
+        )
+        broker = ExnessBroker(config)
+
+        self.assertTrue(broker.connect())
+        broker.mt5.symbol_info = lambda symbol: SimpleNamespace(volume_min=0.1, volume_max=100.0, volume_step=0.1)
+        result = broker.place_order("XAUUSD", "buy", 0.01, "market")
+
+        self.assertFalse(result["success"])
+        self.assertIn("below the minimum", result["error"])
+        self.assertFalse(hasattr(broker.mt5, "last_request"))
 
     def test_broker_manager_registers_exness(self):
         manager = BrokerManager()

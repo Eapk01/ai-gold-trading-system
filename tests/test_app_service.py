@@ -565,6 +565,7 @@ class AutoTraderSettingsTests(unittest.TestCase):
             "trading": {
                 "symbol": "XAUUSDm",
                 "timeframe": "5m",
+                "position_size": 0.01,
                 "stop_loss_pips": 50.0,
                 "take_profit_pips": 100.0,
                 "confidence_threshold": 0.6,
@@ -615,6 +616,7 @@ class AutoTraderSettingsTests(unittest.TestCase):
         service, workflow = self._make_service(running=False)
         result = workflow.apply_auto_trader_settings(
             {
+                "position_size": 0.1,
                 "stop_loss_pips": 20.0,
                 "take_profit_pips": 35.0,
                 "signal_confidence_threshold": 0.58,
@@ -649,6 +651,7 @@ class AutoTraderSettingsTests(unittest.TestCase):
         self.assertEqual(service._persist_called, 0)
         self.assertEqual(service._build_called, 1)
         effective = service._get_effective_runtime_config()
+        self.assertEqual(effective["trading"]["position_size"], 0.1)
         self.assertEqual(effective["trading"]["stop_loss_pips"], 20.0)
         self.assertEqual(effective["live_trading"]["exit_management"]["trailing_distance_pips"], 3.5)
 
@@ -656,6 +659,7 @@ class AutoTraderSettingsTests(unittest.TestCase):
         service, workflow = self._make_service(running=False)
         result = workflow.save_auto_trader_settings_as_defaults(
             {
+                "position_size": 0.2,
                 "stop_loss_pips": 15.0,
                 "take_profit_pips": 25.0,
                 "signal_confidence_threshold": 0.56,
@@ -688,6 +692,7 @@ class AutoTraderSettingsTests(unittest.TestCase):
 
         self.assertTrue(result["success"])
         self.assertEqual(service._persist_called, 1)
+        self.assertEqual(service.config["trading"]["position_size"], 0.2)
         self.assertEqual(service.config["trading"]["stop_loss_pips"], 15.0)
         self.assertEqual(service.config["live_trading"]["exit_management"]["trailing_step_pips"], 0.8)
 
@@ -695,6 +700,7 @@ class AutoTraderSettingsTests(unittest.TestCase):
         service, workflow = self._make_service(running=True)
         result = workflow.apply_auto_trader_settings(
             {
+                "position_size": 0.1,
                 "stop_loss_pips": 20.0,
                 "take_profit_pips": 35.0,
                 "signal_confidence_threshold": 0.58,
@@ -732,6 +738,7 @@ class AutoTraderSettingsTests(unittest.TestCase):
     def test_custom_auto_trader_presets_can_be_saved_and_deleted(self):
         service, workflow = self._make_service(running=False)
         values = {
+            "position_size": 0.1,
             "stop_loss_pips": 20.0,
             "take_profit_pips": 35.0,
             "signal_confidence_threshold": 0.58,
@@ -768,6 +775,15 @@ class AutoTraderSettingsTests(unittest.TestCase):
         self.assertTrue(save_result["success"])
         self.assertTrue(any(preset["id"] == "Balanced_5m_Custom" for preset in catalog["data"]["custom_presets"]))
         self.assertTrue(delete_result["success"])
+
+    def test_auto_trader_settings_catalog_includes_position_size(self):
+        service, workflow = self._make_service(running=False)
+
+        catalog = workflow.get_auto_trader_settings_catalog()
+
+        self.assertTrue(catalog["success"])
+        self.assertEqual(catalog["data"]["saved_values"]["position_size"], 0.01)
+        self.assertEqual(catalog["data"]["session_values"]["position_size"], 0.01)
 
 
 if __name__ == "__main__":

@@ -19,6 +19,7 @@ class ConfigUtilsTests(unittest.TestCase):
         config = get_default_config()
         validate_config(config)
         self.assertEqual(get_target_column(config), "Future_Direction_1")
+        self.assertIn("spacetime_dashboard", config["live_trading"])
 
     def test_validate_config_rejects_invalid_position_size(self):
         config = get_default_config()
