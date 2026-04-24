@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 import re
 from dataclasses import asdict, dataclass
 from datetime import datetime
@@ -29,7 +30,7 @@ from src.model_tester import ModelTestResult, ModelTester
 from src.research import ExperimentStore
 from src.report_store import ReportStore
 from src.runtime_predictor import EnsemblePredictor, RuntimePredictor, load_runtime_predictor
-from src.secret_store import BrokerSecretStore
+from src.secret_store import BrokerSecretStore, LocalSettingsStore
 from src.services import ReportWorkflowService, ResearchWorkflowService, TradingWorkflowService
 
 
@@ -65,6 +66,7 @@ class ResearchAppService:
         self.config = load_app_config(config_path)
         ensure_runtime_directories(self.config)
         self.secret_store = BrokerSecretStore()
+        self.local_settings = LocalSettingsStore()
         self.broker_manager = BrokerManager()
 
         self.feature_data = None
@@ -88,6 +90,7 @@ class ResearchAppService:
         self.experiment_store = ExperimentStore.from_config(self.config)
 
         self._migrate_plaintext_broker_secrets()
+        self._apply_local_broker_settings()
         self._build_runtime_components()
         self.research_workflows = ResearchWorkflowService(self)
         self.report_workflows = ReportWorkflowService(self, self.report_store, self.experiment_store)
@@ -139,7 +142,7 @@ class ResearchAppService:
             self.trading_workflows = TradingWorkflowService(self)
 
     def _load_saved_broker_profiles(self) -> None:
-        profiles = self.config.get("brokers", {}).get("profiles", {})
+        profiles = self._get_saved_broker_profiles()
         loaded_count = self.broker_manager.load_profiles(profiles)
         if loaded_count:
             logger.info(f"Loaded {loaded_count} saved broker profile(s)")
@@ -155,22 +158,36 @@ class ResearchAppService:
         profiles = self.config.get("brokers", {}).get("profiles", {})
         for profile_name, profile_data in profiles.items():
             password = str(profile_data.get("password", "")).strip()
+            sanitized_profile = dict(profile_data)
+            sanitized_profile["password"] = ""
+            if hasattr(self, "local_settings"):
+                self.local_settings.save_broker_profile(profile_name, sanitized_profile)
             if password:
                 self.secret_store.set_password(profile_name, password)
                 profile_data["password"] = ""
-                changed = True
                 logger.info(f"Migrated plaintext broker secret for profile: {profile_name}")
+            changed = True
+
+        default_profile = str(self.config.get("brokers", {}).get("default_profile", "")).strip()
+        if default_profile and hasattr(self, "local_settings"):
+            self.local_settings.set_default_broker_profile(default_profile)
+            changed = True
+
+        if profiles:
+            self.config.setdefault("brokers", {})
+            self.config["brokers"]["profiles"] = {}
+            self.config["brokers"]["default_profile"] = ""
 
         if changed:
             self._persist_config()
 
     def _autoconnect_saved_broker(self) -> None:
-        profiles = self.config.get("brokers", {}).get("profiles", {})
+        profiles = self._get_saved_broker_profiles()
         if not profiles:
             logger.info("No saved broker profiles available for auto-connect")
             return
 
-        default_profile = str(self.config.get("brokers", {}).get("default_profile", "")).strip()
+        default_profile = self._get_default_broker_profile()
         candidates: List[str] = []
         if default_profile and default_profile in profiles:
             candidates.append(default_profile)
@@ -188,6 +205,8 @@ class ResearchAppService:
                 if self.broker_manager.connect_broker(profile_name, password=secret):
                     self.config.setdefault("brokers", {})
                     self.config["brokers"]["default_profile"] = profile_name
+                    if hasattr(self, "local_settings"):
+                        self.local_settings.set_default_broker_profile(profile_name)
                     self._persist_config()
                     logger.info(f"Auto-connected broker profile: {profile_name}")
                     return
@@ -197,7 +216,44 @@ class ResearchAppService:
         logger.warning("Saved broker profiles were loaded, but no broker auto-connect succeeded")
 
     def _persist_config(self) -> None:
-        save_config(self.config, self.config_path)
+        save_config(self._sanitize_config_for_repo(self.config), self.config_path)
+
+    def _get_saved_broker_profiles(self) -> Dict[str, Dict[str, Any]]:
+        if hasattr(self, "local_settings"):
+            profiles = self.local_settings.get_broker_profiles()
+            if profiles:
+                return profiles
+        return dict(self.config.get("brokers", {}).get("profiles", {}) or {})
+
+    def _get_default_broker_profile(self) -> str:
+        if hasattr(self, "local_settings"):
+            profile_name = str(self.local_settings.get_default_broker_profile()).strip()
+            if profile_name:
+                return profile_name
+        return str(self.config.get("brokers", {}).get("default_profile", "")).strip()
+
+    def _apply_local_broker_settings(self) -> None:
+        profiles = self._get_saved_broker_profiles()
+        default_profile = self._get_default_broker_profile()
+
+        self.config.setdefault("brokers", {})
+        self.config["brokers"]["profiles"] = deepcopy(profiles)
+        if default_profile and default_profile in profiles:
+            self.config["brokers"]["default_profile"] = default_profile
+        else:
+            self.config["brokers"]["default_profile"] = ""
+
+    def _sanitize_config_for_repo(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        sanitized = deepcopy(config)
+        sanitized.setdefault("brokers", {})
+        sanitized["brokers"]["profiles"] = {}
+        sanitized["brokers"]["default_profile"] = ""
+
+        exness = sanitized["brokers"].get("exness")
+        if isinstance(exness, dict) and "password" in exness:
+            exness["password"] = ""
+
+        return sanitized
 
     def _build_runtime_components(self) -> None:
         """Build all config-dependent runtime components from one config snapshot."""
@@ -239,6 +295,7 @@ class ResearchAppService:
         previous_selected_features = list(self.selected_features)
 
         self.config = load_app_config(self.config_path)
+        self._apply_local_broker_settings()
         ensure_runtime_directories(self.config)
         self.experiment_store = ExperimentStore.from_config(self.config)
         self._build_runtime_components()
@@ -489,7 +546,7 @@ class ResearchAppService:
             "loaded_model_file": Path(self.loaded_model_path).name if self.loaded_model_path else None,
             "loaded_model_path": self.loaded_model_path,
             "saved_model_files": len(self._get_saved_model_files()),
-            "saved_broker_profiles": len(self.config.get("brokers", {}).get("profiles", {})),
+            "saved_broker_profiles": len(self._get_saved_broker_profiles()),
             "active_broker": broker_status.get("active_broker"),
             "selected_features": len(self.selected_features),
             "latest_backtest_summary": self.latest_backtest_summary,

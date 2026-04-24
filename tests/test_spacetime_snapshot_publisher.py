@@ -10,11 +10,11 @@ class SpacetimeSnapshotPublisherTests(unittest.TestCase):
             "live_trading": {
                 "spacetime_dashboard": {
                     "enabled": True,
-                    "sender_script": r"C:\Users\Bruh\Desktop\Tests\scripts\send-snapshot.ts",
-                    "sender_project_dir": r"C:\Users\Bruh\Desktop\Tests",
+                    "sender_script": r"C:\Projects\spacetime-dashboard\scripts\send-snapshot.ts",
+                    "sender_project_dir": r"C:\Projects\spacetime-dashboard",
                     "npx_command": r"C:\Program Files\nodejs\npx.cmd",
                     "uri": "https://maincloud.spacetimedb.com",
-                    "database_name": "trading-bot-demo-bruh-20260419",
+                    "database_name": "trading-bot-demo-local",
                 }
             }
         }
@@ -104,12 +104,12 @@ class SpacetimeSnapshotPublisherTests(unittest.TestCase):
             [
                 r"C:\Program Files\nodejs\npx.cmd",
                 "tsx",
-                r"C:\Users\Bruh\Desktop\Tests\scripts\send-snapshot.ts",
+                r"C:\Projects\spacetime-dashboard\scripts\send-snapshot.ts",
             ],
         )
-        self.assertEqual(kwargs["cwd"], r"C:\Users\Bruh\Desktop\Tests")
+        self.assertEqual(kwargs["cwd"], r"C:\Projects\spacetime-dashboard")
         self.assertEqual(kwargs["env"]["VITE_SPACETIME_URI"], "https://maincloud.spacetimedb.com")
-        self.assertEqual(kwargs["env"]["VITE_SPACETIME_DB_NAME"], "trading-bot-demo-bruh-20260419")
+        self.assertEqual(kwargs["env"]["VITE_SPACETIME_DB_NAME"], "trading-bot-demo-local")
         self.assertEqual(kwargs["env"]["BOT_SNAPSHOT"], '{"symbol": "XAUUSD", "timeframe": "M5"}')
         self.assertTrue(kwargs["check"])
 

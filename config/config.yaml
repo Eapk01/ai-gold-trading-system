@@ -119,18 +119,8 @@ brokers:
     terminal_path: ''
     timeout: 30
     max_retries: 3
-  profiles:
-    Main:
-      broker_type: exness
-      login: '262589312'
-      password: ''
-      server: Exness-MT5Trial16
-      terminal_path: ''
-      sandbox: false
-      account_id: ''
-      timeout: 30
-      max_retries: 3
-  default_profile: Main
+  profiles: {}
+  default_profile: ''
 live_trading:
   enabled_demo_only: true
   poll_interval_seconds: 5
@@ -141,11 +131,11 @@ live_trading:
   presets: {}
   spacetime_dashboard:
     enabled: false
-    sender_script: C:\Users\Bruh\Desktop\Tests\scripts\send-snapshot.ts
-    sender_project_dir: C:\Users\Bruh\Desktop\Tests
-    npx_command: C:\Program Files\nodejs\npx.cmd
+    sender_script: ''
+    sender_project_dir: ''
+    npx_command: ''
     uri: https://maincloud.spacetimedb.com
-    database_name: trading-bot-demo-bruh-20260419
+    database_name: ''
   exit_management:
     mode: trailing_stop
     break_even_enabled: false

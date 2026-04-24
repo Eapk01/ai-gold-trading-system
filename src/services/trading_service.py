@@ -149,7 +149,7 @@ class TradingWorkflowService:
         if not str(password).strip():
             return self.service._response(False, "MT5 password is required")
 
-        existing_profiles = self.service.config.get("brokers", {}).get("profiles", {})
+        existing_profiles = self.service._get_saved_broker_profiles()
         if name in existing_profiles and not overwrite:
             return self.service._response(False, f"A saved profile named '{name}' already exists")
 
@@ -172,8 +172,13 @@ class TradingWorkflowService:
         self.service.config.setdefault("brokers", {})
         self.service.config["brokers"].setdefault("profiles", {})
         self.service.config["brokers"]["profiles"][name] = broker_config_to_dict(broker_config)
-        if not self.service.config["brokers"].get("default_profile"):
+        if hasattr(self.service, "local_settings"):
+            self.service.local_settings.save_broker_profile(name, broker_config_to_dict(broker_config))
+        if not self.service._get_default_broker_profile():
             self.service.config["brokers"]["default_profile"] = name
+            if hasattr(self.service, "local_settings"):
+                self.service.local_settings.set_default_broker_profile(name)
+        self.service._apply_local_broker_settings()
         self.service.secret_store.set_password(name, password)
         self.service._persist_config()
 
@@ -192,6 +197,9 @@ class TradingWorkflowService:
             return self.service._response(False, f"Connection failed for broker: {name}")
         self.service.config.setdefault("brokers", {})
         self.service.config["brokers"]["default_profile"] = name
+        if hasattr(self.service, "local_settings"):
+            self.service.local_settings.set_default_broker_profile(name)
+        self.service._apply_local_broker_settings()
         self.service._persist_config()
         return self.service._response(True, f"Connection successful for broker: {name}")
 
@@ -200,15 +208,21 @@ class TradingWorkflowService:
         return self.service._response(True, "Disconnected all broker connections")
 
     def delete_broker_profile(self, name: str) -> Dict[str, Any]:
-        profiles = self.service.config.setdefault("brokers", {}).setdefault("profiles", {})
+        profiles = self.service._get_saved_broker_profiles()
         if name not in profiles:
             return self.service._response(False, f"Saved profile not found: {name}")
 
-        del profiles[name]
+        if hasattr(self.service, "local_settings"):
+            self.service.local_settings.delete_broker_profile(name)
+        else:
+            repo_profiles = self.service.config.setdefault("brokers", {}).setdefault("profiles", {})
+            if name in repo_profiles:
+                del repo_profiles[name]
+            if self.service.config["brokers"].get("default_profile") == name:
+                self.service.config["brokers"]["default_profile"] = next(iter(repo_profiles.keys()), "")
         self.service.broker_manager.remove_broker(name)
         self.service.secret_store.delete_password(name)
-        if self.service.config["brokers"].get("default_profile") == name:
-            self.service.config["brokers"]["default_profile"] = next(iter(profiles.keys()), "")
+        self.service._apply_local_broker_settings()
         self.service._persist_config()
         return self.service._response(True, f"Broker profile deleted: {name}")
 

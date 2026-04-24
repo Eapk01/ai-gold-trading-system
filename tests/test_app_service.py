@@ -9,7 +9,8 @@ sys.modules.setdefault("pandas_ta", types.SimpleNamespace())
 
 from src.app_service import ResearchAppService
 from src.broker_interface import BrokerConfig, BrokerManager, BrokerType
-from src.secret_store import BrokerSecretStore
+from src.config_utils import get_default_config, load_config
+from src.secret_store import BrokerSecretStore, LocalSettingsStore
 from src.services.research_service import ResearchWorkflowService
 from src.services.trading_service import TradingWorkflowService
 
@@ -248,6 +249,27 @@ class SecretStoreTests(unittest.TestCase):
             self.assertFalse(store.has_password("Main"))
             self.assertEqual(store.get_password("Main"), "")
 
+    def test_local_settings_store_round_trip_for_broker_profiles(self):
+        with TemporaryDirectory() as temp_dir:
+            store = LocalSettingsStore(Path(temp_dir) / "local_settings.json")
+
+            store.save_broker_profile(
+                "Main",
+                {
+                    "broker_type": "exness",
+                    "login": "123456",
+                    "server": "Exness-MT5Trial16",
+                },
+            )
+            store.set_default_broker_profile("Main")
+
+            self.assertIn("Main", store.get_broker_profiles())
+            self.assertEqual(store.get_default_broker_profile(), "Main")
+
+            store.delete_broker_profile("Main")
+            self.assertEqual(store.get_broker_profiles(), {})
+            self.assertEqual(store.get_default_broker_profile(), "")
+
 
 class SecretMigrationTests(unittest.TestCase):
     def test_plaintext_profile_passwords_are_migrated_out_of_config(self):
@@ -316,12 +338,44 @@ class SecretMigrationTests(unittest.TestCase):
                 }
             }
             service.secret_store = BrokerSecretStore(Path(temp_dir) / "broker_secrets.json")
+            service.local_settings = LocalSettingsStore(Path(temp_dir) / "local_settings.json")
             service._persist_config = lambda: None
 
             service._migrate_plaintext_broker_secrets()
 
-            self.assertEqual(service.config["brokers"]["profiles"]["Main"]["password"], "")
+            self.assertEqual(service.config["brokers"]["profiles"], {})
             self.assertEqual(service.secret_store.get_password("Main"), "secret")
+            self.assertIn("Main", service.local_settings.get_broker_profiles())
+
+
+class RepoConfigSanitizationTests(unittest.TestCase):
+    def test_persist_config_strips_local_broker_state_from_repo_file(self):
+        with TemporaryDirectory() as temp_dir:
+            config_path = Path(temp_dir) / "config.yaml"
+            service = ResearchAppService.__new__(ResearchAppService)
+            service.config_path = str(config_path)
+            service.config = get_default_config()
+            service.config["brokers"]["profiles"] = {
+                "Main": {
+                    "broker_type": "exness",
+                    "login": "123456",
+                    "server": "Exness-MT5Trial16",
+                    "terminal_path": "",
+                    "sandbox": False,
+                    "account_id": "",
+                    "timeout": 30,
+                    "max_retries": 3,
+                }
+            }
+            service.config["brokers"]["default_profile"] = "Main"
+            service._sanitize_config_for_repo = ResearchAppService._sanitize_config_for_repo.__get__(service, ResearchAppService)
+            service._persist_config = ResearchAppService._persist_config.__get__(service, ResearchAppService)
+
+            service._persist_config()
+            loaded = load_config(str(config_path))
+
+            self.assertEqual(loaded["brokers"]["profiles"], {})
+            self.assertEqual(loaded["brokers"]["default_profile"], "")
 
 
 class RuntimeReloadTests(unittest.TestCase):

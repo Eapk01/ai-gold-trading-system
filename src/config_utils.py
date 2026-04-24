@@ -119,11 +119,11 @@ def get_default_config() -> Dict[str, Any]:
             "presets": {},
             "spacetime_dashboard": {
                 "enabled": False,
-                "sender_script": "C:\\Users\\Bruh\\Desktop\\Tests\\scripts\\send-snapshot.ts",
-                "sender_project_dir": "C:\\Users\\Bruh\\Desktop\\Tests",
-                "npx_command": "C:\\Program Files\\nodejs\\npx.cmd",
+                "sender_script": "",
+                "sender_project_dir": "",
+                "npx_command": "",
                 "uri": "https://maincloud.spacetimedb.com",
-                "database_name": "trading-bot-demo-bruh-20260419",
+                "database_name": "",
             },
             "exit_management": {
                 "mode": "trailing_stop",
