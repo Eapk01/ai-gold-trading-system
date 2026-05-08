@@ -33,12 +33,18 @@ class FakeBrokerManager:
         self.protection_updates = []
         self.update_result = {"success": True}
         self.account_info = {"equity": 10000.0}
+        self.quote = {"symbol": "XAUUSD", "bid": 12.8, "ask": 12.9, "last": 12.85}
 
     def get_historical_data(self, symbol, timeframe, bars=200):
         return list(self._candles)[-bars:]
 
     def get_positions(self):
         return list(self.positions)
+
+    def get_market_data(self, symbol):
+        payload = dict(self.quote)
+        payload["symbol"] = symbol
+        return payload
 
     def get_account_info(self):
         return dict(self.account_info)
@@ -85,8 +91,10 @@ class FakeAIModelManager:
         self.feature_columns = ["feat1"]
         self.prediction = prediction
         self.confidence = confidence
+        self.predict_calls = 0
 
     def predict_ensemble_batch(self, feature_data, feature_columns=None, method="voting"):
+        self.predict_calls += 1
         index = feature_data.index
         return pd.DataFrame(
             {
@@ -260,6 +268,42 @@ class LiveDemoTraderTests(unittest.TestCase):
         self.assertEqual(len(broker_manager.closed), 0)
         self.assertEqual(len(broker_manager.protection_updates), 1)
 
+    def test_run_once_updates_protection_intrabar_without_new_candle(self):
+        positions = [{"ticket": "88", "symbol": "XAUUSD", "type": 0, "volume": 0.01, "price_open": 11.0, "price_current": 11.0, "sl": 10.0, "tp": 14.0}]
+        broker_manager = FakeBrokerManager(self.base_candles, positions=positions)
+        broker_manager.quote = {"symbol": "XAUUSD", "bid": 13.0, "ask": 13.1, "last": 13.05}
+        trader = LiveDemoTrader(self.config, broker_manager, FakeFeatureEngineer(), FakeAIModelManager(prediction=1.0, confidence=0.9))
+
+        success, _ = trader._initialize_history()
+        self.assertTrue(success)
+
+        result, message = trader.run_once()
+        status = trader.get_status()
+
+        self.assertTrue(result)
+        self.assertIn("No new closed candle", message)
+        self.assertIn("Trailing stop moved", message)
+        self.assertEqual(len(broker_manager.protection_updates), 1)
+        self.assertIsNotNone(status["last_protection_check_at"])
+        self.assertIsNotNone(status["last_protection_update_at"])
+
+    def test_run_once_skips_intrabar_inference_when_only_protection_changes(self):
+        positions = [{"ticket": "88", "symbol": "XAUUSD", "type": 0, "volume": 0.01, "price_open": 11.0, "price_current": 11.0, "sl": 10.0, "tp": 14.0}]
+        broker_manager = FakeBrokerManager(self.base_candles, positions=positions)
+        broker_manager.quote = {"symbol": "XAUUSD", "bid": 13.0, "ask": 13.1, "last": 13.05}
+        manager = FakeAIModelManager(prediction=1.0, confidence=0.9)
+        trader = LiveDemoTrader(self.config, broker_manager, FakeFeatureEngineer(), manager)
+
+        success, _ = trader._initialize_history()
+        self.assertTrue(success)
+        self.assertEqual(manager.predict_calls, 1)
+
+        trader.run_once()
+
+        self.assertEqual(manager.predict_calls, 1)
+        trader._run_protection_task()
+        self.assertEqual(manager.predict_calls, 1)
+
     def test_run_once_moves_buy_stop_to_break_even_or_better(self):
         positions = [{"ticket": "88", "symbol": "XAUUSD", "type": 0, "volume": 0.01, "price_open": 11.0, "price_current": 12.8, "sl": 10.0, "tp": 14.0}]
         broker_manager = FakeBrokerManager(self.base_candles, positions=positions)
@@ -282,6 +326,7 @@ class LiveDemoTraderTests(unittest.TestCase):
     def test_run_once_moves_sell_stop_down_when_in_profit(self):
         positions = [{"ticket": "99", "symbol": "XAUUSD", "type": 1, "volume": 0.01, "price_open": 13.5, "price_current": 12.2, "sl": 14.5, "tp": 11.0}]
         broker_manager = FakeBrokerManager(self.base_candles, positions=positions)
+        broker_manager.quote = {"symbol": "XAUUSD", "bid": 12.1, "ask": 12.2, "last": 12.15}
         trader = LiveDemoTrader(self.config, broker_manager, FakeFeatureEngineer(), FakeAIModelManager(prediction=0.0, confidence=0.9))
 
         success, _ = trader._initialize_history()
@@ -295,9 +340,45 @@ class LiveDemoTraderTests(unittest.TestCase):
         self.assertEqual(len(broker_manager.protection_updates), 1)
         self.assertLess(broker_manager.protection_updates[0]["stop_loss"], 13.5)
 
+    def test_intrabar_protection_uses_bid_for_buys_and_ask_for_sells(self):
+        buy_position = {"ticket": "88", "symbol": "XAUUSD", "type": 0, "volume": 0.01, "price_open": 11.0, "price_current": 11.0, "sl": 10.0, "tp": 14.0}
+        sell_position = {"ticket": "99", "symbol": "XAUUSD", "type": 1, "volume": 0.01, "price_open": 13.5, "price_current": 13.5, "sl": 14.5, "tp": 11.0}
+
+        buy_broker = FakeBrokerManager(self.base_candles, positions=[buy_position])
+        buy_broker.quote = {"symbol": "XAUUSD", "bid": 13.0, "ask": 15.5, "last": 14.0}
+        buy_trader = LiveDemoTrader(self.config, buy_broker, FakeFeatureEngineer(), FakeAIModelManager(prediction=1.0, confidence=0.9))
+        success, _ = buy_trader._initialize_history()
+        self.assertTrue(success)
+        buy_trader._run_protection_task()
+
+        sell_broker = FakeBrokerManager(self.base_candles, positions=[sell_position])
+        sell_broker.quote = {"symbol": "XAUUSD", "bid": 11.0, "ask": 12.0, "last": 11.5}
+        sell_trader = LiveDemoTrader(self.config, sell_broker, FakeFeatureEngineer(), FakeAIModelManager(prediction=0.0, confidence=0.9))
+        success, _ = sell_trader._initialize_history()
+        self.assertTrue(success)
+        sell_trader._run_protection_task()
+
+        self.assertAlmostEqual(buy_broker.protection_updates[0]["stop_loss"], 12.5)
+        self.assertAlmostEqual(sell_broker.protection_updates[0]["stop_loss"], 13.25)
+
+    def test_intrabar_protection_falls_back_to_position_price_current_when_quote_missing(self):
+        positions = [{"ticket": "88", "symbol": "XAUUSD", "type": 0, "volume": 0.01, "price_open": 11.0, "price_current": 13.0, "sl": 10.0, "tp": 14.0}]
+        broker_manager = FakeBrokerManager(self.base_candles, positions=positions)
+        broker_manager.quote = {}
+        trader = LiveDemoTrader(self.config, broker_manager, FakeFeatureEngineer(), FakeAIModelManager(prediction=1.0, confidence=0.9))
+
+        success, _ = trader._initialize_history()
+        self.assertTrue(success)
+
+        message = trader._run_protection_task()
+
+        self.assertIn("Trailing stop moved", message)
+        self.assertEqual(len(broker_manager.protection_updates), 1)
+
     def test_run_once_skips_trailing_update_below_step(self):
         positions = [{"ticket": "88", "symbol": "XAUUSD", "type": 0, "volume": 0.01, "price_open": 11.0, "price_current": 13.1, "sl": 12.45, "tp": 14.0}]
         broker_manager = FakeBrokerManager(self.base_candles, positions=positions)
+        broker_manager.quote = {"symbol": "XAUUSD", "bid": 13.14, "ask": 13.24, "last": 13.19}
         trader = LiveDemoTrader(self.config, broker_manager, FakeFeatureEngineer(), FakeAIModelManager(prediction=1.0, confidence=0.9))
 
         success, _ = trader._initialize_history()
@@ -309,6 +390,18 @@ class LiveDemoTraderTests(unittest.TestCase):
         self.assertTrue(result)
         self.assertEqual(len(broker_manager.protection_updates), 0)
         self.assertIn("below trailing step", trader.get_status()["last_protection_action"].lower())
+
+    def test_intrabar_protection_does_not_run_without_managed_position(self):
+        trader = LiveDemoTrader(self.config, FakeBrokerManager(self.base_candles), FakeFeatureEngineer(), FakeAIModelManager(prediction=1.0, confidence=0.9))
+
+        success, _ = trader._initialize_history()
+        self.assertTrue(success)
+
+        message = trader._run_protection_task()
+        status = trader.get_status()
+
+        self.assertEqual(message, "")
+        self.assertIsNone(status["last_protection_check_at"])
 
     def test_run_once_skips_protection_with_multiple_positions(self):
         positions = [

@@ -5,6 +5,7 @@ Exness demo auto-trader runtime.
 from __future__ import annotations
 
 import threading
+import time
 from collections import deque
 from copy import deepcopy
 from datetime import datetime, timezone
@@ -50,6 +51,7 @@ class LiveDemoTrader:
         self.inactive_poll_interval_seconds = int(live_config.get("inactive_poll_interval_seconds", 30))
         self.startup_candle_buffer = int(live_config.get("startup_candle_buffer", 150))
         self.stale_candle_multiplier = int(live_config.get("stale_candle_multiplier", 4))
+        self.protection_poll_interval_seconds = 1
         self.history_limit = max(self.startup_candle_buffer * 3, self.lookback_periods + 50, 300)
         self.demo_only = bool(live_config.get("enabled_demo_only", True))
         self.candle_duration_seconds = self._timeframe_to_seconds(self.timeframe)
@@ -73,6 +75,10 @@ class LiveDemoTrader:
         self._last_candle_age_seconds: Optional[int] = None
         self._last_protection_action: str = "idle"
         self._last_managed_stop_loss: Optional[float] = None
+        self._last_protection_check_at: Optional[str] = None
+        self._last_protection_update_at: Optional[str] = None
+        self._next_signal_check_monotonic: Optional[float] = None
+        self._next_protection_check_monotonic: Optional[float] = None
 
     def start(self) -> Tuple[bool, str]:
         """Start the background trading runtime."""
@@ -102,6 +108,13 @@ class LiveDemoTrader:
             self._running = True
             self._started_at = datetime.now().isoformat()
             self._latest_error = None
+            self._last_protection_check_at = None
+            self._last_protection_update_at = None
+            now = time.monotonic()
+            self._next_signal_check_monotonic = now + self._get_signal_poll_interval_locked()
+            self._next_protection_check_monotonic = (
+                now + self.protection_poll_interval_seconds if self._should_schedule_protection_check() else None
+            )
             self._thread = threading.Thread(target=self._run_loop, name="live-demo-trader", daemon=True)
             self._thread.start()
 
@@ -122,6 +135,8 @@ class LiveDemoTrader:
 
         with self._lock:
             self._thread = None
+            self._next_signal_check_monotonic = None
+            self._next_protection_check_monotonic = None
 
         self._append_event("info", "Auto trader stopped")
         self._publish_dashboard_snapshot("Auto trader stopped", positions_override=[])
@@ -135,7 +150,7 @@ class LiveDemoTrader:
                 return False, message
 
         try:
-            return self._poll_once()
+            return self._run_scheduled_tasks(force_signal=True, force_protection=True)
         except Exception as exc:
             message = f"Auto trader iteration failed: {exc}"
             logger.error(message)
@@ -169,11 +184,14 @@ class LiveDemoTrader:
                 "confidence_threshold": self.confidence_threshold,
                 "active_poll_interval_seconds": self.poll_interval_seconds,
                 "inactive_poll_interval_seconds": self.inactive_poll_interval_seconds,
+                "protection_poll_interval_seconds": self.protection_poll_interval_seconds,
                 "stale_threshold_seconds": self.stale_threshold_seconds,
                 "exit_management_enabled": bool(self.exit_management.get("enabled")),
                 "exit_management_mode": self.exit_management.get("mode", "disabled"),
                 "last_protection_action": self._last_protection_action,
                 "last_managed_stop_loss": self._last_managed_stop_loss,
+                "last_protection_check_at": self._last_protection_check_at,
+                "last_protection_update_at": self._last_protection_update_at,
             }
 
     def get_recent_events(self, limit: int = 20) -> List[Dict[str, Any]]:
@@ -184,10 +202,18 @@ class LiveDemoTrader:
 
     def _run_loop(self) -> None:
         while True:
-            interval = self._get_current_poll_interval()
-            if self._stop_event.wait(interval):
+            wait_seconds = self._get_seconds_until_next_scheduled_task()
+            if self._stop_event.wait(wait_seconds):
                 break
-            self.run_once()
+            try:
+                self._run_scheduled_tasks()
+            except Exception as exc:
+                message = f"Auto trader iteration failed: {exc}"
+                logger.error(message)
+                with self._lock:
+                    self._latest_error = message
+                    self._latest_action = "error"
+                self._append_event("error", message)
 
     def _initialize_history(self) -> Tuple[bool, str]:
         predictor = self._get_runtime_predictor()
@@ -232,7 +258,44 @@ class LiveDemoTrader:
         )
         return True, "Startup candle history loaded"
 
-    def _poll_once(self) -> Tuple[bool, str]:
+    def _run_scheduled_tasks(
+        self,
+        *,
+        force_signal: bool = False,
+        force_protection: bool = False,
+    ) -> Tuple[bool, str]:
+        now = time.monotonic()
+        with self._lock:
+            signal_due = force_signal or self._next_signal_check_monotonic is None or now >= self._next_signal_check_monotonic
+            protection_due = (
+                force_protection
+                or (
+                    self._next_protection_check_monotonic is not None
+                    and now >= self._next_protection_check_monotonic
+                )
+            )
+
+        success = True
+        signal_message = ""
+        protection_message = ""
+
+        if signal_due:
+            success, signal_message = self._run_signal_task()
+            with self._lock:
+                self._next_signal_check_monotonic = time.monotonic() + self._get_signal_poll_interval_locked()
+                self._refresh_protection_schedule_locked(time.monotonic())
+
+        if force_protection or protection_due or (force_signal and self._should_schedule_protection_check()):
+            protection_message = self._run_protection_task()
+            with self._lock:
+                self._refresh_protection_schedule_locked(time.monotonic())
+
+        combined_message = self._combine_runtime_messages(signal_message, protection_message)
+        if not combined_message:
+            combined_message = signal_message or protection_message or "No runtime action"
+        return success, combined_message
+
+    def _run_signal_task(self) -> Tuple[bool, str]:
         candles = self.broker_manager.get_historical_data(self.symbol, self.timeframe, self.history_limit + 2)
         if not candles or len(candles) < 3:
             return False, "No recent MT5 candles available"
@@ -273,23 +336,33 @@ class LiveDemoTrader:
             self._append_event("warning", message)
             return False, message
 
-        latest_feature_row = feature_history.iloc[-1] if feature_history is not None and not feature_history.empty else pd.Series(dtype=float)
-        protection_message = self._manage_open_position(signal, latest_feature_row)
         action_message = self._apply_signal(signal)
         with self._lock:
             self._latest_signal = signal
             self._latest_error = None
-            self._latest_action = action_message if not protection_message else f"{protection_message} | {action_message}"
-            latest_action = self._latest_action
+            self._latest_action = action_message
+            latest_action = action_message
 
         self._append_event("info", action_message, {"signal": signal})
         self._publish_dashboard_snapshot(latest_action)
         return True, action_message
 
+    def _get_seconds_until_next_scheduled_task(self) -> float:
+        with self._lock:
+            now = time.monotonic()
+            due_times = [moment for moment in (self._next_signal_check_monotonic, self._next_protection_check_monotonic) if moment is not None]
+            if not due_times:
+                return float(self.poll_interval_seconds)
+            next_due = min(due_times)
+            return max(next_due - now, 0.05)
+
     def _get_current_poll_interval(self) -> int:
         with self._lock:
-            if self._market_state == "market_closed_or_stale":
-                return self.inactive_poll_interval_seconds
+            return self._get_signal_poll_interval_locked()
+
+    def _get_signal_poll_interval_locked(self) -> int:
+        if self._market_state == "market_closed_or_stale":
+            return self.inactive_poll_interval_seconds
         return self.poll_interval_seconds
 
     def _set_market_state_locked(self, new_state: str, candle_age_seconds: Optional[int]) -> None:
@@ -470,9 +543,24 @@ class LiveDemoTrader:
             "keep_take_profit": bool(exit_config.get("keep_take_profit", True)),
         }
 
-    def _manage_open_position(self, signal: Dict[str, Any], feature_row: pd.Series) -> str:
-        if not bool(self.exit_management.get("enabled")):
+    def _run_protection_task(self) -> str:
+        if not self._should_schedule_protection_check():
             return ""
+
+        with self._lock:
+            self._last_protection_check_at = datetime.now().isoformat()
+
+        message, updated = self._manage_open_position()
+        if updated:
+            with self._lock:
+                self._last_protection_update_at = datetime.now().isoformat()
+                self._latest_action = self._combine_runtime_messages(self._latest_action, message)
+            self._publish_dashboard_snapshot(message)
+        return message
+
+    def _manage_open_position(self) -> Tuple[str, bool]:
+        if not bool(self.exit_management.get("enabled")):
+            return "", False
 
         positions = self._get_symbol_positions()
         if len(positions) != 1:
@@ -480,23 +568,21 @@ class LiveDemoTrader:
                 message = f"Skipped protection update: multiple open positions detected for {self.symbol}"
                 with self._lock:
                     self._last_protection_action = message
-                self._append_event("warning", message)
-                return message
+                return message, False
             with self._lock:
                 self._last_protection_action = "No managed position to protect"
                 self._last_managed_stop_loss = None
-            return ""
+            return "", False
 
         position = positions[0]
-        update = self._build_protection_update(position, signal, feature_row)
+        quote = self.broker_manager.get_market_data(self.symbol)
+        update = self._build_protection_update(position, quote)
         if not update.get("should_update"):
             message = str(update.get("message") or "No protection update needed")
             with self._lock:
                 self._last_protection_action = message
                 self._last_managed_stop_loss = self._safe_float(position.get("sl"))
-            if bool(update.get("log_event")):
-                self._append_event("info", message, {"position_ticket": str(position.get("ticket", ""))})
-            return message
+            return message, False
 
         update_result = self.broker_manager.update_position_protection(
             str(position.get("ticket", "")),
@@ -517,7 +603,7 @@ class LiveDemoTrader:
                     "take_profit": update.get("take_profit"),
                 },
             )
-            return message
+            return message, True
 
         error_message = f"Protection update failed: {update_result.get('error', 'unknown error')}"
         with self._lock:
@@ -532,12 +618,12 @@ class LiveDemoTrader:
                 "requested_take_profit": update.get("take_profit"),
             },
         )
-        return error_message
+        return error_message, False
 
-    def _build_protection_update(self, position: Dict[str, Any], signal: Dict[str, Any], feature_row: pd.Series) -> Dict[str, Any]:
+    def _build_protection_update(self, position: Dict[str, Any], quote: Dict[str, Any]) -> Dict[str, Any]:
         side = self._position_side(position)
         entry_price = self._safe_float(position.get("price_open"))
-        current_price = self._safe_float(position.get("price_current"), fallback=float(signal.get("price", 0.0)))
+        current_price = self._resolve_protection_price(position, quote)
         current_stop_loss = self._safe_float(position.get("sl"))
         current_take_profit = self._safe_float(position.get("tp"))
 
@@ -594,6 +680,35 @@ class LiveDemoTrader:
             "stop_loss": candidate_stop_loss,
             "take_profit": current_take_profit if bool(self.exit_management.get("keep_take_profit", True)) else None,
         }
+
+    def _resolve_protection_price(self, position: Dict[str, Any], quote: Dict[str, Any]) -> Optional[float]:
+        side = self._position_side(position)
+        if side == "buy":
+            live_price = self._safe_float((quote or {}).get("bid"))
+        else:
+            live_price = self._safe_float((quote or {}).get("ask"))
+        if live_price is not None:
+            return live_price
+        return self._safe_float(position.get("price_current"))
+
+    def _should_schedule_protection_check(self) -> bool:
+        return bool(self.exit_management.get("enabled")) and len(self._get_symbol_positions()) == 1
+
+    def _refresh_protection_schedule_locked(self, now_monotonic: float) -> None:
+        if self._should_schedule_protection_check():
+            self._next_protection_check_monotonic = now_monotonic + self.protection_poll_interval_seconds
+        else:
+            self._next_protection_check_monotonic = None
+
+    def _combine_runtime_messages(self, signal_message: str, protection_message: str) -> str:
+        cleaned = [message.strip() for message in (protection_message, signal_message) if str(message or "").strip()]
+        if not cleaned:
+            return ""
+        deduped: List[str] = []
+        for message in cleaned:
+            if message not in deduped:
+                deduped.append(message)
+        return " | ".join(deduped)
 
     def _safe_float(self, value: Any, fallback: Optional[float] = None) -> Optional[float]:
         try:
