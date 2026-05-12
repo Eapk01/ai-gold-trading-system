@@ -1,4 +1,4 @@
-"""Truth-gate helpers for bounded Stage 5 search recommendations."""
+"""Truth-gate helpers for bounded Research Search search recommendations."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ def apply_truth_gate(
     candidate: SearchCandidateSummary,
     truth_gate_defaults: Dict[str, Any] | None = None,
 ) -> SearchCandidateSummary:
-    """Annotate a Stage 5 candidate with diagnostics and truth-gate status."""
+    """Annotate a Research Search candidate with diagnostics and truth-gate status."""
     resolved_defaults = _resolve_truth_gate_defaults(truth_gate_defaults)
     minimum_test_coverage = float(resolved_defaults.get("minimum_test_coverage") or 0.0)
     max_validation_test_f1_drift = float(resolved_defaults.get("max_validation_test_f1_drift") or 0.0)

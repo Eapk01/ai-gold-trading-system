@@ -27,7 +27,7 @@ class ResearchSplit:
 
 @dataclass(frozen=True)
 class ResearchExperimentRequest:
-    """Input contract for one Stage 1 research evaluation run."""
+    """Input contract for one Baseline evaluation research evaluation run."""
 
     experiment_name: str
     target_column: str
@@ -116,110 +116,9 @@ class ExperimentResult:
         return asdict(self)
 
 
-@dataclass(frozen=True)
-class TargetStudyRequest:
-    """Input contract for a Stage 2 target study run."""
-
-    study_name: str
-    feature_columns: List[str]
-    target_specs: List[Dict[str, Any]]
-    trainer_name: str = "current_ensemble"
-    baseline_names: List[str] = field(default_factory=default_baseline_names)
-    train_size: int = 0
-    validation_size: int = 0
-    test_size: int = 0
-    step_size: int = 0
-    threshold_list: List[float] = field(default_factory=default_threshold_list)
-    expanding_window: bool = True
-
-    def normalized_thresholds(self) -> tuple[float, ...]:
-        """Return a stable float threshold tuple."""
-        return tuple(float(value) for value in self.threshold_list)
-
-
-@dataclass
-class TargetSummary:
-    """Class balance and difficulty summary for one target definition."""
-
-    target_id: str
-    target_type: str
-    display_name: str
-    total_rows: int
-    scored_rows: int
-    positive_count: int
-    negative_count: int
-    missing_count: int
-    positive_rate: float
-    negative_rate: float
-    missing_rate: float
-    majority_class: int | None = None
-    majority_rate: float = 0.0
-    persistence_rate: float | None = None
-
-
-@dataclass
-class TargetStudyTargetResult:
-    """Persistable result for one target inside a Stage 2 study."""
-
-    target_id: str
-    target_type: str
-    display_name: str
-    spec: Dict[str, Any]
-    summary: TargetSummary
-    experiment_report_file: str = ""
-    experiment_summary: Dict[str, Any] = field(default_factory=dict)
-    aggregate_metrics: Dict[str, Any] = field(default_factory=dict)
-    baseline_comparison: Dict[str, Any] = field(default_factory=dict)
-    integrity: Dict[str, Any] = field(default_factory=dict)
-    error: str = ""
-
-
-@dataclass
-class TargetStudyResult:
-    """Persistable result for a Stage 2 target comparison study."""
-
-    study_name: str
-    feature_columns: List[str]
-    request: Dict[str, Any] = field(default_factory=dict)
-    target_results: List[TargetStudyTargetResult] = field(default_factory=list)
-    comparison_rows: List[Dict[str, Any]] = field(default_factory=list)
-    artifact_paths: Dict[str, str] = field(default_factory=dict)
-    integrity: Dict[str, Any] = field(default_factory=dict)
-    integrity_artifact_paths: Dict[str, str] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Return a JSON-serializable representation."""
-        return asdict(self)
-
-
-@dataclass(frozen=True)
-class FeatureStudyRequest:
-    """Input contract for a Stage 3 feature study run."""
-
-    study_name: str
-    target_specs: List[Dict[str, Any]]
-    feature_set_names: List[str]
-    selector_name: str = "correlation"
-    selector_max_features: int = 20
-    trainer_name: str = "current_ensemble"
-    baseline_names: List[str] = field(default_factory=default_baseline_names)
-    train_size: int = 0
-    validation_size: int = 0
-    test_size: int = 0
-    step_size: int = 0
-    threshold_list: List[float] = field(default_factory=default_threshold_list)
-    expanding_window: bool = True
-    compare_legacy_target: bool = True
-
-    def normalized_thresholds(self) -> tuple[float, ...]:
-        """Return a stable float threshold tuple."""
-        return tuple(float(value) for value in self.threshold_list)
-
-
 @dataclass
 class FeatureInventoryRow:
-    """One feature inventory row used in Stage 3 studies."""
+    """One feature inventory row used by search feature-set catalogs."""
 
     column: str
     group: str
@@ -228,63 +127,9 @@ class FeatureInventoryRow:
     exclusion_reason: str = ""
     source: str = "prepared_feature_matrix"
 
-
-@dataclass
-class FeatureStudyFoldSelection:
-    """Per-fold selected-feature payload for one feature-set run."""
-
-    target_id: str
-    target_display_name: str
-    feature_set_name: str
-    fold_name: str
-    selector_name: str
-    candidate_count: int
-    selected_count: int
-    selected_columns: List[str] = field(default_factory=list)
-    ranking_rows: List[Dict[str, Any]] = field(default_factory=list)
-
-
-@dataclass
-class FeatureStudySetResult:
-    """Persistable result for one target/feature-set combination."""
-
-    target_id: str
-    target_display_name: str
-    feature_set_name: str
-    feature_set_display_name: str
-    candidate_feature_count: int
-    candidate_columns: List[str] = field(default_factory=list)
-    experiment_report_file: str = ""
-    experiment_summary: Dict[str, Any] = field(default_factory=dict)
-    aggregate_metrics: Dict[str, Any] = field(default_factory=dict)
-    baseline_comparison: Dict[str, Any] = field(default_factory=dict)
-    fold_selections: List[FeatureStudyFoldSelection] = field(default_factory=list)
-    stability_rows: List[Dict[str, Any]] = field(default_factory=list)
-    group_stability_rows: List[Dict[str, Any]] = field(default_factory=list)
-    error: str = ""
-
-
-@dataclass
-class FeatureStudyResult:
-    """Persistable result for a Stage 3 feature comparison study."""
-
-    study_name: str
-    working_target_id: str
-    request: Dict[str, Any] = field(default_factory=dict)
-    inventory_rows: List[FeatureInventoryRow] = field(default_factory=list)
-    set_results: List[FeatureStudySetResult] = field(default_factory=list)
-    comparison_rows: List[Dict[str, Any]] = field(default_factory=list)
-    artifact_paths: Dict[str, str] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Return a JSON-serializable representation."""
-        return asdict(self)
-
-
 @dataclass(frozen=True)
 class TrainingExperimentRequest:
-    """Canonical Stage 4 experiment request."""
+    """Canonical Candidate training experiment request."""
 
     experiment_id: str
     experiment_name: str
@@ -310,7 +155,7 @@ class TrainingExperimentRequest:
 
 @dataclass
 class TrainingExperimentResult:
-    """Persistable Stage 4 canonical experiment result."""
+    """Persistable Candidate training canonical experiment result."""
 
     experiment_id: str
     experiment_name: str
@@ -347,7 +192,7 @@ class TrainingExperimentResult:
 
 @dataclass(frozen=True)
 class SearchRequest:
-    """Input contract for a bounded Stage 5 automated search run."""
+    """Input contract for a bounded Research Search automated search run."""
 
     search_id: str
     search_name: str
@@ -381,7 +226,7 @@ class SearchRequest:
 
 @dataclass
 class SearchCandidateSummary:
-    """Ranking-ready summary for one Stage 5 candidate."""
+    """Ranking-ready summary for one Research Search candidate."""
 
     candidate_id: str
     experiment_id: str
@@ -389,10 +234,21 @@ class SearchCandidateSummary:
     trainer_name: str
     feature_set_name: str
     preset_name: str
+    preset_variant_name: str = ""
+    preset_variant_summary: str = ""
     target_spec_id: str = ""
     target_display_name: str = ""
     trainer_params: Dict[str, Any] = field(default_factory=dict)
     selected_threshold: float | None = None
+    threshold_source: str = ""
+    architecture_name: str = ""
+    feature_mode: str = ""
+    sequence_feature_count: int = 0
+    dense_head_summary: str = ""
+    bidirectional: bool = False
+    training_device: str = ""
+    cuda_available: bool = False
+    cuda_device_name: str = ""
     report_file: str = ""
     candidate_artifact_path: str = ""
     validation_summary: Dict[str, Any] = field(default_factory=dict)
@@ -415,7 +271,7 @@ class SearchCandidateSummary:
 
 @dataclass
 class SearchResult:
-    """Persistable result for a bounded Stage 5 automated search run."""
+    """Persistable result for a bounded Research Search automated search run."""
 
     search_id: str
     search_name: str

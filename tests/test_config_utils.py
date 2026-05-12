@@ -71,12 +71,13 @@ class ConfigUtilsTests(unittest.TestCase):
         self.assertEqual(get_effective_confidence_threshold(config, "backtest"), 0.72)
         self.assertEqual(get_effective_confidence_threshold(config, "live_trading"), 0.67)
 
-    def test_validate_config_rejects_invalid_stage5_defaults(self):
+    def test_validate_config_rejects_invalid_research_search_defaults(self):
         config = get_default_config()
-        config["research"]["stage5_defaults"] = {
+        config["research"]["defaults"]["search"] = {
             "target_ids": [],
-            "feature_sets": [],
-            "presets": ["conservative"],
+            "feature_set_names": ["baseline_core"],
+            "trainer_name": "current_ensemble",
+            "preset_names": ["conservative"],
         }
 
         with self.assertRaises(ConfigValidationError):

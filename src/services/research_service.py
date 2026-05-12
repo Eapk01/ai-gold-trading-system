@@ -39,20 +39,22 @@ from src.research import (
     build_feature_selector,
     build_named_feature_sets,
     build_search_diagnostics,
-    build_stage5_preset_catalog,
-    build_stage5_target_catalog_rows,
-    build_stage5_target_specs,
+    build_search_preset_catalog,
+    build_search_target_catalog_rows,
+    build_search_target_specs,
     build_training_experiment_diagnostics,
+    count_search_preset_variants,
     get_feature_set_description,
     get_feature_set_display_name,
     get_default_promoted_model_path,
     resolve_integrity_payload,
-    resolve_stage5_preset_definitions,
+    resolve_search_preset_definitions,
     resolve_feature_sets,
     resolve_research_defaults,
     serialize_target_spec,
     summarize_selected_threshold_metrics,
 )
+from src.research.feature_selection import PassthroughFeatureSelector
 from src.research.training_experiment import build_threshold_summary_rows, select_best_threshold
 from src.research.trainers import CurrentEnsembleTrainer, LSTMTrainer
 
@@ -63,8 +65,8 @@ if TYPE_CHECKING:
 class ResearchWorkflowService:
     """Research/model orchestration delegated from the app facade."""
 
-    STAGE5_TRAINER_NAMES = ("current_ensemble", "lstm")
-    STAGE5_SELECTOR_OPTIONS = (
+    SEARCH_TRAINER_NAMES = ("current_ensemble", "lstm")
+    SEARCH_SELECTOR_OPTIONS = (
         {
             "id": "correlation",
             "display_name": "Correlation",
@@ -173,9 +175,9 @@ class ResearchWorkflowService:
             raise ValueError(f"Unsupported {config_key} values: " + ", ".join(sorted(unknown_feature_sets)))
         return list(requested_feature_set_names)
 
-    def _normalize_stage5_trainer_name(self, trainer_name: object, *, config_key: str) -> str:
-        normalized_trainer = str(trainer_name or self.research_defaults.stage5.trainer_name).strip().lower()
-        if normalized_trainer not in self.STAGE5_TRAINER_NAMES:
+    def _normalize_search_trainer_name(self, trainer_name: object, *, config_key: str) -> str:
+        normalized_trainer = str(trainer_name or self.research_defaults.search.trainer_name).strip().lower()
+        if normalized_trainer not in self.SEARCH_TRAINER_NAMES:
             raise ValueError(f"Unsupported {config_key} value: {trainer_name}")
         return normalized_trainer
 
@@ -225,15 +227,73 @@ class ResearchWorkflowService:
             raise ValueError(f"{config_key_prefix} fractions must sum to 1.0 or less")
         return normalized_train, normalized_validation, normalized_test
 
-    def _build_stage5_available_trainers(self, *, selected_trainer_name: str) -> list[Dict[str, Any]]:
+    def _build_search_available_trainers(self, *, selected_trainer_name: str) -> list[Dict[str, Any]]:
         return [
             {
                 "id": trainer_name,
                 "display_name": trainer_name.replace("_", " ").title(),
                 "selected": trainer_name == selected_trainer_name,
             }
-            for trainer_name in self.STAGE5_TRAINER_NAMES
+            for trainer_name in self.SEARCH_TRAINER_NAMES
         ]
+
+    def _build_lstm_cuda_status(self, *, trainer_name: str) -> Dict[str, Any]:
+        """Return user-facing LSTM CUDA readiness for search setup and reports."""
+        if str(trainer_name or "").strip().lower() != "lstm":
+            return {
+                "applies": False,
+                "requested_device": "",
+                "training_device": "",
+                "cuda_available": False,
+                "cuda_usable": False,
+                "cuda_probe_error": "",
+                "cuda_device_name": "",
+                "torch_version": "",
+                "message": "CUDA acceleration applies to LSTM training only.",
+            }
+        try:
+            device_info = LSTMTrainer.resolve_training_device("auto")
+        except Exception as exc:
+            return {
+                "applies": True,
+                "requested_device": "auto",
+                "training_device": "unavailable",
+                "cuda_available": False,
+                "cuda_usable": False,
+                "cuda_probe_error": str(exc),
+                "cuda_device_name": "",
+                "torch_version": "",
+                "message": f"LSTM CUDA status could not be checked: {exc}",
+            }
+
+        training_device = str(device_info.get("training_device") or "cpu")
+        cuda_available = bool(device_info.get("cuda_available"))
+        cuda_usable = bool(device_info.get("cuda_usable"))
+        cuda_probe_error = str(device_info.get("cuda_probe_error") or "")
+        cuda_device_name = str(device_info.get("cuda_device_name") or "")
+        torch_version = str(device_info.get("torch_version") or "")
+        if training_device == "cuda":
+            message = f"CUDA will be used for LSTM training on {cuda_device_name or 'the active CUDA device'}."
+        elif cuda_available and not cuda_usable:
+            message = (
+                "CUDA is visible, but PyTorch cannot execute kernels for this GPU, "
+                "so LSTM training will use CPU."
+            )
+        elif cuda_available:
+            message = "CUDA is visible, but the current LSTM device policy resolves to CPU."
+        else:
+            message = "CUDA is not available to PyTorch right now, so LSTM training will use CPU."
+        return {
+            "applies": True,
+            "requested_device": str(device_info.get("requested_device") or "auto"),
+            "training_device": training_device,
+            "cuda_available": cuda_available,
+            "cuda_usable": cuda_usable,
+            "cuda_probe_error": cuda_probe_error,
+            "cuda_device_name": cuda_device_name,
+            "torch_version": torch_version,
+            "message": message,
+        }
 
     def _resolve_effective_search_inputs(
         self,
@@ -246,16 +306,16 @@ class ResearchWorkflowService:
     ) -> Dict[str, Any]:
         overrides = dict(search_overrides or {})
         common_defaults = self.research_defaults.common
-        stage5_defaults = self.research_defaults.stage5
+        search_defaults = self.research_defaults.search
         configured_models = list((self.service.config.get("ai_model", {}) or {}).get("models") or [])
 
-        trainer_name = self._normalize_stage5_trainer_name(
-            overrides.get("trainer_name", stage5_defaults.trainer_name),
+        trainer_name = self._normalize_search_trainer_name(
+            overrides.get("trainer_name", search_defaults.trainer_name),
             config_key="search_overrides.trainer_name",
         )
         serialized_target_specs = [serialize_target_spec(target_spec) for target_spec in target_specs]
         selected_target_ids = self._normalize_string_list(
-            overrides.get("target_ids", stage5_defaults.target_ids),
+            overrides.get("target_ids", search_defaults.target_ids),
             config_key="search_overrides.target_ids",
         )
         resolved_target_specs = self._resolve_target_specs_by_ids(
@@ -264,7 +324,7 @@ class ResearchWorkflowService:
             config_key="search_overrides.target_ids",
         )
         selected_feature_set_names = self._normalize_string_list(
-            overrides.get("feature_set_names", stage5_defaults.feature_set_names),
+            overrides.get("feature_set_names", search_defaults.feature_set_names),
             config_key="search_overrides.feature_set_names",
         )
         resolved_feature_set_names = self._resolve_feature_set_names(
@@ -273,10 +333,10 @@ class ResearchWorkflowService:
             config_key="search_overrides.feature_set_names",
         )
         selected_preset_names = self._normalize_string_list(
-            overrides.get("preset_names", stage5_defaults.preset_names),
+            overrides.get("preset_names", search_defaults.preset_names),
             config_key="search_overrides.preset_names",
         )
-        resolve_stage5_preset_definitions(
+        resolve_search_preset_definitions(
             trainer_name,
             configured_models,
             selected_preset_names,
@@ -333,12 +393,12 @@ class ResearchWorkflowService:
     def _resolve_catalog_search_inputs(self, search_overrides: Dict[str, Any] | None = None) -> Dict[str, Any]:
         overrides = dict(search_overrides or {})
         common_defaults = self.research_defaults.common
-        stage5_defaults = self.research_defaults.stage5
+        search_defaults = self.research_defaults.search
         configured_models = list((self.service.config.get("ai_model", {}) or {}).get("models") or [])
-        target_specs = self._build_stage5_search_target_specs()
+        target_specs = self._build_search_target_specs()
         serialized_target_specs = [serialize_target_spec(target_spec) for target_spec in target_specs]
         selected_target_ids = self._normalize_string_list(
-            overrides.get("target_ids", stage5_defaults.target_ids),
+            overrides.get("target_ids", search_defaults.target_ids),
             config_key="search_overrides.target_ids",
         )
         resolved_target_specs = self._resolve_target_specs_by_ids(
@@ -351,7 +411,7 @@ class ResearchWorkflowService:
         feature_set_map = build_named_feature_sets(available_feature_columns)
         available_feature_set_names = list(feature_set_map.keys())
         selected_feature_set_names = self._normalize_string_list(
-            overrides.get("feature_set_names", stage5_defaults.feature_set_names),
+            overrides.get("feature_set_names", search_defaults.feature_set_names),
             config_key="search_overrides.feature_set_names",
         )
         resolved_feature_set_names = self._resolve_catalog_feature_set_names(
@@ -359,12 +419,12 @@ class ResearchWorkflowService:
             selected_feature_set_names,
             config_key="search_overrides.feature_set_names",
         )
-        trainer_name = self._normalize_stage5_trainer_name(
-            overrides.get("trainer_name", stage5_defaults.trainer_name),
+        trainer_name = self._normalize_search_trainer_name(
+            overrides.get("trainer_name", search_defaults.trainer_name),
             config_key="search_overrides.trainer_name",
         )
         selected_preset_names = self._normalize_string_list(
-            overrides.get("preset_names", stage5_defaults.preset_names),
+            overrides.get("preset_names", search_defaults.preset_names),
             config_key="search_overrides.preset_names",
         )
         build_feature_selector(
@@ -374,7 +434,7 @@ class ResearchWorkflowService:
                 config_key="search_overrides.selector_max_features",
             ),
         )
-        resolve_stage5_preset_definitions(trainer_name, configured_models, selected_preset_names)
+        resolve_search_preset_definitions(trainer_name, configured_models, selected_preset_names)
         train_fraction, validation_fraction, test_fraction = self._normalize_split_fractions(
             train_fraction=overrides.get("train_fraction", common_defaults.train_fraction),
             validation_fraction=overrides.get("validation_fraction", common_defaults.validation_fraction),
@@ -667,11 +727,11 @@ class ResearchWorkflowService:
             return self.service._response(False, f"Model test failed: {exc}", errors=[str(exc)])
 
     def get_search_catalog(self, search_overrides: Dict[str, Any] | None = None) -> Dict[str, Any]:
-        """Return a GUI-ready catalog for the bounded Stage 5 search space."""
+        """Return a GUI-ready catalog for the bounded research search space."""
         catalog_inputs = self._resolve_catalog_search_inputs(search_overrides=search_overrides)
         feature_set_map = dict(catalog_inputs.get("feature_set_map") or {})
-        available_targets = build_stage5_target_catalog_rows(
-            target_specs=self._build_stage5_search_target_specs(),
+        available_targets = build_search_target_catalog_rows(
+            target_specs=self._build_search_target_specs(),
             selected_target_ids=list(catalog_inputs.get("target_ids") or []),
         )
         available_feature_sets = [
@@ -684,19 +744,27 @@ class ResearchWorkflowService:
             }
             for feature_set_name, feature_set in feature_set_map.items()
         ]
-        available_trainers = self._build_stage5_available_trainers(
+        available_trainers = self._build_search_available_trainers(
             selected_trainer_name=str(catalog_inputs.get("trainer_name") or "")
         )
-        available_presets = build_stage5_preset_catalog(
+        lstm_cuda_status = self._build_lstm_cuda_status(
+            trainer_name=str(catalog_inputs.get("trainer_name") or "")
+        )
+        available_presets = build_search_preset_catalog(
             str(catalog_inputs.get("trainer_name") or ""),
             list((self.service.config.get("ai_model", {}) or {}).get("models") or []),
             selected_preset_names=list(catalog_inputs.get("preset_names") or []),
         )
 
+        selected_variant_count = sum(
+            int(row.get("variant_count") or 1)
+            for row in available_presets
+            if row.get("selected")
+        )
         candidate_count = (
             len([row for row in available_targets if row.get("selected")])
             * len([row for row in available_feature_sets if row.get("selected")])
-            * len([row for row in available_presets if row.get("selected")])
+            * selected_variant_count
         )
 
         return self.service._response(
@@ -717,21 +785,23 @@ class ResearchWorkflowService:
                     "expanding_window": catalog_inputs.get("expanding_window"),
                     "max_workers": catalog_inputs.get("max_workers"),
                     "worker_policy": {
-                        "min_auto_workers": self.research_defaults.stage5.min_auto_workers,
-                        "max_worker_cap": self.research_defaults.stage5.max_worker_cap,
+                        "min_auto_workers": self.research_defaults.search.min_auto_workers,
+                        "max_worker_cap": self.research_defaults.search.max_worker_cap,
                     },
                 },
                 "available_targets": available_targets,
                 "available_feature_sets": available_feature_sets,
                 "available_trainers": available_trainers,
                 "available_presets": available_presets,
-                "available_selectors": list(self.STAGE5_SELECTOR_OPTIONS),
+                "available_selectors": list(self.SEARCH_SELECTOR_OPTIONS),
+                "lstm_cuda_status": lstm_cuda_status,
                 "candidate_count": candidate_count,
+                "expanded_preset_variant_count": selected_variant_count,
             },
         )
 
     def promote_training_experiment(self, experiment_path_or_id: str) -> Dict[str, Any]:
-        logger.info("Starting Stage 4 promotion...")
+        logger.info("Starting Candidate promotion...")
         try:
             report_path = self._resolve_training_experiment_report_path(experiment_path_or_id)
             payload = self.service.experiment_store.load_result(report_path)
@@ -753,6 +823,7 @@ class ResearchWorkflowService:
                 failure_reasons = ", ".join((integrity.get("overview") or {}).get("contract_failure_reasons") or ["integrity_contract_failed"])
                 raise ValueError(f"Promotion blocked because the saved integrity proof is missing or failed: {failure_reasons}")
             candidate_payload = payload.get("candidate_artifact") or {}
+            candidate_metadata = dict(candidate_payload.get("metadata") or {})
             candidate_path = Path(str(candidate_payload.get("artifact_path", "")))
             if not candidate_path.exists():
                 raise FileNotFoundError(f"Candidate artifact is missing: {candidate_path}")
@@ -780,6 +851,16 @@ class ResearchWorkflowService:
                     "report_file": str(report_path),
                     "trainer_name": payload.get("trainer_name"),
                     "target_spec": payload.get("target_spec"),
+                    "threshold_source": candidate_metadata.get("threshold_source"),
+                    "decision_threshold": candidate_metadata.get("decision_threshold"),
+                    "architecture_name": candidate_metadata.get("architecture_name"),
+                    "feature_mode": candidate_metadata.get("feature_mode"),
+                    "sequence_feature_count": candidate_metadata.get("sequence_feature_count"),
+                    "dense_head_summary": candidate_metadata.get("dense_head_summary"),
+                    "bidirectional": candidate_metadata.get("bidirectional"),
+                    "training_device": candidate_metadata.get("training_device"),
+                    "cuda_available": candidate_metadata.get("cuda_available"),
+                    "cuda_device_name": candidate_metadata.get("cuda_device_name"),
                 },
             )
             manifest_path = self.service.experiment_store.resolve_path(f"promotion_{timestamp}_{promotion_slug}.json")
@@ -794,6 +875,15 @@ class ResearchWorkflowService:
                 "experiment_id": payload.get("experiment_id"),
                 "promoted_model_path": str(promoted_path),
                 "selected_threshold": payload.get("selected_threshold"),
+                "threshold_source": candidate_metadata.get("threshold_source"),
+                "architecture_name": candidate_metadata.get("architecture_name"),
+                "feature_mode": candidate_metadata.get("feature_mode"),
+                "sequence_feature_count": candidate_metadata.get("sequence_feature_count"),
+                "dense_head_summary": candidate_metadata.get("dense_head_summary"),
+                "bidirectional": candidate_metadata.get("bidirectional"),
+                "training_device": candidate_metadata.get("training_device"),
+                "cuda_available": candidate_metadata.get("cuda_available"),
+                "cuda_device_name": candidate_metadata.get("cuda_device_name"),
                 "feature_set_name": payload.get("feature_set_name"),
             }
             artifacts = {
@@ -805,7 +895,7 @@ class ResearchWorkflowService:
 
             return self.service._response(
                 True,
-                "Stage 4 promotion completed successfully",
+                "Candidate promotion completed successfully",
                 data={
                     "summary": summary,
                     "manifest": manifest.to_dict(),
@@ -813,8 +903,8 @@ class ResearchWorkflowService:
                 artifacts=artifacts,
             )
         except Exception as exc:
-            logger.error(f"Stage 4 promotion failed: {exc}")
-            return self.service._response(False, f"Stage 4 promotion failed: {exc}", errors=[str(exc)])
+            logger.error(f"Candidate promotion failed: {exc}")
+            return self.service._response(False, f"Candidate promotion failed: {exc}", errors=[str(exc)])
 
     def run_automated_search(
         self,
@@ -842,7 +932,7 @@ class ResearchWorkflowService:
             )
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             search_slug = self.service._sanitize_model_name(search_name)
-            target_specs = self._build_stage5_search_target_specs()
+            target_specs = self._build_search_target_specs()
             request = self._build_default_search_request(
                 search_name=search_name,
                 target_specs=target_specs,
@@ -877,7 +967,7 @@ class ResearchWorkflowService:
                     "preset_count": len(request.preset_names),
                 },
             )
-            preset_definitions = resolve_stage5_preset_definitions(
+            preset_definitions = resolve_search_preset_definitions(
                 request.trainer_name,
                 self.service.ai_model_manager.model_names,
                 request.preset_names,
@@ -889,7 +979,13 @@ class ResearchWorkflowService:
                 preset_definitions=preset_definitions,
             )
             total_candidates = len(candidate_configs)
-            resolved_max_workers = self._resolve_search_worker_count(request.max_workers)
+            resolved_max_workers = self._resolve_search_worker_count(
+                request.max_workers,
+                trainer_name=request.trainer_name,
+            )
+            lstm_cuda_status = self._build_lstm_cuda_status(trainer_name=request.trainer_name)
+            if lstm_cuda_status.get("applies"):
+                logger.info("LSTM training device status: {}", lstm_cuda_status.get("message"))
             execution_mode = (
                 "parallel_candidate_threads"
                 if resolved_max_workers > 1 and total_candidates > 1
@@ -908,6 +1004,7 @@ class ResearchWorkflowService:
                     "target_count": len(request.resolved_target_specs()),
                     "feature_set_count": len(feature_sets),
                     "preset_count": len(request.preset_names),
+                    "lstm_cuda_status": lstm_cuda_status,
                     "completed_count": 0,
                     "failed_count": 0,
                     "active_count": min(total_candidates, resolved_max_workers if execution_mode != "sequential" else 1),
@@ -944,6 +1041,7 @@ class ResearchWorkflowService:
                         f"{candidate_summary.target_display_name} | "
                         f"{candidate_summary.feature_set_name} | "
                         f"{candidate_summary.preset_name}"
+                        f"{(' / ' + candidate_summary.preset_variant_name) if candidate_summary.preset_variant_name else ''}"
                     ),
                     current=processed_count,
                     total=total_candidates,
@@ -961,6 +1059,7 @@ class ResearchWorkflowService:
                         "target_display_name": candidate_summary.target_display_name,
                         "feature_set_name": candidate_summary.feature_set_name,
                         "preset_name": candidate_summary.preset_name,
+                        "preset_variant_name": candidate_summary.preset_variant_name,
                     },
                 )
 
@@ -1002,7 +1101,7 @@ class ResearchWorkflowService:
                         try:
                             candidate_result = future.result()
                         except Exception as exc:
-                            logger.error(f"Stage 5 candidate execution crashed for {candidate_config.candidate_id}: {exc}")
+                            logger.error(f"Research Search candidate execution crashed for {candidate_config.candidate_id}: {exc}")
                             candidate_result = self._build_failed_search_candidate_result(
                                 candidate_config=candidate_config,
                                 experiment_name=(
@@ -1244,14 +1343,14 @@ class ResearchWorkflowService:
             ),
         ]
 
-    def _build_stage4_working_target_spec(self) -> object:
+    def _build_working_target_spec(self) -> object:
         available_target_specs = {
             str(getattr(spec, "spec_id", "") or "").strip(): spec
             for spec in self._build_default_target_specs()
         }
-        target_id = self.research_defaults.stage4.working_target_id
+        target_id = self.research_defaults.search.working_target_id
         if target_id not in available_target_specs:
-            raise ValueError(f"Unsupported research.defaults.stage4.working_target_id value: {target_id}")
+            raise ValueError(f"Unsupported research.defaults.search.working_target_id value: {target_id}")
         return available_target_specs[target_id]
 
     def _build_default_training_experiment_request(
@@ -1264,22 +1363,27 @@ class ResearchWorkflowService:
     ) -> TrainingExperimentRequest:
         experiment_request = self._build_default_experiment_request(
             experiment_name=experiment_name,
-            target_column="stage4_training_experiment",
+            target_column="candidate_training_experiment",
             feature_columns=[],
             total_rows=total_rows,
         )
         common_defaults = self.research_defaults.common
-        stage4_defaults = self.research_defaults.stage4
+        search_defaults = self.research_defaults.search
+        feature_set_name = (
+            str(search_defaults.feature_set_names[0])
+            if search_defaults.feature_set_names
+            else "baseline_core"
+        )
         return TrainingExperimentRequest(
             experiment_id=f"training_experiment_{timestamp}",
             experiment_name=experiment_name,
             target_spec=serialize_target_spec(target_spec),
-            feature_set_name=stage4_defaults.feature_set_name,
-            comparison_feature_set_name=stage4_defaults.comparison_feature_set_name,
+            feature_set_name=feature_set_name,
+            comparison_feature_set_name="",
             selector_name=common_defaults.selector_name,
             selector_max_features=common_defaults.selector_max_features,
-            trainer_name=stage4_defaults.trainer_name,
-            trainer_params=dict(stage4_defaults.trainer_params),
+            trainer_name=search_defaults.trainer_name,
+            trainer_params={},
             baseline_names=list(experiment_request.baseline_names),
             train_size=experiment_request.train_size,
             validation_size=experiment_request.validation_size,
@@ -1302,7 +1406,7 @@ class ResearchWorkflowService:
     ) -> SearchRequest:
         experiment_request = self._build_default_experiment_request(
             experiment_name=search_name,
-            target_column="stage5_search",
+            target_column="research_search",
             feature_columns=[],
             total_rows=total_rows,
         )
@@ -1334,37 +1438,39 @@ class ResearchWorkflowService:
             execution_mode="parallel_candidate_threads",
         )
 
-    def _resolve_stage5_target_specs(self, serialized_target_specs: list[Dict[str, Any]]) -> list[Dict[str, Any]]:
+    def _resolve_search_target_specs(self, serialized_target_specs: list[Dict[str, Any]]) -> list[Dict[str, Any]]:
         return self._resolve_target_specs_by_ids(
             serialized_target_specs,
-            self.research_defaults.stage5.target_ids,
-            config_key="research.defaults.stage5.target_ids",
+            self.research_defaults.search.target_ids,
+            config_key="research.defaults.search.target_ids",
         )
 
-    def _resolve_stage5_feature_set_names(self, available_feature_columns: list[str]) -> list[str]:
+    def _resolve_search_feature_set_names(self, available_feature_columns: list[str]) -> list[str]:
         return self._resolve_feature_set_names(
             available_feature_columns,
-            self.research_defaults.stage5.feature_set_names,
-            config_key="research.defaults.stage5.feature_set_names",
+            self.research_defaults.search.feature_set_names,
+            config_key="research.defaults.search.feature_set_names",
         )
 
-    def _resolve_stage5_preset_names(self) -> list[str]:
-        configured_preset_names = list(self.research_defaults.stage5.preset_names)
+    def _resolve_search_preset_names(self) -> list[str]:
+        configured_preset_names = list(self.research_defaults.search.preset_names)
         configured_models = list((self.service.config.get("ai_model", {}) or {}).get("models") or [])
-        resolve_stage5_preset_definitions(
-            self.research_defaults.stage5.trainer_name,
+        resolve_search_preset_definitions(
+            self.research_defaults.search.trainer_name,
             configured_models,
             configured_preset_names,
         )
         return configured_preset_names
 
-    def _resolve_search_worker_count(self, requested_max_workers: int | None) -> int:
+    def _resolve_search_worker_count(self, requested_max_workers: int | None, *, trainer_name: str = "") -> int:
         requested = int(requested_max_workers or 0)
         if requested > 0:
             return max(1, requested)
+        if str(trainer_name or "").strip().lower() == "lstm" and LSTMTrainer.cuda_is_available():
+            return 1
         cpu_count = os.cpu_count() or 2
-        stage5_defaults = self.research_defaults.stage5
-        return min(stage5_defaults.max_worker_cap, max(stage5_defaults.min_auto_workers, cpu_count // 2))
+        search_defaults = self.research_defaults.search
+        return min(search_defaults.max_worker_cap, max(search_defaults.min_auto_workers, cpu_count // 2))
 
     def _execute_search_candidate(
         self,
@@ -1380,9 +1486,14 @@ class ResearchWorkflowService:
         trainer_registry: TrainerRegistry,
     ) -> Dict[str, Any]:
         started_at = perf_counter()
+        variant_suffix = (
+            f"_{candidate_config.preset_variant_name}"
+            if str(candidate_config.preset_variant_name or "") and candidate_config.preset_variant_name != candidate_config.preset_name
+            else ""
+        )
         experiment_name = (
             f"{search_name}_{candidate_config.target_spec_id}_"
-            f"{candidate_config.feature_set_name}_{candidate_config.preset_name}"
+            f"{candidate_config.feature_set_name}_{candidate_config.preset_name}{variant_suffix}"
         )
         try:
             target_spec = target_specs_by_id[candidate_config.target_spec_id]
@@ -1412,7 +1523,7 @@ class ResearchWorkflowService:
             )
             artifact_prefix = (
                 f"training_experiment_{timestamp}_{search_slug}_"
-                f"{candidate_config.target_spec_id}_{candidate_config.feature_set_name}_{candidate_config.preset_name}"
+                f"{candidate_config.target_spec_id}_{candidate_config.feature_set_name}_{candidate_config.preset_name}{variant_suffix}"
             )
             candidate_execution = self._run_training_experiment_candidate(
                 request=experiment_request,
@@ -1434,6 +1545,8 @@ class ResearchWorkflowService:
                     "selected_threshold_summary": candidate_execution["selected_threshold_summary"],
                     "search_id": request.search_id,
                     "preset_name": candidate_config.preset_name,
+                    "preset_variant_name": candidate_config.preset_variant_name,
+                    "preset_variant_summary": candidate_config.preset_variant_summary,
                     "execution_mode": request.execution_mode,
                 },
             )
@@ -1443,6 +1556,8 @@ class ResearchWorkflowService:
                 training_result=training_result,
                 report_file=report_file,
                 preset_name=candidate_config.preset_name,
+                preset_variant_name=candidate_config.preset_variant_name,
+                preset_variant_summary=candidate_config.preset_variant_summary,
             )
             candidate_summary.elapsed_seconds = round(perf_counter() - started_at, 4)
             return {
@@ -1450,7 +1565,7 @@ class ResearchWorkflowService:
                 "candidate_row": self._build_search_candidate_row(candidate_summary),
             }
         except Exception as exc:
-            logger.error(f"Stage 5 candidate failed for {candidate_config.candidate_id}: {exc}")
+            logger.error(f"Research Search candidate failed for {candidate_config.candidate_id}: {exc}")
             return self._build_failed_search_candidate_result(
                 candidate_config=candidate_config,
                 experiment_name=experiment_name,
@@ -1473,6 +1588,8 @@ class ResearchWorkflowService:
             trainer_name=str(candidate_config.trainer_name),
             feature_set_name=str(candidate_config.feature_set_name),
             preset_name=str(candidate_config.preset_name),
+            preset_variant_name=str(candidate_config.preset_variant_name),
+            preset_variant_summary=str(candidate_config.preset_variant_summary),
             target_spec_id=str(candidate_config.target_spec_id),
             target_display_name=str(candidate_config.target_display_name),
             trainer_params=dict(candidate_config.trainer_params or {}),
@@ -1504,7 +1621,27 @@ class ResearchWorkflowService:
             "target_display_name": candidate_summary.target_display_name,
             "feature_set_name": candidate_summary.feature_set_name,
             "preset_name": candidate_summary.preset_name,
+            "preset_variant_name": candidate_summary.preset_variant_name,
+            "preset_variant_summary": candidate_summary.preset_variant_summary,
             "selected_threshold": candidate_summary.selected_threshold,
+            "architecture_name": candidate_summary.architecture_name,
+            "feature_mode": candidate_summary.feature_mode,
+            "sequence_feature_count": candidate_summary.sequence_feature_count,
+            "dense_head_summary": candidate_summary.dense_head_summary,
+            "bidirectional": candidate_summary.bidirectional,
+            "training_device": candidate_summary.training_device,
+            "cuda_available": candidate_summary.cuda_available,
+            "cuda_device_name": candidate_summary.cuda_device_name,
+            "lookback_window": (candidate_summary.trainer_params or {}).get("lookback_window"),
+            "hidden_size": (candidate_summary.trainer_params or {}).get("hidden_size"),
+            "num_layers": (candidate_summary.trainer_params or {}).get("num_layers"),
+            "dropout": (candidate_summary.trainer_params or {}).get("dropout"),
+            "dense_hidden_size": (candidate_summary.trainer_params or {}).get("dense_hidden_size"),
+            "dense_dropout": (candidate_summary.trainer_params or {}).get("dense_dropout"),
+            "weight_decay": (candidate_summary.trainer_params or {}).get("weight_decay"),
+            "batch_size": (candidate_summary.trainer_params or {}).get("batch_size"),
+            "epochs": (candidate_summary.trainer_params or {}).get("epochs"),
+            "learning_rate": (candidate_summary.trainer_params or {}).get("learning_rate"),
             "validation_mean_f1": (candidate_summary.validation_summary or {}).get("mean_f1"),
             "validation_mean_coverage": (candidate_summary.validation_summary or {}).get("mean_coverage"),
             "test_mean_f1": (candidate_summary.test_summary or {}).get("mean_f1"),
@@ -1524,10 +1661,10 @@ class ResearchWorkflowService:
             "elapsed_seconds": candidate_summary.elapsed_seconds,
         }
 
-    def _build_stage5_search_target_specs(self) -> list[object]:
-        return build_stage5_target_specs(
+    def _build_search_target_specs(self) -> list[object]:
+        return build_search_target_specs(
             runtime_target_column=self.service.get_target_column(),
-            working_target_spec=self._build_stage4_working_target_spec(),
+            working_target_spec=self._build_working_target_spec(),
         )
 
     def _build_trainer_registry(self) -> TrainerRegistry:
@@ -1618,14 +1755,24 @@ class ResearchWorkflowService:
         trainer: Any,
         artifact_prefix: str,
     ) -> Dict[str, Any]:
+        passthrough_columns = self._resolve_lstm_passthrough_columns(
+            trainer_name=request.trainer_name,
+            trainer_params=request.trainer_params,
+            available_columns=list(self.service.feature_data.columns),
+        )
+        lstm_feature_mode = str((request.trainer_params or {}).get("feature_mode") or "engineered").strip().lower()
+        base_feature_columns = [] if request.trainer_name == "lstm" and lstm_feature_mode == "raw_market" else list(feature_set.columns)
+        effective_feature_columns = self._dedupe_columns(base_feature_columns + passthrough_columns)
         selector = build_feature_selector(
             request.selector_name,
             max_features=min(int(request.selector_max_features), max(len(feature_set.columns), 1)),
         )
+        if passthrough_columns:
+            selector = PassthroughFeatureSelector(selector, passthrough_columns=passthrough_columns)
         experiment_request = ResearchExperimentRequest(
             experiment_name=request.experiment_name,
             target_column=str(request.target_spec.get("spec_id")),
-            feature_columns=list(feature_set.columns),
+            feature_columns=effective_feature_columns,
             trainer_name=request.trainer_name,
             baseline_names=list(request.baseline_names),
             train_size=request.train_size,
@@ -1664,10 +1811,10 @@ class ResearchWorkflowService:
 
         train_mask = target_series.notna()
         full_selection = selector.select(
-            self.service.feature_data.loc[train_mask, feature_set.columns],
+            self.service.feature_data.loc[train_mask, effective_feature_columns],
             target_series.loc[train_mask],
         )
-        selected_feature_columns = list(full_selection.selected_columns) or list(feature_set.columns)
+        selected_feature_columns = list(full_selection.selected_columns) or list(effective_feature_columns)
 
         train_features = self.service.feature_data.loc[train_mask, selected_feature_columns]
         train_target = target_series.loc[train_mask]
@@ -1880,6 +2027,48 @@ class ResearchWorkflowService:
             "report_file": report_file,
         }
 
+    def _resolve_lstm_passthrough_columns(
+        self,
+        *,
+        trainer_name: str,
+        trainer_params: Dict[str, Any],
+        available_columns: list[str],
+    ) -> list[str]:
+        if str(trainer_name or "").strip().lower() != "lstm":
+            return []
+        feature_mode = str((trainer_params or {}).get("feature_mode") or "engineered").strip().lower()
+        if feature_mode == "engineered":
+            return []
+        normalized = {str(column).strip().lower(): str(column) for column in available_columns}
+        aliases = {
+            "open": ["open"],
+            "high": ["high"],
+            "low": ["low"],
+            "close": ["close", "adj close"],
+            "volume": ["volume", "tick_volume", "real_volume"],
+        }
+        resolved: list[str] = []
+        missing: list[str] = []
+        for canonical_name, candidates in aliases.items():
+            column = next((normalized[candidate] for candidate in candidates if candidate in normalized), "")
+            if column:
+                resolved.append(column)
+            else:
+                missing.append(canonical_name)
+        if missing:
+            raise ValueError(f"LSTM v2 {feature_mode} mode requires raw market columns: {', '.join(missing)}")
+        return self._dedupe_columns(resolved)
+
+    @staticmethod
+    def _dedupe_columns(columns: list[str]) -> list[str]:
+        seen = set()
+        ordered: list[str] = []
+        for column in columns:
+            if column not in seen:
+                seen.add(column)
+                ordered.append(column)
+        return ordered
+
     def _build_dataset_metadata(self, target_series: pd.Series) -> Dict[str, Any]:
         index = self.service.feature_data.index if self.service.feature_data is not None else pd.Index([])
         return {
@@ -2032,6 +2221,7 @@ class ResearchWorkflowService:
         test_summary = selected_threshold_summary.get("test") or {}
         diagnostics_highlights = (result.diagnostics or {}).get("highlights") or {}
         integrity_overview = (result.integrity or {}).get("overview") or {}
+        candidate_metadata = dict(result.candidate_artifact.metadata or {}) if result.candidate_artifact else {}
         return {
             "experiment_id": result.experiment_id,
             "experiment_name": result.experiment_name,
@@ -2040,6 +2230,15 @@ class ResearchWorkflowService:
             "comparison_feature_set_name": result.comparison_feature_set_name,
             "trainer_name": result.trainer_name,
             "selected_threshold": result.selected_threshold,
+            "threshold_source": candidate_metadata.get("threshold_source"),
+            "architecture_name": candidate_metadata.get("architecture_name"),
+            "feature_mode": candidate_metadata.get("feature_mode"),
+            "sequence_feature_count": candidate_metadata.get("sequence_feature_count"),
+            "dense_head_summary": candidate_metadata.get("dense_head_summary"),
+            "bidirectional": candidate_metadata.get("bidirectional"),
+            "training_device": candidate_metadata.get("training_device"),
+            "cuda_available": candidate_metadata.get("cuda_available"),
+            "cuda_device_name": candidate_metadata.get("cuda_device_name"),
             "feature_count": len(result.resolved_feature_columns),
             "fold_count": len({fold.fold_name for fold in result.folds if getattr(fold, "model_name", "") == result.trainer_name}),
             "mean_test_accuracy": result.aggregate_metrics.get("mean_test_accuracy"),
@@ -2066,6 +2265,8 @@ class ResearchWorkflowService:
         training_result: TrainingExperimentResult,
         report_file: Path,
         preset_name: str,
+        preset_variant_name: str = "",
+        preset_variant_summary: str = "",
     ) -> SearchCandidateSummary:
         selected_threshold_summary = (training_result.metadata or {}).get("selected_threshold_summary") or {}
         validation_summary = dict(selected_threshold_summary.get("validation") or {})
@@ -2097,8 +2298,44 @@ class ResearchWorkflowService:
             target_display_name=str((training_result.target_spec or {}).get("display_name") or ""),
             feature_set_name=training_result.feature_set_name,
             preset_name=preset_name,
+            preset_variant_name=str(preset_variant_name or (training_result.metadata or {}).get("preset_variant_name") or ""),
+            preset_variant_summary=str(preset_variant_summary or (training_result.metadata or {}).get("preset_variant_summary") or ""),
             trainer_params=dict(training_result.trainer_params),
             selected_threshold=training_result.selected_threshold,
+            threshold_source=str(
+                ((training_result.candidate_artifact.metadata or {}) if training_result.candidate_artifact else {}).get("threshold_source")
+                or ""
+            ),
+            architecture_name=str(
+                ((training_result.candidate_artifact.metadata or {}) if training_result.candidate_artifact else {}).get("architecture_name")
+                or ""
+            ),
+            feature_mode=str(
+                ((training_result.candidate_artifact.metadata or {}) if training_result.candidate_artifact else {}).get("feature_mode")
+                or ""
+            ),
+            sequence_feature_count=int(
+                ((training_result.candidate_artifact.metadata or {}) if training_result.candidate_artifact else {}).get("sequence_feature_count")
+                or 0
+            ),
+            dense_head_summary=str(
+                ((training_result.candidate_artifact.metadata or {}) if training_result.candidate_artifact else {}).get("dense_head_summary")
+                or ""
+            ),
+            bidirectional=bool(
+                ((training_result.candidate_artifact.metadata or {}) if training_result.candidate_artifact else {}).get("bidirectional")
+            ),
+            training_device=str(
+                ((training_result.candidate_artifact.metadata or {}) if training_result.candidate_artifact else {}).get("training_device")
+                or ""
+            ),
+            cuda_available=bool(
+                ((training_result.candidate_artifact.metadata or {}) if training_result.candidate_artifact else {}).get("cuda_available")
+            ),
+            cuda_device_name=str(
+                ((training_result.candidate_artifact.metadata or {}) if training_result.candidate_artifact else {}).get("cuda_device_name")
+                or ""
+            ),
             report_file=str(report_file),
             candidate_artifact_path=(training_result.candidate_artifact.artifact_path if training_result.candidate_artifact else ""),
             validation_summary=validation_summary,
@@ -2141,13 +2378,28 @@ class ResearchWorkflowService:
             "successful_candidate_count": result.successful_candidate_count,
             "failed_candidate_count": result.failed_candidate_count,
             "preset_count": len(result.preset_definitions),
+            "expanded_preset_variant_count": sum(
+                count_search_preset_variants(result.trainer_name, dict(payload or {}))
+                for payload in (result.preset_definitions or {}).values()
+            ),
             "recommended_experiment_id": recommended.get("experiment_id"),
             "recommended_report_file": recommended.get("report_file"),
             "recommended_target_spec_id": recommended.get("target_spec_id"),
             "recommended_target_display_name": recommended.get("target_display_name"),
             "recommended_feature_set_name": recommended.get("feature_set_name"),
             "recommended_preset_name": recommended.get("preset_name"),
+            "recommended_preset_variant_name": recommended.get("preset_variant_name"),
+            "recommended_preset_variant_summary": recommended.get("preset_variant_summary"),
             "recommended_selected_threshold": recommended.get("selected_threshold"),
+            "recommended_threshold_source": recommended.get("threshold_source"),
+            "recommended_architecture_name": recommended.get("architecture_name"),
+            "recommended_feature_mode": recommended.get("feature_mode"),
+            "recommended_sequence_feature_count": recommended.get("sequence_feature_count"),
+            "recommended_dense_head_summary": recommended.get("dense_head_summary"),
+            "recommended_bidirectional": recommended.get("bidirectional"),
+            "recommended_training_device": recommended.get("training_device"),
+            "recommended_cuda_available": recommended.get("cuda_available"),
+            "recommended_cuda_device_name": recommended.get("cuda_device_name"),
             "winner_status": recommended.get("status"),
             "winner_reason": recommended.get("reason"),
             "truth_gate_pass_count": gate_summary.get("passed_truth_gate_count"),
@@ -2218,4 +2470,3 @@ class ResearchWorkflowService:
                     normalized_row[key] = value
             normalized_rows.append(normalized_row)
         return normalized_rows
-

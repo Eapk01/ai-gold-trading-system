@@ -4,6 +4,7 @@ import unittest
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 import pandas as pd
 
@@ -43,12 +44,12 @@ from src.research import (
     build_fixed_horizon_direction_labels,
     build_legacy_runtime_direction_labels,
     build_observed_persistence_labels,
-    build_stage5_preset_catalog,
-    build_stage5_target_specs,
+    build_search_preset_catalog,
+    build_search_target_specs,
     build_search_diagnostics,
     build_training_experiment_diagnostics,
     get_default_promoted_model_path,
-    resolve_stage5_preset_definitions,
+    resolve_search_preset_definitions,
     serialize_target_spec,
 )
 from src.research.feature_selection import CorrelationFeatureSelector
@@ -673,10 +674,10 @@ class ResearchStructureTests(unittest.TestCase):
             str(Path("models") / "demo_run.joblib"),
         )
 
-    def test_stage5_preset_resolution_builds_expected_bounded_grid(self):
+    def test_search_preset_resolution_builds_expected_bounded_grid(self):
         request = SearchRequest(
             search_id="search_run_demo",
-            search_name="stage5_demo",
+            search_name="search_demo",
             target_spec={"spec_id": "return_threshold_h3_0_05pct"},
             target_specs=[
                 {"spec_id": "return_threshold_h3_0_05pct", "display_name": "Return Threshold"},
@@ -687,7 +688,7 @@ class ResearchStructureTests(unittest.TestCase):
             trainer_name="current_ensemble",
             preset_names=["conservative", "balanced", "capacity"],
         )
-        presets = resolve_stage5_preset_definitions(
+        presets = resolve_search_preset_definitions(
             ["random_forest", "logistic_regression"],
             request.preset_names,
         )
@@ -704,13 +705,40 @@ class ResearchStructureTests(unittest.TestCase):
         self.assertEqual({candidate.preset_name for candidate in grid}, {"conservative", "balanced", "capacity"})
         self.assertTrue(all("random_forest" in candidate.trainer_params for candidate in grid))
         self.assertTrue(all("logistic_regression" in candidate.trainer_params for candidate in grid))
+        self.assertEqual({candidate.preset_variant_name for candidate in grid}, {"conservative", "balanced", "capacity"})
 
-    def test_stage5_preset_resolution_fails_for_unsupported_model_names(self):
+    def test_search_lstm_presets_expand_into_curated_variants(self):
+        request = SearchRequest(
+            search_id="search_run_lstm",
+            search_name="search_lstm",
+            target_spec={"spec_id": "return_threshold_h3_0_05pct"},
+            target_specs=[{"spec_id": "return_threshold_h3_0_05pct", "display_name": "Return Threshold"}],
+            feature_set_names=["baseline_core"],
+            trainer_name="lstm",
+            preset_names=["conservative", "balanced", "capacity"],
+        )
+        presets = resolve_search_preset_definitions("lstm", ["random_forest"], request.preset_names)
+        runner = SearchRunner()
+
+        grid = runner.build_candidate_grid(request=request, preset_definitions=presets)
+
+        self.assertEqual(len(grid), 14)
+        self.assertEqual(len({candidate.candidate_id for candidate in grid}), 14)
+        self.assertTrue(all(candidate.preset_variant_name for candidate in grid))
+        self.assertTrue(all(candidate.preset_variant_name in candidate.candidate_id for candidate in grid))
+        self.assertEqual({candidate.preset_name for candidate in grid}, {"conservative", "balanced", "capacity"})
+        self.assertEqual({candidate.trainer_params["architecture_name"] for candidate in grid}, {"lstm_v2_dense_head"})
+        self.assertIn("raw_market", {candidate.trainer_params["feature_mode"] for candidate in grid})
+        self.assertIn("combined", {candidate.trainer_params["feature_mode"] for candidate in grid})
+        self.assertTrue(any(candidate.trainer_params.get("bidirectional") for candidate in grid if candidate.preset_name == "capacity"))
+        self.assertTrue(all(candidate.trainer_params.get("bidirectional") is False for candidate in grid if candidate.preset_name != "capacity"))
+
+    def test_search_preset_resolution_fails_for_unsupported_model_names(self):
         with self.assertRaises(ValueError):
-            resolve_stage5_preset_definitions(["lightgbm"], ["balanced"])
+            resolve_search_preset_definitions(["lightgbm"], ["balanced"])
 
-    def test_stage5_preset_catalog_is_registry_driven_for_current_ensemble(self):
-        rows = build_stage5_preset_catalog(
+    def test_search_preset_catalog_is_registry_driven_for_current_ensemble(self):
+        rows = build_search_preset_catalog(
             "current_ensemble",
             ["random_forest", "logistic_regression"],
             selected_preset_names=["balanced"],
@@ -722,8 +750,8 @@ class ResearchStructureTests(unittest.TestCase):
         self.assertIn("random_forest", balanced["summary"])
         self.assertIn("logistic_regression", balanced["summary"])
 
-    def test_stage5_preset_catalog_supports_lstm(self):
-        rows = build_stage5_preset_catalog(
+    def test_search_preset_catalog_supports_lstm(self):
+        rows = build_search_preset_catalog(
             "lstm",
             ["random_forest"],
             selected_preset_names=["conservative"],
@@ -733,9 +761,11 @@ class ResearchStructureTests(unittest.TestCase):
         conservative = next(row for row in rows if row["id"] == "conservative")
         self.assertTrue(conservative["selected"])
         self.assertEqual(conservative["trainer_name"], "lstm")
-        self.assertIn("parameters", conservative["summary"])
+        self.assertEqual(conservative["variant_count"], 2)
+        self.assertIn("lstm_v2_dense_head", conservative["summary"])
+        self.assertIn("engineered", conservative["summary"])
 
-    def test_stage5_ranking_uses_validation_only_and_applies_test_guardrail(self):
+    def test_search_ranking_uses_validation_only_and_applies_test_guardrail(self):
         runner = SearchRunner()
         weaker_test_better_validation = SearchCandidateSummary(
             candidate_id="candidate_a",
@@ -799,7 +829,7 @@ class ResearchStructureTests(unittest.TestCase):
         self.assertEqual(ranked["leaderboard_rows"][0]["candidate_id"], "candidate_a")
         self.assertEqual(ranked["recommended_winner"]["experiment_id"], "exp_b")
 
-    def test_stage51_truth_gate_blocks_low_coverage_candidate(self):
+    def test_search1_truth_gate_blocks_low_coverage_candidate(self):
         runner = SearchRunner()
         low_coverage = SearchCandidateSummary(
             candidate_id="candidate_a",
@@ -842,7 +872,7 @@ class ResearchStructureTests(unittest.TestCase):
         self.assertIn("low_test_coverage", ranked["leaderboard_rows"][0]["truth_gate_failures"])
         self.assertEqual(ranked["recommended_winner"]["experiment_id"], "exp_b")
 
-    def test_stage53_failed_candidates_are_excluded_from_ranking_but_kept_in_leaderboard(self):
+    def test_search3_failed_candidates_are_excluded_from_ranking_but_kept_in_leaderboard(self):
         runner = SearchRunner()
         failed = SearchCandidateSummary(
             candidate_id="candidate_failed",
@@ -883,7 +913,7 @@ class ResearchStructureTests(unittest.TestCase):
         self.assertEqual(ranked["leaderboard_rows"][1]["candidate_id"], "candidate_failed")
         self.assertEqual(ranked["leaderboard_rows"][1]["execution_status"], "failed")
 
-    def test_stage51_truth_gate_blocks_candidate_below_majority_baseline(self):
+    def test_search1_truth_gate_blocks_candidate_below_majority_baseline(self):
         runner = SearchRunner()
         under_majority = SearchCandidateSummary(
             candidate_id="candidate_a",
@@ -908,7 +938,7 @@ class ResearchStructureTests(unittest.TestCase):
         self.assertEqual(ranked["recommended_winner"]["status"], "no_winner")
         self.assertIn("broad_metric_under_majority", ranked["leaderboard_rows"][0]["truth_gate_failures"])
 
-    def test_stage51_truth_gate_blocks_large_validation_test_drift(self):
+    def test_search1_truth_gate_blocks_large_validation_test_drift(self):
         runner = SearchRunner()
         drifting = SearchCandidateSummary(
             candidate_id="candidate_a",
@@ -933,7 +963,7 @@ class ResearchStructureTests(unittest.TestCase):
         self.assertEqual(ranked["recommended_winner"]["status"], "no_winner")
         self.assertIn("validation_test_drift", ranked["leaderboard_rows"][0]["truth_gate_failures"])
 
-    def test_stage51_truth_gate_blocks_missing_selected_threshold_metrics(self):
+    def test_search1_truth_gate_blocks_missing_selected_threshold_metrics(self):
         runner = SearchRunner()
         undefined = SearchCandidateSummary(
             candidate_id="candidate_a",
@@ -958,7 +988,7 @@ class ResearchStructureTests(unittest.TestCase):
         self.assertEqual(ranked["recommended_winner"]["status"], "no_winner")
         self.assertIn("undefined_selected_threshold_metrics", ranked["leaderboard_rows"][0]["truth_gate_failures"])
 
-    def test_stage51_truth_gate_blocks_candidate_with_failed_integrity_proof(self):
+    def test_search1_truth_gate_blocks_candidate_with_failed_integrity_proof(self):
         runner = SearchRunner()
         integrity_failed = SearchCandidateSummary(
             candidate_id="candidate_a",
@@ -1225,7 +1255,7 @@ class ResearchExperimentServiceTests(unittest.TestCase):
         )
         return config_path
 
-    def _build_stage12_feature_data(self, periods: int) -> pd.DataFrame:
+    def _build_feature_feature_data(self, periods: int) -> pd.DataFrame:
         index = pd.date_range("2025-01-01", periods=periods, freq="5min")
         close = pd.Series(
             [100.0 + (value * 0.04) + ((-1) ** value) * 0.02 for value in range(periods)],
@@ -1285,7 +1315,7 @@ class ResearchExperimentServiceTests(unittest.TestCase):
             progress_snapshots = []
 
             result = service.run_automated_search(
-                "stage5_smoke",
+                "search_smoke",
                 progress_callback=lambda payload: progress_snapshots.append(dict(payload or {})),
                 max_workers=2,
             )
@@ -1302,7 +1332,7 @@ class ResearchExperimentServiceTests(unittest.TestCase):
 
             loaded = service.get_search_report(listed["data"][0]["path"])
             self.assertTrue(loaded["success"], msg=loaded)
-            self.assertEqual(loaded["data"]["summary"]["search_name"], "stage5_smoke")
+            self.assertEqual(loaded["data"]["summary"]["search_name"], "search_smoke")
             self.assertEqual(loaded["data"]["summary"]["target_count"], 3)
             self.assertEqual(loaded["data"]["summary"]["candidate_count"], 12)
             self.assertEqual(loaded["data"]["summary"]["execution_mode"], "parallel_candidate_threads")
@@ -1335,7 +1365,7 @@ class ResearchExperimentServiceTests(unittest.TestCase):
                 self.assertTrue(promotion["success"], msg=promotion)
                 self.assertTrue(Path((promotion["artifacts"] or {})["model_path"]).exists())
 
-    def test_default_request_builders_honor_configured_stage4_and_stage5_trainers(self):
+    def test_default_request_builders_honor_configured_search_trainer(self):
         with TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             config_path = self._write_config(root)
@@ -1345,12 +1375,7 @@ class ResearchExperimentServiceTests(unittest.TestCase):
                     [
                         "  candidate_models_directory: " + str(root / "models" / "candidates").replace(chr(92), "/"),
                         "  defaults:",
-                        "    stage4:",
-                        "      trainer_name: lstm",
-                        "      trainer_params:",
-                        "        lookback_window: 32",
-                        "        epochs: 7",
-                        "    stage5:",
+                        "    search:",
                         "      trainer_name: lstm",
                         "      preset_names: [conservative]",
                     ]
@@ -1361,25 +1386,25 @@ class ResearchExperimentServiceTests(unittest.TestCase):
             service = ResearchAppService(str(config_path))
             workflow = service.research_workflows
 
-            stage4_request = workflow._build_default_training_experiment_request(
-                experiment_name="stage4_lstm_default",
-                target_spec=workflow._build_stage4_working_target_spec(),
+            candidate_request = workflow._build_default_training_experiment_request(
+                experiment_name="candidate_lstm_default",
+                target_spec=workflow._build_working_target_spec(),
                 total_rows=80,
                 timestamp="20260406_000000",
             )
-            stage5_request = workflow._build_default_search_request(
-                search_name="stage5_lstm_default",
-                target_specs=workflow._build_stage5_search_target_specs(),
+            search_request = workflow._build_default_search_request(
+                search_name="search_lstm_default",
+                target_specs=workflow._build_search_target_specs(),
                 total_rows=80,
-                available_feature_columns=list(self._build_stage12_feature_data(80).columns),
+                available_feature_columns=list(self._build_feature_feature_data(80).columns),
                 timestamp="20260406_000000",
                 max_workers=1,
             )
 
-            self.assertEqual(stage4_request.trainer_name, "lstm")
-            self.assertEqual(stage4_request.trainer_params, {"lookback_window": 32, "epochs": 7})
-            self.assertEqual(stage5_request.trainer_name, "lstm")
-            self.assertEqual(stage5_request.preset_names, ["conservative"])
+            self.assertEqual(candidate_request.trainer_name, "lstm")
+            self.assertEqual(candidate_request.trainer_params, {})
+            self.assertEqual(search_request.trainer_name, "lstm")
+            self.assertEqual(search_request.preset_names, ["conservative"])
 
     def test_run_automated_search_uses_lstm_trainer_from_config(self):
         with TemporaryDirectory() as temp_dir:
@@ -1392,7 +1417,7 @@ class ResearchExperimentServiceTests(unittest.TestCase):
                     [
                         "  candidate_models_directory: " + str(root / "models" / "candidates").replace(chr(92), "/"),
                         "  defaults:",
-                        "    stage5:",
+                        "    search:",
                         "      target_ids: [return_threshold_h3_0_05pct]",
                         "      feature_set_names: [baseline_core]",
                         "      trainer_name: lstm",
@@ -1403,30 +1428,31 @@ class ResearchExperimentServiceTests(unittest.TestCase):
             Path(config_path).write_text(configured, encoding="utf-8")
 
             service = ResearchAppService(str(config_path))
-            service.feature_data = self._build_stage12_feature_data(80)
+            service.feature_data = self._build_feature_feature_data(80)
 
-            result = service.run_automated_search("stage5_lstm_config", max_workers=1)
+            result = service.run_automated_search("search_lstm_config", max_workers=1)
 
             self.assertTrue(result["success"], msg=result)
             summary = (result.get("data") or {}).get("summary") or {}
             self.assertEqual(summary.get("trainer_name"), "lstm")
-            self.assertEqual(summary.get("candidate_count"), 1)
+            self.assertEqual(summary.get("candidate_count"), 2)
+            self.assertEqual(summary.get("expanded_preset_variant_count"), 2)
 
             leaderboard_rows = (result.get("data") or {}).get("leaderboard_rows") or []
             self.assertTrue(leaderboard_rows)
 
             configuration = service.get_configuration_summary()
             self.assertTrue(configuration["success"], msg=configuration)
-            self.assertEqual(configuration["data"]["research_stage5_default_trainer_name"], "lstm")
+            self.assertEqual(configuration["data"]["research_search_default_trainer_name"], "lstm")
 
     def test_run_automated_search_uses_runtime_overrides_without_changing_defaults(self):
         with TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             service = ResearchAppService(str(self._write_config(root)))
-            service.feature_data = self._build_stage12_feature_data(80)
+            service.feature_data = self._build_feature_feature_data(80)
 
             result = service.run_automated_search(
-                "stage5_gui_override",
+                "search_gui_override",
                 search_overrides={
                     "trainer_name": "lstm",
                     "target_ids": ["return_threshold_h3_0_05pct"],
@@ -1446,7 +1472,7 @@ class ResearchExperimentServiceTests(unittest.TestCase):
             self.assertTrue(result["success"], msg=result)
             summary = (result.get("data") or {}).get("summary") or {}
             self.assertEqual(summary.get("trainer_name"), "lstm")
-            self.assertEqual(summary.get("candidate_count"), 1)
+            self.assertEqual(summary.get("candidate_count"), 2)
             self.assertEqual(summary.get("resolved_max_workers"), 1)
 
             report_file = (result.get("artifacts") or {}).get("report_file")
@@ -1459,11 +1485,11 @@ class ResearchExperimentServiceTests(unittest.TestCase):
             self.assertEqual(request_payload.get("selector_max_features"), 5)
             self.assertFalse(request_payload.get("expanding_window"))
             self.assertEqual(
-                ((loaded["data"].get("resolved_research_defaults") or {}).get("stage5") or {}).get("trainer_name"),
+                ((loaded["data"].get("resolved_research_defaults") or {}).get("search") or {}).get("trainer_name"),
                 "current_ensemble",
             )
 
-    def test_run_automated_search_uses_configured_stage5_scope(self):
+    def test_run_automated_search_uses_configured_search_scope(self):
         with TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             config_path = self._write_config(root)
@@ -1473,19 +1499,20 @@ class ResearchExperimentServiceTests(unittest.TestCase):
                 "\n".join(
                     [
                         f"  candidate_models_directory: {str(root / 'models' / 'candidates').replace(chr(92), '/')}",
-                        "  stage5_defaults:",
-                        "    target_ids: [return_threshold_h3_0_05pct]",
-                        "    feature_sets: [baseline_core]",
-                        "    presets: [conservative]",
+                        "  defaults:",
+                        "    search:",
+                        "      target_ids: [return_threshold_h3_0_05pct]",
+                        "      feature_set_names: [baseline_core]",
+                        "      preset_names: [conservative]",
                     ]
                 ),
             )
             Path(config_path).write_text(scoped_config, encoding="utf-8")
 
             service = ResearchAppService(str(config_path))
-            service.feature_data = self._build_stage12_feature_data(80)
+            service.feature_data = self._build_feature_feature_data(80)
 
-            result = service.run_automated_search("stage5_config_scope", max_workers=2)
+            result = service.run_automated_search("search_config_scope", max_workers=2)
 
             self.assertTrue(result["success"], msg=result)
             summary = (result.get("data") or {}).get("summary") or {}
@@ -1495,13 +1522,12 @@ class ResearchExperimentServiceTests(unittest.TestCase):
             configuration = service.get_configuration_summary()
             self.assertTrue(configuration["success"], msg=configuration)
             self.assertEqual(configuration["data"]["research_primary_workflow"], "search")
-            self.assertEqual(configuration["data"]["research_stage4_default_trainer_name"], "current_ensemble")
-            self.assertEqual(configuration["data"]["research_stage5_default_trainer_name"], "current_ensemble")
-            self.assertEqual(configuration["data"]["research_stage5_default_target_ids"], ["return_threshold_h3_0_05pct"])
-            self.assertEqual(configuration["data"]["research_stage5_default_feature_sets"], ["baseline_core"])
-            self.assertEqual(configuration["data"]["research_stage5_default_presets"], ["conservative"])
+            self.assertEqual(configuration["data"]["research_search_default_trainer_name"], "current_ensemble")
+            self.assertEqual(configuration["data"]["research_search_default_target_ids"], ["return_threshold_h3_0_05pct"])
+            self.assertEqual(configuration["data"]["research_search_default_feature_sets"], ["baseline_core"])
+            self.assertEqual(configuration["data"]["research_search_default_presets"], ["conservative"])
             self.assertEqual(
-                ((configuration["data"].get("research_defaults") or {}).get("stage5") or {}).get("target_ids"),
+                ((configuration["data"].get("research_defaults") or {}).get("search") or {}).get("target_ids"),
                 ["return_threshold_h3_0_05pct"],
             )
 
@@ -1509,7 +1535,7 @@ class ResearchExperimentServiceTests(unittest.TestCase):
             loaded = service.get_search_report(str(report_file))
             self.assertTrue(loaded["success"], msg=loaded)
             self.assertEqual(
-                ((loaded["data"].get("resolved_research_defaults") or {}).get("stage5") or {}).get("feature_set_names"),
+                ((loaded["data"].get("resolved_research_defaults") or {}).get("search") or {}).get("feature_set_names"),
                 ["baseline_core"],
             )
 
@@ -1517,7 +1543,7 @@ class ResearchExperimentServiceTests(unittest.TestCase):
         with TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             service = ResearchAppService(str(self._write_config(root)))
-            service.feature_data = self._build_stage12_feature_data(80)
+            service.feature_data = self._build_feature_feature_data(80)
 
             result = service.get_search_catalog()
 
@@ -1539,7 +1565,7 @@ class ResearchExperimentServiceTests(unittest.TestCase):
         with TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             service = ResearchAppService(str(self._write_config(root)))
-            service.feature_data = self._build_stage12_feature_data(80)
+            service.feature_data = self._build_feature_feature_data(80)
 
             result = service.get_search_catalog({"trainer_name": "lstm", "preset_names": ["capacity"]})
 
@@ -1548,18 +1574,72 @@ class ResearchExperimentServiceTests(unittest.TestCase):
             defaults = data.get("defaults") or {}
             self.assertEqual(defaults.get("trainer_name"), "lstm")
             self.assertEqual(defaults.get("preset_names"), ["capacity"])
+            self.assertEqual(data.get("expanded_preset_variant_count"), 6)
+            self.assertEqual(data.get("candidate_count"), 36)
             self.assertTrue(all(row.get("trainer_name") == "lstm" for row in (data.get("available_presets") or [])))
+            cuda_status = data.get("lstm_cuda_status") or {}
+            self.assertTrue(cuda_status.get("applies"))
+            self.assertIn(cuda_status.get("training_device"), {"cpu", "cuda", "unavailable"})
+            self.assertIn("message", cuda_status)
+
+    def test_get_search_catalog_surfaces_lstm_cuda_active_status(self):
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            service = ResearchAppService(str(self._write_config(root)))
+            service.feature_data = self._build_feature_feature_data(80)
+
+            with patch("src.research.trainers.lstm.LSTMTrainer.cuda_is_available", return_value=True), patch(
+                "src.research.trainers.lstm.LSTMTrainer.cuda_device_name",
+                return_value="Mock CUDA",
+            ), patch(
+                "src.research.trainers.lstm.LSTMTrainer.cuda_probe_error",
+                return_value="",
+            ):
+                result = service.get_search_catalog({"trainer_name": "lstm", "preset_names": ["capacity"]})
+
+            self.assertTrue(result["success"], msg=result)
+            cuda_status = (result.get("data") or {}).get("lstm_cuda_status") or {}
+            self.assertTrue(cuda_status.get("applies"))
+            self.assertEqual(cuda_status.get("training_device"), "cuda")
+            self.assertTrue(cuda_status.get("cuda_available"))
+            self.assertTrue(cuda_status.get("cuda_usable"))
+            self.assertEqual(cuda_status.get("cuda_device_name"), "Mock CUDA")
+            self.assertIn("CUDA will be used", str(cuda_status.get("message") or ""))
+
+    def test_get_search_catalog_surfaces_lstm_cuda_kernel_probe_failure(self):
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            service = ResearchAppService(str(self._write_config(root)))
+            service.feature_data = self._build_feature_feature_data(80)
+
+            with patch("src.research.trainers.lstm.LSTMTrainer.cuda_is_available", return_value=True), patch(
+                "src.research.trainers.lstm.LSTMTrainer.cuda_device_name",
+                return_value="Mock CUDA",
+            ), patch(
+                "src.research.trainers.lstm.LSTMTrainer.cuda_probe_error",
+                return_value="CUDA error: no kernel image is available for execution on the device",
+            ):
+                result = service.get_search_catalog({"trainer_name": "lstm", "preset_names": ["capacity"]})
+
+            self.assertTrue(result["success"], msg=result)
+            cuda_status = (result.get("data") or {}).get("lstm_cuda_status") or {}
+            self.assertTrue(cuda_status.get("applies"))
+            self.assertEqual(cuda_status.get("training_device"), "cpu")
+            self.assertTrue(cuda_status.get("cuda_available"))
+            self.assertFalse(cuda_status.get("cuda_usable"))
+            self.assertIn("no kernel image", str(cuda_status.get("cuda_probe_error") or ""))
+            self.assertIn("cannot execute kernels", str(cuda_status.get("message") or ""))
 
     def test_default_search_request_accepts_runtime_overrides(self):
         with TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             service = ResearchAppService(str(self._write_config(root)))
             workflow = service.research_workflows
-            feature_frame = self._build_stage12_feature_data(80)
+            feature_frame = self._build_feature_feature_data(80)
 
             request = workflow._build_default_search_request(
-                search_name="stage5_runtime_overrides",
-                target_specs=workflow._build_stage5_search_target_specs(),
+                search_name="search_runtime_overrides",
+                target_specs=workflow._build_search_target_specs(),
                 total_rows=len(feature_frame),
                 available_feature_columns=list(feature_frame.columns),
                 timestamp="20260408_000000",
@@ -1597,12 +1677,12 @@ class ResearchExperimentServiceTests(unittest.TestCase):
             root = Path(temp_dir)
             service = ResearchAppService(str(self._write_config(root)))
             workflow = service.research_workflows
-            feature_frame = self._build_stage12_feature_data(80)
+            feature_frame = self._build_feature_feature_data(80)
 
             with self.assertRaises(ValueError):
                 workflow._build_default_search_request(
-                    search_name="stage5_invalid_overrides",
-                    target_specs=workflow._build_stage5_search_target_specs(),
+                    search_name="search_invalid_overrides",
+                    target_specs=workflow._build_search_target_specs(),
                     total_rows=len(feature_frame),
                     available_feature_columns=list(feature_frame.columns),
                     timestamp="20260408_000001",
@@ -1616,8 +1696,8 @@ class ResearchExperimentServiceTests(unittest.TestCase):
 
             with self.assertRaises(ValueError):
                 workflow._build_default_search_request(
-                    search_name="stage5_invalid_split_sum",
-                    target_specs=workflow._build_stage5_search_target_specs(),
+                    search_name="search_invalid_split_sum",
+                    target_specs=workflow._build_search_target_specs(),
                     total_rows=len(feature_frame),
                     available_feature_columns=list(feature_frame.columns),
                     timestamp="20260408_000002",
@@ -1631,8 +1711,22 @@ class ResearchExperimentServiceTests(unittest.TestCase):
                     },
                 )
 
-    def test_build_stage5_target_specs_returns_expected_catalog_targets(self):
-        target_specs = build_stage5_target_specs(
+    def test_lstm_auto_workers_resolve_to_one_when_cuda_is_available(self):
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            service = ResearchAppService(str(self._write_config(root)))
+            workflow = service.research_workflows
+
+            with patch("src.research.trainers.lstm.LSTMTrainer.cuda_is_available", return_value=True):
+                self.assertEqual(workflow._resolve_search_worker_count(None, trainer_name="lstm"), 1)
+                self.assertEqual(workflow._resolve_search_worker_count(3, trainer_name="lstm"), 3)
+                self.assertGreaterEqual(
+                    workflow._resolve_search_worker_count(None, trainer_name="current_ensemble"),
+                    1,
+                )
+
+    def test_build_search_target_specs_returns_expected_catalog_targets(self):
+        target_specs = build_search_target_specs(
             runtime_target_column="Future_Direction_1",
             working_target_spec=ReturnThresholdLabelSpec(
                 spec_id="return_threshold_h3_0_05pct",

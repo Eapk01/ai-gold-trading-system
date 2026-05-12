@@ -12,8 +12,8 @@ from src.research import (
     ExperimentStore,
     get_feature_set_description,
     get_feature_set_display_name,
-    get_stage5_preset_description,
-    get_stage5_preset_display_name,
+    get_search_preset_description,
+    get_search_preset_display_name,
     resolve_integrity_payload,
 )
 from src.report_store import ReportDefinition, ReportStore
@@ -121,6 +121,7 @@ class ReportWorkflowService:
         try:
             payload = self.experiment_store.load_result(report_path)
             selected_threshold_summary = (payload.get("metadata") or {}).get("selected_threshold_summary") or {}
+            candidate_metadata = dict((payload.get("candidate_artifact") or {}).get("metadata") or {})
             integrity = resolve_integrity_payload(
                 metadata=dict(payload.get("metadata") or {}),
                 stored_integrity=dict(payload.get("integrity") or {}),
@@ -140,6 +141,15 @@ class ReportWorkflowService:
                 "comparison_feature_set_display_name": get_feature_set_display_name(str(payload.get("comparison_feature_set_name") or "")) if payload.get("comparison_feature_set_name") else "",
                 "trainer_name": payload.get("trainer_name"),
                 "selected_threshold": payload.get("selected_threshold"),
+                "threshold_source": candidate_metadata.get("threshold_source"),
+                "architecture_name": candidate_metadata.get("architecture_name"),
+                "feature_mode": candidate_metadata.get("feature_mode"),
+                "sequence_feature_count": candidate_metadata.get("sequence_feature_count"),
+                "dense_head_summary": candidate_metadata.get("dense_head_summary"),
+                "bidirectional": candidate_metadata.get("bidirectional"),
+                "training_device": candidate_metadata.get("training_device"),
+                "cuda_available": candidate_metadata.get("cuda_available"),
+                "cuda_device_name": candidate_metadata.get("cuda_device_name"),
                 "feature_count": len(payload.get("resolved_feature_columns", [])),
                 "fold_count": len({row.get("fold_name") for row in payload.get("folds", []) if row.get("model_name") == payload.get("trainer_name")}),
                 "mean_test_accuracy": (payload.get("aggregate_metrics") or {}).get("mean_test_accuracy"),
@@ -231,9 +241,20 @@ class ReportWorkflowService:
                 "recommended_feature_set_display_name": get_feature_set_display_name(str(recommended.get("feature_set_name") or "")),
                 "recommended_feature_set_description": get_feature_set_description(str(recommended.get("feature_set_name") or "")),
                 "recommended_preset_name": recommended.get("preset_name"),
-                "recommended_preset_display_name": get_stage5_preset_display_name(str(recommended.get("preset_name") or "")),
-                "recommended_preset_description": get_stage5_preset_description(str(recommended.get("preset_name") or "")),
+                "recommended_preset_display_name": get_search_preset_display_name(str(recommended.get("preset_name") or "")),
+                "recommended_preset_description": get_search_preset_description(str(recommended.get("preset_name") or "")),
+                "recommended_preset_variant_name": recommended.get("preset_variant_name"),
+                "recommended_preset_variant_summary": recommended.get("preset_variant_summary"),
                 "recommended_selected_threshold": recommended.get("selected_threshold"),
+                "recommended_threshold_source": recommended.get("threshold_source"),
+                "recommended_architecture_name": recommended.get("architecture_name"),
+                "recommended_feature_mode": recommended.get("feature_mode"),
+                "recommended_sequence_feature_count": recommended.get("sequence_feature_count"),
+                "recommended_dense_head_summary": recommended.get("dense_head_summary"),
+                "recommended_bidirectional": recommended.get("bidirectional"),
+                "recommended_training_device": recommended.get("training_device"),
+                "recommended_cuda_available": recommended.get("cuda_available"),
+                "recommended_cuda_device_name": recommended.get("cuda_device_name"),
                 "winner_status": recommended.get("status"),
                 "winner_reason": recommended.get("reason"),
                 "truth_gate_pass_count": gate_summary.get("passed_truth_gate_count"),
@@ -254,8 +275,8 @@ class ReportWorkflowService:
                     "target_display_name": row.get("target_display_name") or row.get("target_spec_id"),
                     "feature_set_display_name": get_feature_set_display_name(str(row.get("feature_set_name") or "")),
                     "feature_set_description": get_feature_set_description(str(row.get("feature_set_name") or "")),
-                    "preset_display_name": get_stage5_preset_display_name(str(row.get("preset_name") or "")),
-                    "preset_description": get_stage5_preset_description(str(row.get("preset_name") or "")),
+                    "preset_display_name": get_search_preset_display_name(str(row.get("preset_name") or "")),
+                    "preset_description": get_search_preset_description(str(row.get("preset_name") or "")),
                 }
                 for row in payload.get("leaderboard_rows", [])
             ]
@@ -265,8 +286,8 @@ class ReportWorkflowService:
                     "target_display_name": row.get("target_display_name") or row.get("target_spec_id"),
                     "feature_set_display_name": get_feature_set_display_name(str(row.get("feature_set_name") or "")),
                     "feature_set_description": get_feature_set_description(str(row.get("feature_set_name") or "")),
-                    "preset_display_name": get_stage5_preset_display_name(str(row.get("preset_name") or "")),
-                    "preset_description": get_stage5_preset_description(str(row.get("preset_name") or "")),
+                    "preset_display_name": get_search_preset_display_name(str(row.get("preset_name") or "")),
+                    "preset_description": get_search_preset_description(str(row.get("preset_name") or "")),
                 }
                 for row in payload.get("candidates", [])
             ]
@@ -275,8 +296,8 @@ class ReportWorkflowService:
                 "target_display_name": recommended.get("target_display_name") or recommended.get("target_spec_id"),
                 "feature_set_display_name": get_feature_set_display_name(str(recommended.get("feature_set_name") or "")),
                 "feature_set_description": get_feature_set_description(str(recommended.get("feature_set_name") or "")),
-                "preset_display_name": get_stage5_preset_display_name(str(recommended.get("preset_name") or "")),
-                "preset_description": get_stage5_preset_description(str(recommended.get("preset_name") or "")),
+                "preset_display_name": get_search_preset_display_name(str(recommended.get("preset_name") or "")),
+                "preset_description": get_search_preset_description(str(recommended.get("preset_name") or "")),
             }
             diagnostics = dict(payload.get("diagnostics") or {})
             candidate_highlights = [
@@ -285,8 +306,8 @@ class ReportWorkflowService:
                     "target_display_name": row.get("target_display_name") or row.get("target_spec_id"),
                     "feature_set_display_name": get_feature_set_display_name(str(row.get("feature_set_name") or "")),
                     "feature_set_description": get_feature_set_description(str(row.get("feature_set_name") or "")),
-                    "preset_display_name": get_stage5_preset_display_name(str(row.get("preset_name") or "")),
-                    "preset_description": get_stage5_preset_description(str(row.get("preset_name") or "")),
+                    "preset_display_name": get_search_preset_display_name(str(row.get("preset_name") or "")),
+                    "preset_description": get_search_preset_description(str(row.get("preset_name") or "")),
                 }
                 for row in diagnostics.get("candidate_highlights", [])
             ]
@@ -340,6 +361,15 @@ class ReportWorkflowService:
                 "promoted_model_path": payload.get("promoted_model_path"),
                 "feature_set_name": payload.get("feature_set_name"),
                 "selected_threshold": payload.get("selected_threshold"),
+                "threshold_source": (payload.get("metadata") or {}).get("threshold_source"),
+                "architecture_name": (payload.get("metadata") or {}).get("architecture_name"),
+                "feature_mode": (payload.get("metadata") or {}).get("feature_mode"),
+                "sequence_feature_count": (payload.get("metadata") or {}).get("sequence_feature_count"),
+                "dense_head_summary": (payload.get("metadata") or {}).get("dense_head_summary"),
+                "bidirectional": (payload.get("metadata") or {}).get("bidirectional"),
+                "training_device": (payload.get("metadata") or {}).get("training_device"),
+                "cuda_available": (payload.get("metadata") or {}).get("cuda_available"),
+                "cuda_device_name": (payload.get("metadata") or {}).get("cuda_device_name"),
             }
             summary = _merge_integrity_summary(summary, integrity)
             return self.service._response(
@@ -384,7 +414,7 @@ class ReportWorkflowService:
             feature_label = get_feature_set_display_name(feature_set_name)
             experiment_name = payload.get("experiment_name", path.stem)
             preset_name = str((payload.get("metadata") or {}).get("preset_name") or "")
-            preset_label = get_stage5_preset_display_name(preset_name) if preset_name else ""
+            preset_label = get_search_preset_display_name(preset_name) if preset_name else ""
             suffix = f" | {preset_label}" if preset_label else ""
             return f"{timestamp} | Candidate | {experiment_name} | {feature_label}{suffix}"
         if report_type == "search_run":

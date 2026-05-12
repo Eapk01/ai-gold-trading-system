@@ -18,7 +18,7 @@ from gui.components.summaries import (
     render_training_experiment_summary,
 )
 from src.app_service import ResearchAppService
-from src.research import get_feature_set_display_name, get_stage5_preset_display_name
+from src.research import get_feature_set_display_name, get_search_preset_display_name
 
 
 def _format_elapsed_seconds(value: float | int | None) -> str:
@@ -59,8 +59,38 @@ def _format_worker_policy(worker_policy: dict[str, object]) -> str:
     return f"Auto ({min_auto_workers} to {max_worker_cap} workers)"
 
 
+def _render_lstm_cuda_indicator(cuda_status: dict[str, object]) -> None:
+    if not bool((cuda_status or {}).get("applies")):
+        return
+
+    training_device = str(cuda_status.get("training_device") or "cpu").lower()
+    device_name = str(cuda_status.get("cuda_device_name") or "").strip()
+    torch_version = str(cuda_status.get("torch_version") or "").strip()
+    message = str(cuda_status.get("message") or "")
+    probe_error = str(cuda_status.get("cuda_probe_error") or "").strip()
+    suffix_parts = []
+    if device_name:
+        suffix_parts.append(device_name)
+    if torch_version:
+        suffix_parts.append(f"PyTorch {torch_version}")
+    suffix = f" ({', '.join(suffix_parts)})" if suffix_parts else ""
+
+    if training_device == "cuda":
+        st.success(f"CUDA active for LSTM training{suffix}.")
+        if message:
+            st.caption(message)
+    elif training_device == "unavailable":
+        st.error(message or "LSTM CUDA status could not be checked.")
+    else:
+        st.warning(f"LSTM training will use CPU{suffix}.")
+        if message:
+            st.caption(message)
+        if probe_error:
+            st.caption(f"CUDA probe error: {probe_error}")
+
+
 def _search_form_key(name: str) -> str:
-    return f"stage5_search_form_{name}"
+    return f"research_search_form_{name}"
 
 
 def _initialize_search_form_state(catalog: dict[str, object]) -> None:
@@ -168,7 +198,7 @@ def _render_search_space_editor(service: ResearchAppService, base_catalog: dict[
     defaults = dict(base_catalog.get("defaults") or {})
 
     st.subheader("Build Search")
-    st.caption("Adjust the bounded Stage 5 search space for this run only. These selections do not write back to `config.yaml`.")
+    st.caption("Adjust the bounded research search space for this run only. These selections do not write back to `config.yaml`.")
 
     top_left, top_right = st.columns([2, 1])
     with top_left:
@@ -206,6 +236,7 @@ def _render_search_space_editor(service: ResearchAppService, base_catalog: dict[
     available_feature_sets = list(current_catalog.get("available_feature_sets") or base_catalog.get("available_feature_sets") or [])
     available_presets = list(current_catalog.get("available_presets") or [])
     available_selectors = list(current_catalog.get("available_selectors") or base_catalog.get("available_selectors") or [])
+    lstm_cuda_status = dict(current_catalog.get("lstm_cuda_status") or {})
 
     valid_preset_ids = {str(row.get("id") or "") for row in available_presets}
     st.session_state[_search_form_key("preset_names")] = [
@@ -257,16 +288,29 @@ def _render_search_space_editor(service: ResearchAppService, base_catalog: dict[
 
     selected_target_count = len(list(st.session_state.get(_search_form_key("target_ids")) or []))
     selected_feature_set_count = len(list(st.session_state.get(_search_form_key("feature_set_names")) or []))
-    selected_preset_count = len(list(st.session_state.get(_search_form_key("preset_names")) or []))
-    candidate_count = selected_target_count * selected_feature_set_count * selected_preset_count
+    selected_preset_ids = set(str(item) for item in list(st.session_state.get(_search_form_key("preset_names")) or []))
+    selected_preset_count = len(selected_preset_ids)
+    selected_variant_count = sum(
+        int(row.get("variant_count") or 1)
+        for row in available_presets
+        if str(row.get("id") or "") in selected_preset_ids
+    )
+    candidate_count = selected_target_count * selected_feature_set_count * selected_variant_count
     with top_right:
         st.markdown("**Search Summary**")
         st.metric("Candidate Count", candidate_count)
-        st.caption(f"{selected_target_count} targets x {selected_feature_set_count} feature sets x {selected_preset_count} presets")
+        if selected_variant_count != selected_preset_count:
+            st.caption(
+                f"{selected_target_count} targets x {selected_feature_set_count} feature sets x "
+                f"{selected_variant_count} expanded preset variants"
+            )
+        else:
+            st.caption(f"{selected_target_count} targets x {selected_feature_set_count} feature sets x {selected_preset_count} presets")
         st.caption(f"Trainer: {trainer_labels.get(str(st.session_state.get(_search_form_key('trainer_name')) or ''), 'Unknown')}")
         st.caption(f"Splits: {_format_split_summary(defaults | {'train_fraction': st.session_state.get(_search_form_key('train_fraction')), 'validation_fraction': st.session_state.get(_search_form_key('validation_fraction')), 'test_fraction': st.session_state.get(_search_form_key('test_fraction'))})}")
         worker_mode = "Auto" if bool(st.session_state.get(_search_form_key("use_auto_workers"), True)) else f"Manual ({int(st.session_state.get(_search_form_key('max_workers')) or 0)})"
         st.caption(f"Workers: {worker_mode}")
+        _render_lstm_cuda_indicator(lstm_cuda_status)
         if candidate_count > 50:
             st.warning("Large search space.")
         elif candidate_count > 24:
@@ -391,8 +435,8 @@ def _render_search_origin_notes() -> None:
     st.markdown(
         "\n".join(
             [
-                "- Stage 5 defaults come from `config/config.yaml`.",
-                "- Available targets come from `src/research/catalog/stage5_targets.py`.",
+                "- Search defaults come from `config/config.yaml`.",
+                "- Available targets come from `src/research/catalog/search_targets.py`.",
                 "- Available feature sets come from `src/research/feature_sets.py`.",
                 "- Available presets come from `src/research/catalog/search_presets.py`.",
                 "- The GUI reads everything through `ResearchAppService.get_search_catalog()`.",
@@ -444,6 +488,11 @@ def _render_search_progress_snapshot(
         detail_parts.append(f"Mode: {details['execution_mode']}")
     if details.get("resolved_max_workers") is not None:
         detail_parts.append(f"Workers: {details['resolved_max_workers']}")
+    cuda_status = dict(details.get("lstm_cuda_status") or {})
+    if cuda_status.get("applies"):
+        training_device = str(cuda_status.get("training_device") or "cpu").upper()
+        cuda_device_name = str(cuda_status.get("cuda_device_name") or "").strip()
+        detail_parts.append(f"LSTM Device: {training_device}{(' / ' + cuda_device_name) if cuda_device_name else ''}")
     if details.get("completed_count") is not None:
         detail_parts.append(f"Completed: {details['completed_count']}")
     if details.get("failed_count") is not None:
@@ -455,7 +504,9 @@ def _render_search_progress_snapshot(
     if details.get("feature_set_name"):
         detail_parts.append(f"Feature Set: {get_feature_set_display_name(str(details['feature_set_name']))}")
     if details.get("preset_name"):
-        detail_parts.append(f"Preset: {get_stage5_preset_display_name(str(details['preset_name']))}")
+        detail_parts.append(f"Preset: {get_search_preset_display_name(str(details['preset_name']))}")
+    if details.get("preset_variant_name"):
+        detail_parts.append(f"Variant: {details['preset_variant_name']}")
     if details.get("target_count") is not None:
         detail_parts.append(f"Targets: {details['target_count']}")
     if details.get("feature_set_count") is not None:
@@ -643,6 +694,8 @@ def _render_search_history_tab(service: ResearchAppService) -> None:
                 "target_display_name",
                 "feature_set_display_name",
                 "preset_display_name",
+                "preset_variant_name",
+                "preset_variant_summary",
                 "execution_status",
                 "error_message",
                 "elapsed_seconds",
@@ -674,10 +727,28 @@ def _render_search_history_tab(service: ResearchAppService) -> None:
                 "target_display_name",
                 "feature_set_display_name",
                 "preset_display_name",
+                "preset_variant_name",
+                "preset_variant_summary",
                 "execution_status",
                 "error_message",
                 "elapsed_seconds",
                 "selected_threshold",
+                "architecture_name",
+                "feature_mode",
+                "sequence_feature_count",
+                "lookback_window",
+                "hidden_size",
+                "num_layers",
+                "dropout",
+                "dense_hidden_size",
+                "dense_dropout",
+                "weight_decay",
+                "bidirectional",
+                "training_device",
+                "cuda_device_name",
+                "batch_size",
+                "epochs",
+                "learning_rate",
                 "validation_beat_rate",
                 "validation_f1_std",
                 "validation_mean_f1",
@@ -720,7 +791,7 @@ def _render_search_history_tab(service: ResearchAppService) -> None:
 def render(service: ResearchAppService) -> None:
     render_page_header(
         "Reports",
-        "Search is the primary research workflow now. Candidate reports remain available because Stage 5 produces them and promotion depends on them.",
+        "Search is the primary research workflow now. Candidate reports remain available because research search produces them and promotion depends on them.",
     )
     render_section_divider()
     backtest_tab, model_test_tab, search_tab, training_experiment_tab = st.tabs(
@@ -930,6 +1001,8 @@ def _render_preset_glossary(catalog: dict[str, object], *, expand: bool = True) 
             {
                 "Preset": row.get("display_name"),
                 "Internal Name": row.get("id"),
+                "Variants": row.get("variant_count", 1),
+                "Summary": row.get("summary"),
                 "Meaning": row.get("description"),
             }
             for row in list(catalog.get("available_presets") or [])

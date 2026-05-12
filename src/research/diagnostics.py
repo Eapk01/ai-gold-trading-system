@@ -1,4 +1,4 @@
-"""Structured diagnostics helpers for Stage 5.2 research audits."""
+"""Structured diagnostics helpers for search audit research audits."""
 
 from __future__ import annotations
 
@@ -226,6 +226,8 @@ def build_search_diagnostics(candidates: Iterable[SearchCandidateSummary]) -> Di
                 "target_display_name": candidate.target_display_name,
                 "feature_set_name": candidate.feature_set_name,
                 "preset_name": candidate.preset_name,
+                "preset_variant_name": candidate.preset_variant_name,
+                "preset_variant_summary": candidate.preset_variant_summary,
                 "execution_status": execution_status,
                 "error_message": candidate.error_message,
                 "elapsed_seconds": candidate.elapsed_seconds,

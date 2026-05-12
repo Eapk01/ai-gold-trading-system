@@ -601,13 +601,13 @@ class SearchCatalogServiceTests(unittest.TestCase):
 
         result = ResearchAppService.run_automated_search(
             service,
-            "stage5_gui",
+            "search_gui",
             max_workers=2,
             search_overrides={"preset_names": ["capacity"]},
         )
 
         self.assertIs(result, expected)
-        self.assertEqual(captured["search_name"], "stage5_gui")
+        self.assertEqual(captured["search_name"], "search_gui")
         self.assertEqual(captured["max_workers"], 2)
         self.assertEqual(captured["search_overrides"], {"preset_names": ["capacity"]})
 

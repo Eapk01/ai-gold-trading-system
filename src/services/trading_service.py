@@ -33,18 +33,11 @@ class TradingWorkflowService:
             "database_path": self.service.config["database"]["path"],
             "target_column": get_target_column(self.service.config),
             "research_primary_workflow": "search",
-            "research_diagnostic_workflows": [
-                "single_experiment",
-                "target_comparison",
-                "feature_comparison",
-                "candidate_training",
-            ],
             "research_defaults": research_defaults.to_dict(),
-            "research_stage4_default_trainer_name": research_defaults.stage4.trainer_name,
-            "research_stage5_default_trainer_name": research_defaults.stage5.trainer_name,
-            "research_stage5_default_target_ids": list(research_defaults.stage5.target_ids),
-            "research_stage5_default_feature_sets": list(research_defaults.stage5.feature_set_names),
-            "research_stage5_default_presets": list(research_defaults.stage5.preset_names),
+            "research_search_default_trainer_name": research_defaults.search.trainer_name,
+            "research_search_default_target_ids": list(research_defaults.search.target_ids),
+            "research_search_default_feature_sets": list(research_defaults.search.feature_set_names),
+            "research_search_default_presets": list(research_defaults.search.preset_names),
         }
         return self.service._response(True, "Configuration loaded", data=summary)
 

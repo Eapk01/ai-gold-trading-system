@@ -57,7 +57,7 @@ def load_app_config(config_path: str = CONFIG_PATH) -> Dict[str, Any]:
 class ResearchAppService:
     """Shared service layer for the research workflow."""
 
-    API_COMPATIBILITY_VERSION = "2026.04.stage5-automated-search-v1"
+    API_COMPATIBILITY_VERSION = "2026.05-research-search-v2"
 
     def __init__(self, config_path: str = CONFIG_PATH):
         logger.info("=== AI Gold Research System Startup ===")

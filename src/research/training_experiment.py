@@ -1,4 +1,4 @@
-"""Stage 4 and Stage 5 helpers for experiment metadata and ranking summaries."""
+"""Candidate training and Research Search helpers for experiment metadata and ranking summaries."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import numpy as np
 
 
 def select_best_threshold(threshold_rows: Iterable[Dict[str, Any]], *, model_name: str) -> float | None:
-    """Choose the deterministic Stage 4 threshold using validation folds only."""
+    """Choose the deterministic Candidate training threshold using validation folds only."""
     candidates = [
         row
         for row in threshold_rows

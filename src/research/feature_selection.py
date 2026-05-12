@@ -1,4 +1,4 @@
-"""Fold-safe feature-selection helpers for Stage 3 research runs."""
+"""Fold-safe feature-selection helpers for Feature selection research runs."""
 
 from __future__ import annotations
 
@@ -96,6 +96,41 @@ class VarianceFeatureSelector:
         )
 
 
+@dataclass(frozen=True)
+class PassthroughFeatureSelector:
+    """Apply a base selector while always keeping required passthrough columns."""
+
+    base_selector: Any
+    passthrough_columns: List[str] = field(default_factory=list)
+
+    def select(self, feature_frame: pd.DataFrame, target: pd.Series) -> FeatureSelectorResult:
+        passthrough = [column for column in self.passthrough_columns if column in feature_frame.columns]
+        selector_columns = [column for column in feature_frame.columns if column not in set(passthrough)]
+        if selector_columns:
+            base_result = self.base_selector.select(feature_frame.loc[:, selector_columns], target)
+            selected_columns = list(base_result.selected_columns) or selector_columns
+            ranking_rows = list(base_result.ranking_rows)
+            selector_name = str(base_result.selector_name)
+        else:
+            selected_columns = []
+            ranking_rows = []
+            selector_name = "passthrough_only"
+        final_columns = _dedupe(selected_columns + passthrough)
+        return FeatureSelectorResult(
+            selector_name=f"{selector_name}_with_passthrough",
+            selected_columns=final_columns,
+            ranking_rows=ranking_rows + [
+                {
+                    "column": column,
+                    "rank": len(ranking_rows) + index + 1,
+                    "score": None,
+                    "passthrough": True,
+                }
+                for index, column in enumerate(passthrough)
+            ],
+        )
+
+
 def build_feature_selector(selector_name: str, *, max_features: int = 30):
     """Build one supported fold-local feature selector by name."""
     normalized = str(selector_name or "correlation").strip().lower()
@@ -105,4 +140,14 @@ def build_feature_selector(selector_name: str, *, max_features: int = 30):
         return VarianceFeatureSelector(max_features=max_features)
     if normalized in {"full", "full_set", "none"}:
         return FullSetFeatureSelector()
-    raise ValueError(f"Unsupported Stage 3 feature selector: {selector_name}")
+    raise ValueError(f"Unsupported Feature selection feature selector: {selector_name}")
+
+
+def _dedupe(columns: List[str]) -> List[str]:
+    seen = set()
+    ordered: List[str] = []
+    for column in columns:
+        if column not in seen:
+            seen.add(column)
+            ordered.append(column)
+    return ordered

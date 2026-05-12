@@ -1,4 +1,4 @@
-"""Feature inventory and named feature-set definitions for Stage 3 studies."""
+"""Feature inventory and named feature-set definitions for Feature selection studies."""
 
 from __future__ import annotations
 
@@ -73,7 +73,7 @@ def is_target_or_future_column(column: str) -> bool:
 
 
 def classify_feature_group(column: str) -> str:
-    """Map one prepared column to a stable Stage 3 research feature family."""
+    """Map one prepared column to a stable Feature selection research feature family."""
     name = str(column)
     lower_name = name.lower()
 
@@ -131,7 +131,7 @@ def build_feature_inventory(columns: Sequence[str]) -> List[FeatureInventoryRow]
 
 
 def build_named_feature_sets(columns: Sequence[str]) -> Dict[str, FeatureSetDefinition]:
-    """Create deterministic Stage 3 feature sets from the current prepared matrix."""
+    """Create deterministic Feature selection feature sets from the current prepared matrix."""
     inventory_rows = build_feature_inventory(columns)
     eligible_by_group: Dict[str, List[str]] = {}
     for row in inventory_rows:
@@ -221,7 +221,7 @@ def resolve_feature_sets(columns: Sequence[str], feature_set_names: Sequence[str
     resolved_sets: List[FeatureSetDefinition] = []
     for name in selected_names:
         if name not in named_sets:
-            raise ValueError(f"Unsupported Stage 3 feature set: {name}")
+            raise ValueError(f"Unsupported Feature selection feature set: {name}")
         resolved_sets.append(named_sets[name])
     return resolved_sets
 
@@ -252,7 +252,7 @@ def enrich_inventory_with_named_sets(
 
 
 def get_group_display_name(group_name: str) -> str:
-    """Return a user-friendly label for a Stage 3 feature group."""
+    """Return a user-friendly label for a Feature selection feature group."""
     return GROUP_DISPLAY_NAMES.get(group_name, group_name.replace("_", " ").title())
 
 

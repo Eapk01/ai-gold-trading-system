@@ -1,17 +1,18 @@
-"""Stage 5 bounded search orchestration helpers."""
+"""Bounded research search orchestration helpers."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List
 
+from ..catalog.search_presets import expand_lstm_search_preset_variants
 from ..schemas import SearchCandidateSummary, SearchRequest
 from ..search_truth_gate import apply_truth_gate, build_truth_gate_summary
 
 
 @dataclass(frozen=True)
 class SearchCandidateConfig:
-    """One bounded Stage 5 candidate configuration."""
+    """One bounded research search candidate configuration."""
 
     candidate_id: str
     target_spec: Dict[str, Any]
@@ -19,13 +20,15 @@ class SearchCandidateConfig:
     target_display_name: str
     feature_set_name: str
     preset_name: str
+    preset_variant_name: str
+    preset_variant_summary: str
     trainer_name: str
     trainer_params: Dict[str, Any]
 
 
 @dataclass
 class SearchRunner:
-    """Build and rank bounded Stage 5 search candidates."""
+    """Build and rank bounded research search candidates."""
 
     def build_candidate_grid(
         self,
@@ -39,18 +42,48 @@ class SearchRunner:
             target_display_name = str(target_spec.get("display_name") or target_spec_id)
             for feature_set_name in request.feature_set_names:
                 for preset_name in request.preset_names:
-                    candidates.append(
-                        SearchCandidateConfig(
-                            candidate_id=f"{request.search_id}_{target_spec_id}_{feature_set_name}_{preset_name}",
-                            target_spec=dict(target_spec),
-                            target_spec_id=target_spec_id,
-                            target_display_name=target_display_name,
-                            feature_set_name=feature_set_name,
-                            preset_name=preset_name,
-                            trainer_name=request.trainer_name,
-                            trainer_params=dict(preset_definitions[preset_name]),
-                        )
+                    preset_payload = dict(preset_definitions[preset_name])
+                    variant_payloads = (
+                        expand_lstm_search_preset_variants(preset_name, preset_payload)
+                        if str(request.trainer_name or "").strip().lower() == "lstm"
+                        else [
+                            {
+                                **preset_payload,
+                                "preset_variant_name": preset_name,
+                                "preset_variant_summary": preset_name,
+                            }
+                        ]
                     )
+                    for variant_payload in variant_payloads:
+                        is_lstm = str(request.trainer_name or "").strip().lower() == "lstm"
+                        preset_variant_name = str(variant_payload.get("preset_variant_name") or preset_name)
+                        trainer_params = {
+                            key: value
+                            for key, value in dict(variant_payload).items()
+                            if key not in {"preset_name", "preset_variant_name", "preset_variant_summary"}
+                        }
+                        preset_variant_summary = str(
+                            variant_payload.get("preset_variant_summary")
+                            or self._build_variant_summary(trainer_params)
+                        )
+                        candidates.append(
+                            SearchCandidateConfig(
+                                candidate_id=(
+                                    f"{request.search_id}_{target_spec_id}_{feature_set_name}_{preset_name}_{preset_variant_name}"
+                                    if is_lstm
+                                    else f"{request.search_id}_{target_spec_id}_{feature_set_name}_{preset_name}"
+                                ),
+                                target_spec=dict(target_spec),
+                                target_spec_id=target_spec_id,
+                                target_display_name=target_display_name,
+                                feature_set_name=feature_set_name,
+                                preset_name=preset_name,
+                                preset_variant_name=preset_variant_name,
+                                preset_variant_summary=preset_variant_summary,
+                                trainer_name=request.trainer_name,
+                                trainer_params=trainer_params,
+                            )
+                        )
         return candidates
 
     def rank_candidates(
@@ -74,6 +107,7 @@ class SearchRunner:
                 str(candidate.target_spec_id or ""),
                 str(candidate.feature_set_name or ""),
                 str(candidate.preset_name or ""),
+                str(candidate.preset_variant_name or ""),
                 str(candidate.candidate_id or ""),
             ),
         )
@@ -86,7 +120,7 @@ class SearchRunner:
         )
         recommended_winner: Dict[str, Any] = {
             "status": "no_winner",
-            "reason": "No candidate passed the full Stage 5.1 truth gate.",
+            "reason": "No candidate passed the full research truth gate.",
             "gate_summary": gate_summary,
         }
 
@@ -120,7 +154,18 @@ class SearchRunner:
                     "target_display_name": candidate.target_display_name,
                     "feature_set_name": candidate.feature_set_name,
                     "preset_name": candidate.preset_name,
+                    "preset_variant_name": candidate.preset_variant_name,
+                    "preset_variant_summary": candidate.preset_variant_summary,
                     "selected_threshold": candidate.selected_threshold,
+                    "threshold_source": candidate.threshold_source,
+                    "architecture_name": candidate.architecture_name,
+                    "feature_mode": candidate.feature_mode,
+                    "sequence_feature_count": candidate.sequence_feature_count,
+                    "dense_head_summary": candidate.dense_head_summary,
+                    "bidirectional": candidate.bidirectional,
+                    "training_device": candidate.training_device,
+                    "cuda_available": candidate.cuda_available,
+                    "cuda_device_name": candidate.cuda_device_name,
                     "validation_beat_rate": candidate.validation_summary.get("beat_rate"),
                     "validation_f1_std": candidate.validation_summary.get("f1_std"),
                     "validation_mean_f1": candidate.validation_summary.get("mean_f1"),
@@ -158,7 +203,18 @@ class SearchRunner:
                 "target_display_name": recommended_candidate.target_display_name,
                 "feature_set_name": recommended_candidate.feature_set_name,
                 "preset_name": recommended_candidate.preset_name,
+                "preset_variant_name": recommended_candidate.preset_variant_name,
+                "preset_variant_summary": recommended_candidate.preset_variant_summary,
                 "selected_threshold": recommended_candidate.selected_threshold,
+                "threshold_source": recommended_candidate.threshold_source,
+                "architecture_name": recommended_candidate.architecture_name,
+                "feature_mode": recommended_candidate.feature_mode,
+                "sequence_feature_count": recommended_candidate.sequence_feature_count,
+                "dense_head_summary": recommended_candidate.dense_head_summary,
+                "bidirectional": recommended_candidate.bidirectional,
+                "training_device": recommended_candidate.training_device,
+                "cuda_available": recommended_candidate.cuda_available,
+                "cuda_device_name": recommended_candidate.cuda_device_name,
                 "truth_gate_failures": list(recommended_candidate.truth_gate_failures),
                 "proof_status": recommended_integrity.get("proof_status"),
                 "integrity_contract_ok": bool(recommended_integrity.get("integrity_contract_ok")),
@@ -181,3 +237,18 @@ class SearchRunner:
             -float(validation_summary.get("mean_coverage") or 0.0),
             float(candidate.selected_threshold or 0.0),
         )
+
+    @staticmethod
+    def _build_variant_summary(trainer_params: Dict[str, Any]) -> str:
+        if "feature_mode" not in trainer_params:
+            return str(trainer_params.get("preset_variant_name") or "")
+        parts = [
+            str(trainer_params.get("feature_mode") or "engineered"),
+            f"lookback {trainer_params.get('lookback_window')}",
+            f"hidden {trainer_params.get('hidden_size')}",
+            f"dense {trainer_params.get('dense_hidden_size')}",
+            f"lr {trainer_params.get('learning_rate')}",
+        ]
+        if bool(trainer_params.get("bidirectional")):
+            parts.append("bidirectional")
+        return " | ".join(parts)

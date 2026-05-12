@@ -1,4 +1,4 @@
-"""Shared research defaults and config-backed resolution helpers."""
+"""Shared defaults for the single research-search workflow."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ DEFAULT_BASELINE_NAMES = ["majority_class", "persistence"]
 
 @dataclass(frozen=True)
 class CommonResearchDefaults:
-    """Common request defaults shared across research workflows."""
+    """Shared request defaults used by each candidate run."""
 
     baseline_names: List[str] = field(default_factory=list)
     threshold_list: List[float] = field(default_factory=list)
@@ -26,40 +26,14 @@ class CommonResearchDefaults:
 
 
 @dataclass(frozen=True)
-class Stage12Defaults:
-    """Stage 1/2 research defaults."""
-
-    fixed_feature_set_name: str = "baseline_core"
-
-
-@dataclass(frozen=True)
-class Stage3Defaults:
-    """Stage 3 feature-study defaults."""
-
-    target_ids: List[str] = field(default_factory=list)
-    feature_set_names: List[str] = field(default_factory=list)
-    compare_legacy_target: bool = True
-
-
-@dataclass(frozen=True)
-class Stage4Defaults:
-    """Stage 4 training defaults."""
-
-    working_target_id: str = "return_threshold_h3_0_05pct"
-    feature_set_name: str = "volatility"
-    comparison_feature_set_name: str = "baseline_core"
-    trainer_name: str = "current_ensemble"
-    trainer_params: Dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass(frozen=True)
-class Stage5Defaults:
-    """Stage 5 automated-search defaults."""
+class ResearchSearchDefaults:
+    """Search-space defaults for the primary research workflow."""
 
     target_ids: List[str] = field(default_factory=list)
     feature_set_names: List[str] = field(default_factory=list)
     trainer_name: str = "current_ensemble"
     preset_names: List[str] = field(default_factory=list)
+    working_target_id: str = "return_threshold_h3_0_05pct"
     max_worker_cap: int = 4
     min_auto_workers: int = 2
 
@@ -78,10 +52,7 @@ class ResearchDefaults:
 
     runtime_target_column: str
     common: CommonResearchDefaults
-    stage12: Stage12Defaults
-    stage3: Stage3Defaults
-    stage4: Stage4Defaults
-    stage5: Stage5Defaults
+    search: ResearchSearchDefaults
     truth_gate: TruthGateDefaults
 
     def to_dict(self) -> Dict[str, Any]:
@@ -102,7 +73,7 @@ def default_threshold_list() -> List[float]:
 def get_builtin_research_defaults(
     runtime_target_column: str = DEFAULT_RUNTIME_TARGET_COLUMN,
 ) -> ResearchDefaults:
-    """Return the built-in defaults without applying user config overrides."""
+    """Return built-in defaults for the primary research-search workflow."""
     runtime_target = str(runtime_target_column or DEFAULT_RUNTIME_TARGET_COLUMN).strip() or DEFAULT_RUNTIME_TARGET_COLUMN
     legacy_target_id = _legacy_runtime_target_id(runtime_target)
     return ResearchDefaults(
@@ -117,30 +88,7 @@ def get_builtin_research_defaults(
             test_fraction=0.10,
             expanding_window=True,
         ),
-        stage12=Stage12Defaults(fixed_feature_set_name="baseline_core"),
-        stage3=Stage3Defaults(
-            target_ids=[
-                "return_threshold_h3_0_05pct",
-                legacy_target_id,
-            ],
-            feature_set_names=[
-                "baseline_core",
-                "momentum",
-                "volatility",
-                "context",
-                "lag_statistical",
-                "all_eligible",
-            ],
-            compare_legacy_target=True,
-        ),
-        stage4=Stage4Defaults(
-            working_target_id="return_threshold_h3_0_05pct",
-            feature_set_name="volatility",
-            comparison_feature_set_name="baseline_core",
-            trainer_name="current_ensemble",
-            trainer_params={},
-        ),
-        stage5=Stage5Defaults(
+        search=ResearchSearchDefaults(
             target_ids=[
                 "return_threshold_h3_0_05pct",
                 legacy_target_id,
@@ -149,6 +97,7 @@ def get_builtin_research_defaults(
             feature_set_names=["baseline_core", "all_eligible"],
             trainer_name="current_ensemble",
             preset_names=["conservative", "balanced"],
+            working_target_id="return_threshold_h3_0_05pct",
             max_worker_cap=4,
             min_auto_workers=2,
         ),
@@ -160,7 +109,7 @@ def get_builtin_research_defaults(
 
 
 def resolve_research_defaults(config: Dict[str, Any] | None) -> ResearchDefaults:
-    """Resolve research defaults from config with validation and compatibility handling."""
+    """Resolve research-search defaults from config."""
     config_payload = dict(config or {})
     runtime_target_column = str(
         ((config_payload.get("ai_model", {}) or {}).get("target_column") or DEFAULT_RUNTIME_TARGET_COLUMN)
@@ -169,29 +118,8 @@ def resolve_research_defaults(config: Dict[str, Any] | None) -> ResearchDefaults
 
     research_config = dict((config_payload.get("research", {}) or {}))
     defaults_override = dict((research_config.get("defaults", {}) or {}))
-    legacy_stage5_override = dict((research_config.get("stage5_defaults", {}) or {}))
-    if legacy_stage5_override:
-        stage5_override = dict(defaults_override.get("stage5") or {})
-        alias_map = {
-            "target_ids": "target_ids",
-            "feature_sets": "feature_set_names",
-            "presets": "preset_names",
-        }
-        for legacy_key, stage5_key in alias_map.items():
-            if legacy_stage5_override.get(legacy_key) is None:
-                continue
-            if (
-                stage5_override.get(stage5_key) is None
-                or stage5_override.get(stage5_key) == getattr(defaults.stage5, stage5_key)
-            ):
-                stage5_override[stage5_key] = legacy_stage5_override.get(legacy_key)
-        defaults_override["stage5"] = stage5_override
-
     common_override = dict(defaults_override.get("common") or {})
-    stage12_override = dict(defaults_override.get("stage12") or {})
-    stage3_override = dict(defaults_override.get("stage3") or {})
-    stage4_override = dict(defaults_override.get("stage4") or {})
-    stage5_override = dict(defaults_override.get("stage5") or {})
+    search_override = dict(defaults_override.get("search") or {})
     truth_gate_override = dict(defaults_override.get("truth_gate") or {})
 
     resolved = ResearchDefaults(
@@ -239,92 +167,44 @@ def resolve_research_defaults(config: Dict[str, Any] | None) -> ResearchDefaults
                 dotted_key="research.defaults.common.expanding_window",
             ),
         ),
-        stage12=Stage12Defaults(
-            fixed_feature_set_name=_resolve_string(
-                stage12_override.get("fixed_feature_set_name"),
-                defaults.stage12.fixed_feature_set_name,
-                dotted_key="research.defaults.stage12.fixed_feature_set_name",
-            ),
-        ),
-        stage3=Stage3Defaults(
+        search=ResearchSearchDefaults(
             target_ids=_resolve_string_list(
-                stage3_override.get("target_ids"),
-                defaults.stage3.target_ids,
+                search_override.get("target_ids"),
+                defaults.search.target_ids,
                 allow_empty=False,
-                dotted_key="research.defaults.stage3.target_ids",
+                dotted_key="research.defaults.search.target_ids",
             ),
             feature_set_names=_resolve_string_list(
-                stage3_override.get("feature_set_names"),
-                defaults.stage3.feature_set_names,
+                search_override.get("feature_set_names"),
+                defaults.search.feature_set_names,
                 allow_empty=False,
-                dotted_key="research.defaults.stage3.feature_set_names",
-            ),
-            compare_legacy_target=_resolve_bool(
-                stage3_override.get("compare_legacy_target"),
-                defaults.stage3.compare_legacy_target,
-                dotted_key="research.defaults.stage3.compare_legacy_target",
-            ),
-        ),
-        stage4=Stage4Defaults(
-            working_target_id=_resolve_string(
-                stage4_override.get("working_target_id"),
-                defaults.stage4.working_target_id,
-                dotted_key="research.defaults.stage4.working_target_id",
-            ),
-            feature_set_name=_resolve_string(
-                stage4_override.get("feature_set_name"),
-                defaults.stage4.feature_set_name,
-                dotted_key="research.defaults.stage4.feature_set_name",
-            ),
-            comparison_feature_set_name=_resolve_string(
-                stage4_override.get("comparison_feature_set_name"),
-                defaults.stage4.comparison_feature_set_name,
-                dotted_key="research.defaults.stage4.comparison_feature_set_name",
+                dotted_key="research.defaults.search.feature_set_names",
             ),
             trainer_name=_resolve_strict_string(
-                stage4_override.get("trainer_name"),
-                defaults.stage4.trainer_name,
-                dotted_key="research.defaults.stage4.trainer_name",
-            ),
-            trainer_params=_resolve_dict(
-                stage4_override.get("trainer_params"),
-                defaults.stage4.trainer_params,
-                dotted_key="research.defaults.stage4.trainer_params",
-            ),
-        ),
-        stage5=Stage5Defaults(
-            target_ids=_resolve_string_list(
-                stage5_override.get("target_ids"),
-                defaults.stage5.target_ids,
-                allow_empty=False,
-                dotted_key="research.defaults.stage5.target_ids",
-            ),
-            feature_set_names=_resolve_string_list(
-                stage5_override.get("feature_set_names"),
-                defaults.stage5.feature_set_names,
-                allow_empty=False,
-                dotted_key="research.defaults.stage5.feature_set_names",
-            ),
-            trainer_name=_resolve_strict_string(
-                stage5_override.get("trainer_name"),
-                defaults.stage5.trainer_name,
-                dotted_key="research.defaults.stage5.trainer_name",
+                search_override.get("trainer_name"),
+                defaults.search.trainer_name,
+                dotted_key="research.defaults.search.trainer_name",
             ),
             preset_names=_resolve_string_list(
-                stage5_override.get("preset_names"),
-                defaults.stage5.preset_names,
+                search_override.get("preset_names"),
+                defaults.search.preset_names,
                 allow_empty=False,
-                dotted_key="research.defaults.stage5.preset_names",
+                dotted_key="research.defaults.search.preset_names",
+            ),
+            working_target_id=_resolve_string(
+                search_override.get("working_target_id"),
+                defaults.search.working_target_id,
+                dotted_key="research.defaults.search.working_target_id",
             ),
             max_worker_cap=_resolve_positive_int(
-                stage5_override.get("max_worker_cap"),
-                defaults.stage5.max_worker_cap,
-                dotted_key="research.defaults.stage5.max_worker_cap",
+                search_override.get("max_worker_cap"),
+                defaults.search.max_worker_cap,
+                dotted_key="research.defaults.search.max_worker_cap",
             ),
             min_auto_workers=_resolve_positive_int(
-                stage5_override.get("min_auto_workers"),
-                defaults.stage5.min_auto_workers,
-                dotted_key="research.defaults.stage5.min_auto_workers",
+                search_override.get("min_auto_workers"),
+                defaults.search.min_auto_workers,
+                dotted_key="research.defaults.search.min_auto_workers",
             ),
         ),
         truth_gate=TruthGateDefaults(
@@ -343,7 +223,7 @@ def resolve_research_defaults(config: Dict[str, Any] | None) -> ResearchDefaults
         ),
     )
     _validate_split_fractions(resolved.common)
-    _validate_worker_range(resolved.stage5)
+    _validate_worker_range(resolved.search)
     return resolved
 
 
@@ -409,14 +289,6 @@ def _resolve_threshold_list(value: Any, default: Iterable[float], *, dotted_key:
     return resolved
 
 
-def _resolve_dict(value: Any, default: Dict[str, Any], *, dotted_key: str) -> Dict[str, Any]:
-    if value is None:
-        return dict(default)
-    if not isinstance(value, dict):
-        raise ValueError(f"{dotted_key} must be a mapping")
-    return dict(value)
-
-
 def _resolve_positive_int(value: Any, default: int, *, dotted_key: str) -> int:
     if value is None:
         return int(default)
@@ -440,10 +312,9 @@ def _resolve_fraction(
         numeric = float(value)
     except (TypeError, ValueError) as exc:
         raise ValueError(f"{dotted_key} must be numeric") from exc
-    minimum = 0.0 if not exclusive_min else 0.0
-    if exclusive_min and numeric <= minimum:
+    if exclusive_min and numeric <= 0.0:
         raise ValueError(f"{dotted_key} must be > 0")
-    if not exclusive_min and numeric < minimum:
+    if not exclusive_min and numeric < 0.0:
         raise ValueError(f"{dotted_key} must be >= 0")
     if numeric > 1.0:
         raise ValueError(f"{dotted_key} must be <= 1")
@@ -464,8 +335,8 @@ def _validate_split_fractions(common: CommonResearchDefaults) -> None:
         raise ValueError("research.defaults.common split fractions must sum to <= 1.0")
 
 
-def _validate_worker_range(stage5: Stage5Defaults) -> None:
-    if stage5.min_auto_workers > stage5.max_worker_cap:
+def _validate_worker_range(search: ResearchSearchDefaults) -> None:
+    if search.min_auto_workers > search.max_worker_cap:
         raise ValueError(
-            "research.defaults.stage5.min_auto_workers must be <= research.defaults.stage5.max_worker_cap"
+            "research.defaults.search.min_auto_workers must be <= research.defaults.search.max_worker_cap"
         )

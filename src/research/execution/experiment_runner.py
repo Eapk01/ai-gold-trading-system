@@ -267,7 +267,7 @@ class ExperimentRunner:
                 "purge_required": bool(horizon_bars > 0),
                 "feature_selection_mode": feature_selection_mode,
                 "feature_selection_note": (
-                    "Stage 3 applied fold-local feature selection on train-fold data only."
+                    "Feature selection applied fold-local feature selection on train-fold data only."
                     if feature_selector is not None
                     else "This experiment used a fixed research feature-column list without full-dataset target tuning."
                 ),
@@ -336,7 +336,7 @@ class ExperimentRunner:
                 fallback_target=full_target,
             )
         else:
-            raise ValueError(f"Unsupported Stage 1 baseline: {baseline_name}")
+            raise ValueError(f"Unsupported Baseline evaluation baseline: {baseline_name}")
 
         validation_eval = self.evaluation_pipeline.evaluate_segment(
             timestamps=validation_index,
